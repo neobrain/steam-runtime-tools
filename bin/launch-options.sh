@@ -28,6 +28,10 @@
 set -e
 set -u
 
+log () {
+    echo "${me-steam-runtime-launch-options}[$$]: $*" >&2 || :
+}
+
 main () {
     me="$(readlink -f "$0")"
     here="${me%/*}"
@@ -95,7 +99,7 @@ main () {
     fi
 
     if ! result="$("$script" --check-gui-dependencies 2>&1)"; then
-        echo "$result" >&2
+        log "error: $result"
 
         if [ -x ~/.steam/root/steam-dialog ]; then
             if [ -e "$script" ]; then
@@ -139,7 +143,14 @@ $result"
         exit 125
     fi
 
-    exec "$script" "$@" || exit 125
+    if command_line="$(exec "$script" --command-line-fd=1 "$@")" && [ -n "$command_line" ]; then
+        log "info: exec $command_line"
+        eval "exec $command_line" || exit 125
+    else
+        log "error: $script failed or was cancelled" >&2
+    fi
+
+    exit 125
 }
 
 main "$@"
