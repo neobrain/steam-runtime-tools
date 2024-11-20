@@ -1659,6 +1659,7 @@ class Gui:
         argv = []                   # type: typing.List[str]
 
         environ = {}                # type: typing.Dict[str, str]
+        unsetenv = set()            # type: typing.Set[str]
 
         components = []     # type: typing.List[Component]
         container = None    # type: typing.Optional[Component]
@@ -1849,26 +1850,32 @@ class Gui:
         argv.extend(self.app.argv)
         lines.append(to_shell(self.app.argv))
 
-        env_lines = []                  # type: typing.List[str]
+        # The older pressure-vessel-test-ui would be redundant here,
+        # so disable it.
+        unsetenv.add('PRESSURE_VESSEL_WRAP_GUI')
+
+        env_lines = ['env']
+
+        for var in sorted(unsetenv):
+            if var in os.environ:
+                env_lines.append('-u {}'.format(to_shell(var)))
 
         for var, value in sorted(environ.items()):
             if value != os.environ.get(var):
-                env_lines.append('{}={}'.format(var, to_shell([value])))
+                env_lines.append(to_shell(['{}={}'.format(var, value)]))
 
         lines = env_lines + lines
 
-        self.final_command_view.get_buffer().set_text(
-            ' \\\n'.join(lines), -1,
-        )
-
         final_env = {}                  # type: typing.Dict[str, str]
         final_env.update(os.environ)
+
+        for var in unsetenv:
+            final_env.pop(var, None)
+
         final_env.update(environ)
 
-        # The older pressure-vessel-test-ui would be redundant here,
-        # so disable it.
-        if 'PRESSURE_VESSEL_WRAP_GUI' in final_env:
-            del final_env['PRESSURE_VESSEL_WRAP_GUI']
+        shell = ' \\\n'.join(lines)
+        self.final_command_view.get_buffer().set_text(shell, -1)
 
         return argv, final_env
 
