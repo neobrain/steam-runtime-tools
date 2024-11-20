@@ -477,6 +477,7 @@ class Gui:
     def __init__(self):
         # type: (...) -> None
 
+        self.command_line_fd = None     # type: typing.Optional[int]
         self.steam_runtime_env = {}     # type: typing.Dict[str, str]
         self.failed = False
         self.home = GLib.get_home_dir()
@@ -898,6 +899,10 @@ class Gui:
         # type: (...) -> None
         parser = argparse.ArgumentParser()
         parser.add_argument(
+            '--command-line-fd',
+            type=int,
+        )
+        parser.add_argument(
             '--compatible-with',
             choices=COMPAT_TARGETS + ['auto', 'any'],
             default='auto',
@@ -910,6 +915,8 @@ class Gui:
         parser.add_argument('--verbose', action='store_true')
         parser.add_argument('command', nargs='+')
         args = parser.parse_args()
+
+        self.command_line_fd = args.command_line_fd
 
         for token in args.steam_runtime_env:
             if '=' not in token:
@@ -1643,17 +1650,24 @@ class Gui:
     def run_cb(self, _ignored=None):
         # type: (typing.Any) -> None
 
-        argv, environ = self.build_argv()
-        try:
-            os.execvpe(argv[0], argv, environ)
-        except OSError:
-            logger.error('Unable to run: %s', to_shell(argv))
+        shell, argv, environ = self.build_argv()
+
+        if self.command_line_fd is not None:
+            with open(self.command_line_fd, 'w') as writer:
+                writer.write(shell)
+
             Gtk.main_quit()
-            self.failed = True
-            raise
+        else:
+            try:
+                os.execvpe(argv[0], argv, environ)
+            except OSError:
+                logger.error('Unable to run: %s', to_shell(argv))
+                Gtk.main_quit()
+                self.failed = True
+                raise
 
     def build_argv(self):
-        # type: (...) -> typing.Tuple[typing.List[str], typing.Dict[str, str]]
+        # type: (...) -> typing.Tuple[str, typing.List[str], typing.Dict[str, str]]
 
         lines = []                  # type: typing.List[str]
         argv = []                   # type: typing.List[str]
@@ -1877,7 +1891,7 @@ class Gui:
         shell = ' \\\n'.join(lines)
         self.final_command_view.get_buffer().set_text(shell, -1)
 
-        return argv, final_env
+        return shell, argv, final_env
 
     def run(self):
         # type: (...) -> None
