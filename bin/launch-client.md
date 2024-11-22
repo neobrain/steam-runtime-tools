@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 # NAME
 
-steam-runtime-launch-client - client to launch processes in a container
+steam-runtime-launch-client - launch processes across a container boundary
 
 # SYNOPSIS
 
@@ -52,6 +52,31 @@ If no *COMMAND* is specified, and the **--terminate** option is not given,
 then the default is to run an interactive shell.
 This uses **$SHELL** if available in the container, falling back to
 **bash**(1) or **sh**(1) if necessary.
+
+If **steam-runtime-launcher-service** is seen as analogous to the
+**sshd**(8) server
+(but for communication between container environments rather than
+between machines),
+then **steam-runtime-launch-client** is the equivalent of the
+**ssh**(1) client.
+
+There are two major use-cases for **steam-runtime-launch-client**:
+
+1. The Steam Linux Runtime container framework launches games in a per-game
+    container.
+    During development, it can be configured to run a
+    **steam-runtime-launcher-service** inside each of these containers.
+    If this is done, a **steam-runtime-launch-client** outside the
+    container can be used to run debugging or diagnostic commands inside
+    the container environment.
+
+2. Conversely, because the Steam Linux Runtime container is not designed
+    to be a security boundary, a developer tool or an interactive debugging
+    session inside the per-game container can use
+    **steam-runtime-launch-client** to reach outside the container and run
+    debugging or diagnostic commands outside the container environment.
+
+See **EXAMPLES**, below, for practical examples of each of these.
 
 # OPTIONS
 
@@ -703,6 +728,8 @@ The *COMMAND* was killed by signal *n*.
 
 # EXAMPLES
 
+## Inserting debugging commands into a container
+
 A copy of **steam-runtime-launch-client** can be found in
 `~/.steam/root/ubuntu12_32/steam-runtime/amd64/usr/bin/`,
 `.../steamapps/common/SteamLinuxRuntime_soldier/pressure-vessel/bin/`
@@ -799,5 +826,28 @@ To exit the command server when finished, use a command like:
 A similar procedure can be used for non-Proton games,
 by adding `SRT_LAUNCHER_SERVICE_STOP_ON_EXIT=0` to the launch options in
 a similar way.
+
+## Running debugging commands outside the per-game container
+
+While inside the Steam Linux Runtime container,
+there is a copy of **steam-runtime-launch-client** available in the **PATH**.
+
+This can be used to run diagnostic commands that are not available inside
+the container,
+such as **ping**(8):
+
+    $ steam-runtime-launch-client --alongside-steam --host -- \
+        ping store.steampowered.com
+
+This works by contacting an instance of **steam-runtime-launcher-service**(1)
+that is run by the Steam client (`--alongside-steam`),
+or if that is not available,
+by attempting to use a similar interface provided by Flatpak (`--host`).
+
+App and game developers should avoid using this facility for normal
+app/game functionality, because the command does not benefit from any of
+Steam's usual mechanisms for providing cross-distribution compatibility,
+and some distributions are very unusual and will break most typical
+assumptions.
 
 <!-- vim:set sw=4 sts=4 et: -->
