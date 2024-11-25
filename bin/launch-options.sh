@@ -28,6 +28,45 @@
 set -e
 set -u
 
+log () {
+    echo "${me-steam-runtime-launch-options}[$$]: $*" >&2 || :
+}
+
+# run_like_game [exec] COMMAND ARGS
+# Run COMMAND ARGS, but wrap it as if it was the actual game for the
+# purposes of systemd resource control, Gamescope metadata and so on.
+#
+# If the first argument is "exec", replace the shell with the COMMAND
+# instead of running it as a subprocess.
+run_like_game () {
+    use_exec=
+
+    if [ "$1" = exec ]; then
+        use_exec=yes
+        shift
+    fi
+
+    app_id="${STEAM_COMPAT_APP_ID-${SteamAppId-}}"
+
+    if [ -n "$app_id" ]; then
+        if [ -x ~/.steam/root/ubuntu12_32/reaper ]; then
+            set -- ~/.steam/root/ubuntu12_32/reaper SteamLaunch AppId="$app_id" -- "$@"
+        else
+            log "warning: ~/.steam/root/ubuntu12_32/reaper not found"
+        fi
+    else
+        log "warning: Steam app ID not found in environment"
+    fi
+
+    if [ -x ~/.steam/root/ubuntu12_32/steam-launch-wrapper ]; then
+        set -- ~/.steam/root/ubuntu12_32/steam-launch-wrapper -- "$@"
+    else
+        log "warning: ~/.steam/root/ubuntu12_32/steam-launch-wrapper not found"
+    fi
+
+    ${use_exec:+exec} "$@"
+}
+
 main () {
     me="$(readlink -f "$0")"
     here="${me%/*}"
@@ -95,7 +134,7 @@ main () {
     fi
 
     if ! result="$("$script" --check-gui-dependencies 2>&1)"; then
-        echo "$result" >&2
+        log "error: $result"
 
         if [ -x ~/.steam/root/steam-dialog ]; then
             if [ -e "$script" ]; then
@@ -103,7 +142,7 @@ main () {
 
 $result"
             fi
-            ~/.steam/root/steam-dialog --error --width=500 --text="$result"
+            run_like_game ~/.steam/root/steam-dialog --error --width=500 --text="$result"
             exit 125
         fi
 
@@ -135,11 +174,18 @@ $result"
             text="$result"
         fi
 
-        "$run" "${STEAM_ZENITY:-zenity}" --error --width 500 --text "$text" || :
+        run_like_game "$run" "${STEAM_ZENITY:-zenity}" --error --width 500 --text "$text" || :
         exit 125
     fi
 
-    exec "$script" "$@" || exit 125
+    if command_line="$(run_like_game exec "$script" --command-line-fd=1 "$@")" && [ -n "$command_line" ]; then
+        log "info: exec $command_line"
+        eval "exec $command_line" || exit 125
+    else
+        log "error: $script failed or was cancelled" >&2
+    fi
+
+    exit 125
 }
 
 main "$@"
