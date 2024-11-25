@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20241122.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20241125.0) steamrt; urgency=medium
 
   * pressure-vessel:
     - Generate /etc/passwd, /etc/group for the container.
@@ -15,7 +15,7 @@ steam-runtime-tools (0.20241122.0) UNRELEASED; urgency=medium
       s-r-launcher-service
   * Documentation improvements
 
- -- Simon McVittie <smcv@collabora.com>  Mon, 25 Nov 2024 16:59:44 +0000
+ -- Simon McVittie <smcv@collabora.com>  Mon, 25 Nov 2024 17:04:10 +0000
 
 steam-runtime-tools (0.20241118.0) steamrt; urgency=medium
 
