@@ -5,9 +5,17 @@ steam-runtime-tools (0.20241122.0) UNRELEASED; urgency=medium
       This fixes interoperability with systemd-homed or remote user
       directories when running games that disregard `$HOME`
       (ValveSoftware/steam-runtime#705)
+  * Developer/debugging tools:
+    - Make steam-runtime-launch-options work as intended in the Gamescope
+      session on Steam Deck.
+      Note that it doesn't accept controller input, so it requires using
+      the touchscreen, a touchpad that Steam Input represents as a mouse,
+      or an external USB mouse. (steamrt/tasks#602)
+    - Remove obsolete --directory='' from a debug hint shown by
+      s-r-launcher-service
   * Documentation improvements
 
- -- Simon McVittie <smcv@collabora.com>  Fri, 22 Nov 2024 16:06:49 +0000
+ -- Simon McVittie <smcv@collabora.com>  Mon, 25 Nov 2024 16:59:44 +0000
 
 steam-runtime-tools (0.20241118.0) steamrt; urgency=medium
 
