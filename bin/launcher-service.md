@@ -17,8 +17,8 @@ steam-runtime-launcher-service - server to launch processes in a container
 **steam-runtime-launcher-service**
 [**--alongside-steam**]
 [**--exec-fallback**]
-[**--exit-on-readable**] *FD*
-[**--info-fd**] *N*
+[**--exit-on-readable** *FD*]
+[**--info-fd** *N*]
 [**--inside-app**]
 [**--replace**]
 [**--[no-]stop-on-exit**]
