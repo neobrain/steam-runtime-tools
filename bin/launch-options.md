@@ -37,8 +37,17 @@ extension and appending **.py**.
 
 # OPTIONS
 
+<dl>
+<dt>
+
 **--verbose**
-:   Show additional information.
+
+</dt><dd>
+
+Show additional information.
+
+</dd>
+</dl>
 
 # EXIT STATUS
 

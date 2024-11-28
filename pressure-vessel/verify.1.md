@@ -31,33 +31,75 @@ that contains pressure-vessel.
 
 # OPTIONS
 
-`--minimized-runtime`
-:   Assume the *DIRECTORY* is a Steam Linux Runtime runtime in minimized
-    form (removing empty files, empty directories, symbolic links and so
-    on). This is normally the `*_platform_*/files` directory.
+<dl>
+<dt>
 
-`--mtree`
-:   Use a non-default filename for the **mtree**(5) manifest.
-    It must currently be compressed with **gzip**(1) or compatible.
-    The default is normally `mtree.txt.gz` in the *DIRECTORY*.
-    If `--minimized-runtime` is used, the default is `../usr-mtree.txt.gz`
-    relative to the *DIRECTORY*.
+**--minimized-runtime**
 
-`--quiet`
-:   Don't show informational messages if the runtime is successfully verified,
-    just exit with status 0.
+</dt><dd>
 
-`--verbose`
-:   Be more verbose.
+Assume the *DIRECTORY* is a Steam Linux Runtime runtime in minimized
+form (removing empty files, empty directories, symbolic links and so
+on). This is normally the `*_platform_*/files` directory.
 
-`--version`
-:   Print the version number and exit.
+</dd>
+<dt>
+
+**--mtree**
+
+</dt><dd>
+
+Use a non-default filename for the **mtree**(5) manifest.
+It must currently be compressed with **gzip**(1) or compatible.
+The default is normally `mtree.txt.gz` in the *DIRECTORY*.
+If `--minimized-runtime` is used, the default is `../usr-mtree.txt.gz`
+relative to the *DIRECTORY*.
+
+</dd>
+<dt>
+
+**--quiet**
+
+</dt><dd>
+
+Don't show informational messages if the runtime is successfully verified,
+just exit with status 0.
+
+</dd>
+<dt>
+
+**--verbose**
+
+</dt><dd>
+
+Be more verbose.
+
+</dd>
+<dt>
+
+**--version**
+
+</dt><dd>
+
+Print the version number and exit.
+
+</dd>
+</dl>
 
 # ENVIRONMENT
 
+<dl>
+<dt>
+
 `SRT_LOG`
-:   A sequence of tokens separated by colons, spaces or commas
-    affecting how output is recorded. See source code for details.
+
+</dt><dd>
+
+A sequence of tokens separated by colons, spaces or commas
+affecting how output is recorded. See source code for details.
+
+</dd>
+</dl>
 
 # OUTPUT
 

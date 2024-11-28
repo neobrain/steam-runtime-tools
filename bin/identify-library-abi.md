@@ -27,7 +27,7 @@ steam-runtime-identify-library-abi - Identify the ABI of the libraries stored in
 :   Identify the ABI of the libraries listed by the executable `ldconfig`.
 
 **--print0**
-:   The generated library_path=library_ABI pairs are terminated with a null
+:   The generated *library\_path*=*library\_ABI* pairs are terminated with a null
     character instead of a newline.
 
 **--skip-unversioned**
@@ -41,9 +41,11 @@ steam-runtime-identify-library-abi - Identify the ABI of the libraries stored in
 # OUTPUT
 
 **steam-runtime-identify-library-abi** standard output is machine parsable, with
-pairs of `library_path=library_ABI` separated by a null character, with the option
+pairs of *library\_path*=*library\_ABI* separated by a null character,
+with the option
 **--print0**, or by newlines.
-Where `library_ABI` follows the Debian-style multiarch tuples convention and
+
+*library\_ABI* follows the Debian-style multiarch tuples convention and
 currently can have the following values: `i386-linux-gnu`, `x86_64-linux-gnu`,
 `x86_64-linux-gnux32`, `aarch64-linux-gnu`, or `?` that groups all the other
 possible ABIs.

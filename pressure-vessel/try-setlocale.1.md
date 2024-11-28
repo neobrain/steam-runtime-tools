@@ -28,10 +28,19 @@ There are no options.
 
 # POSITIONAL ARGUMENTS
 
+<dl>
+<dt>
+
 *LOCALE*
-:   A POSIX locale name, such as **en_US.UTF-8** or **it_IT@euro**,
-    or an empty string to use the standard locale environment variables
-    (which is the default).
+
+</dt><dd>
+
+A POSIX locale name, such as **en_US.UTF-8** or **it_IT@euro**,
+or an empty string to use the standard locale environment variables
+(which is the default).
+
+</dd>
+</dl>
 
 # OUTPUT
 

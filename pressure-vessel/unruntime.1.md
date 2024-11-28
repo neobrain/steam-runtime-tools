@@ -29,40 +29,94 @@ pressure-vessel-unruntime - run Steam games in a bubblewrap container
 All options are passed directly to **pressure-vessel-wrap**(1).
 One option is special:
 
+<dl>
+<dt>
+
 `--batch`
-:   If present, the test-UI will not be run.
+
+</dt><dd>
+
+If present, the test-UI will not be run.
+
+</dd>
+</dl>
 
 # ENVIRONMENT
 
+<dl>
+<dt>
+
 `LD_LIBRARY_PATH`
-:   Unset, and passed to **pressure-vessel-wrap** via the
-    `--env-if-host` option so that it will be reinstated if the game
-    is run with the host `/usr`.
+
+</dt><dd>
+
+Unset, and passed to **pressure-vessel-wrap** via the
+`--env-if-host` option so that it will be reinstated if the game
+is run with the host `/usr`.
+
+</dd>
+<dt>
 
 `LD_PRELOAD`
-:   Unset, and passed to **pressure-vessel-wrap** via the
-    `--env-if-host` option so that it will be reinstated if the game
-    is run with the host `/usr`. Individual items are also passed to
-    **pressure-vessel-wrap** via the **--host-ld-preload** option,
-    so that `LD_PRELOAD` modules can be made available read-only
-    in the container.
+
+</dt><dd>
+
+Unset, and passed to **pressure-vessel-wrap** via the
+`--env-if-host` option so that it will be reinstated if the game
+is run with the host `/usr`. Individual items are also passed to
+**pressure-vessel-wrap** via the **--host-ld-preload** option,
+so that `LD_PRELOAD` modules can be made available read-only
+in the container.
+
+</dd>
+<dt>
 
 `PATH`
-:   Reset to a sensible default, and passed to **pressure-vessel-wrap**
-    via the `--env-if-host` option so that it will be reinstated if the
-    game is run with the host `/usr`.
+
+</dt><dd>
+
+Reset to a sensible default, and passed to **pressure-vessel-wrap**
+via the `--env-if-host` option so that it will be reinstated if the
+game is run with the host `/usr`.
+
+</dd>
+<dt>
 
 `PRESSURE_VESSEL_BATCH`
-:   If set to 1, it is equivalent to `--batch`.
+
+</dt><dd>
+
+If set to 1, it is equivalent to `--batch`.
+
+</dd>
+<dt>
 
 `STEAM_RUNTIME`
-:   Unset.
+
+</dt><dd>
+
+Unset.
+
+</dd>
+<dt>
 
 `SYSTEM_LD_LIBRARY_PATH`
-:   Used to reset `LD_LIBRARY_PATH` to the value it had on entry to Steam.
+
+</dt><dd>
+
+Used to reset `LD_LIBRARY_PATH` to the value it had on entry to Steam.
+
+</dd>
+<dt>
 
 `SYSTEM_PATH`
-:   Used to reset `PATH` to the value it had on entry to Steam.
+
+</dt><dd>
+
+Used to reset `PATH` to the value it had on entry to Steam.
+
+</dd>
+</dl>
 
 # SIGNALS
 

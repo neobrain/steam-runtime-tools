@@ -24,8 +24,17 @@ inside a Steam Runtime container.
 
 # OPTIONS
 
+<dl>
+<dt>
+
 **--version**
-:   Instead of opening the file/URL, write in output the version number.
+
+</dt><dd>
+
+Instead of opening the file/URL, write in output the version number.
+
+</dd>
+</dl>
 
 # OUTPUT
 

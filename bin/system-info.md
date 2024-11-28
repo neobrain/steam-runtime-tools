@@ -22,25 +22,52 @@ steam-runtime-system-info - examine the Steam runtime environment and diagnose p
 
 # OPTIONS
 
+<dl>
+<dt>
+
 **--expectations** *PATH*
-:   Path to a directory containing details of the libraries that are
-    expected to be available. By default, *$STEAM_RUNTIME***/usr/lib/steamrt**
-    or **/usr/lib/steamrt** is used.
+
+</dt><dd>
+
+Path to a directory containing details of the libraries that are
+expected to be available. By default, *$STEAM_RUNTIME***/usr/lib/steamrt**
+or **/usr/lib/steamrt** is used.
+
+</dd>
+<dt>
 
 **--no-graphics-tests**
-:   Don't check that graphics drivers work.
-    This avoids needing an X11 display, and can also save time if that
-    information is not required.
+
+</dt><dd>
+
+Don't check that graphics drivers work.
+This avoids needing an X11 display, and can also save time if that
+information is not required.
+
+</dd>
+<dt>
 
 **--no-libraries**
-:   Don't check shared libraries against expectations.
-    This saves time if that information is not required,
-    particularly when using an emulation framework like FEX-Emu that
-    can make process startup more expensive.
+
+</dt><dd>
+
+Don't check shared libraries against expectations.
+This saves time if that information is not required,
+particularly when using an emulation framework like FEX-Emu that
+can make process startup more expensive.
+
+</dd>
+<dt>
 
 **--verbose**
-:   Show additional information. This currently adds details of all the
-    expected libraries that loaded successfully.
+
+</dt><dd>
+
+Show additional information. This currently adds details of all the
+expected libraries that loaded successfully.
+
+</dd>
+</dl>
 
 # OUTPUT
 

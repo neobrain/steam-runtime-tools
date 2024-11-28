@@ -34,8 +34,17 @@ running itself recursively if in the current `PATH`.)
 
 # OPTIONS
 
+<dl>
+<dt>
+
 **--verbose**, **-v**
-:   Be more verbose. If used twice, debug messages are shown.
+
+</dt><dd>
+
+Be more verbose. If used twice, debug messages are shown.
+
+</dd>
+</dl>
 
 # OUTPUT
 

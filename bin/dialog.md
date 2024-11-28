@@ -62,45 +62,66 @@ to be installed as part of Steam itself, under the name **steam-dialog**.
 
 Exactly one mode argument must be provided.
 
+<dl>
+<dt>
+
 **--check-features=**_FEATURES_
-:   If **steam-runtime-dialog** supports all of the feature flags in the
-    space-separated string _FEATURES_, and a user interface backend
-    supporting the same features is found, then exit with status 0.
-    Otherwise, exit with a non-zero status.
 
-    The known feature flags are:
+</dt><dd>
 
-    **message**
-    :   The **--error**, **--warning** and **--info** modes are supported.
-        The **--title** and **--text** options are supported.
-        The **--width** and **--no-wrap** options are supported to at least
-        a basic level (they might be ignored, if they are not applicable
-        to a particular user interface).
+If **steam-runtime-dialog** supports all of the feature flags in the
+space-separated string _FEATURES_, and a user interface backend
+supporting the same features is found, then exit with status 0.
+Otherwise, exit with a non-zero status.
 
-    **progress**
-    :   The **--progress** mode is supported.
-        The **--pulsate** option is supported.
-        The **--auto-close** and **--no-cancel** options are supported
-        to at least a basic level (they might be ignored or on-by-default).
+The known feature flags are:
+
+**message**
+:   The **--error**, **--warning** and **--info** modes are supported.
+    The **--title** and **--text** options are supported.
+    The **--width** and **--no-wrap** options are supported to at least
+    a basic level (they might be ignored, if they are not applicable
+    to a particular user interface).
+
+**progress**
+:   The **--progress** mode is supported.
+    The **--pulsate** option is supported.
+    The **--auto-close** and **--no-cancel** options are supported
+    to at least a basic level (they might be ignored or on-by-default).
+
+</dd>
+<dt>
 
 **--error**, **--warning**, **--info**
-:   Show an error, warning or informational message and wait for it to be
-    acknowledged.
-    These modes are part of the **message** feature flag.
+
+</dt><dd>
+
+Show an error, warning or informational message and wait for it to be
+acknowledged.
+These modes are part of the **message** feature flag.
+
+</dd>
+<dt>
 
 **--progress**
-:   Show a progress bar.
-    This mode reads progress information from standard input.
-    Each line read is expected to be either:
 
-    * an ASCII decimal integer or floating-point number between 0 and 100:
-        set the progress bar to the given percentage
-    * `#` followed by arbitrary UTF-8 text: change the **--text** to the
-        given message
-    * `pulsate:true`: instead of progress, do the equivalent of **--pulsate**
-    * `pulsate:false`: show progress instead of the equivalent of **--pulsate**
+</dt><dd>
 
-    This mode is part of the **progress** feature flag.
+Show a progress bar.
+This mode reads progress information from standard input.
+Each line read is expected to be either:
+
+* an ASCII decimal integer or floating-point number between 0 and 100:
+    set the progress bar to the given percentage
+* `#` followed by arbitrary UTF-8 text: change the **--text** to the
+    given message
+* `pulsate:true`: instead of progress, do the equivalent of **--pulsate**
+* `pulsate:false`: show progress instead of the equivalent of **--pulsate**
+
+This mode is part of the **progress** feature flag.
+
+</dd>
+</dl>
 
 # OPTIONS
 

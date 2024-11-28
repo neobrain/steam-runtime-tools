@@ -32,22 +32,46 @@ they are outdated or invalid.)
 
 # OPTIONS
 
+<dl>
+<dt>
+
 **--output-directory** *DIR*, **--output-dir** *DIR*, **-o** *DIR*
-:   Output to *DIR* instead of the current working directory.
+
+</dt><dd>
+
+Output to *DIR* instead of the current working directory.
+
+</dd>
+<dt>
 
 **--verbose**
-:   Be more verbose.
+
+</dt><dd>
+
+Be more verbose.
+
+</dd>
+</dl>
 
 # POSITIONAL ARGUMENTS
 
+<dl>
+<dt>
+
 *LOCALE*
-:   One or more additional POSIX locale names, such as **en_US.UTF-8** or
-    **it_IT@euro**. By default, **pressure-vessel-locale-gen**
-    generates all the locales required by the standard locale environment
-    variables such as **LC_ALL**, plus the value of *$HOST_LC_ALL* if
-    set, plus the American English locale **en_US.UTF-8** (which is
-    frequently assumed to be present, even though many operating systems
-    do not guarantee it).
+
+</dt><dd>
+
+One or more additional POSIX locale names, such as **en_US.UTF-8** or
+**it_IT@euro**. By default, **pressure-vessel-locale-gen**
+generates all the locales required by the standard locale environment
+variables such as **LC_ALL**, plus the value of *$HOST_LC_ALL* if
+set, plus the American English locale **en_US.UTF-8** (which is
+frequently assumed to be present, even though many operating systems
+do not guarantee it).
+
+</dd>
+</dl>
 
 # OUTPUT
 

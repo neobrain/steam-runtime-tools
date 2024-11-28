@@ -59,41 +59,68 @@ version of the Steam Runtime, the tool should be renamed to
 
 # ENVIRONMENT
 
+<dl>
+<dt>
+
 `STEAM_COMPAT_LAUNCHER_SERVICE` (string)
-:   A tool name which is matched against the first parameter.
+
+</dt><dd>
+
+A tool name which is matched against the first parameter.
+
+</dd>
+<dt>
 
 `SRT_LAUNCHER_SERVICE_STOP_ON_EXIT` (boolean)
-:   By default, or if set to `1`, the **steam-runtime-launcher-service**(1)
-    will terminate other launched processes and prepare to exit when
-    the *COMMAND* does.
-    This is appropriate when interacting with a game or other program
-    that is mostly working: it cleans up any associated debugging
-    processes when the game itself exits, so that Steam will correctly
-    conside the game to have exited.
 
-    If set to `0`, the **steam-runtime-launcher-service**(1) will not
-    stop until it is explicitly terminated by **SIGTERM** or
-    **steam-runtime-launch-client --bus-name=... --terminate**.
-    This is particularly useful when debugging a game that crashes or
-    otherwise exits on startup.
-    As long as the **steam-runtime-launcher-service**(1) continues
-    to run, Steam will behave as though the game was still running:
-    the user is responsible for terminating the service when it is no
-    longer needed.
+</dt><dd>
 
-    This is a generic **steam-runtime-launcher-service**(1) option,
-    and is not specific to **steam-runtime-launcher-interface-0**.
+By default, or if set to `1`, the **steam-runtime-launcher-service**(1)
+will terminate other launched processes and prepare to exit when
+the *COMMAND* does.
+This is appropriate when interacting with a game or other program
+that is mostly working: it cleans up any associated debugging
+processes when the game itself exits, so that Steam will correctly
+conside the game to have exited.
+
+If set to `0`, the **steam-runtime-launcher-service**(1) will not
+stop until it is explicitly terminated by **SIGTERM** or
+**steam-runtime-launch-client --bus-name=... --terminate**.
+This is particularly useful when debugging a game that crashes or
+otherwise exits on startup.
+As long as the **steam-runtime-launcher-service**(1) continues
+to run, Steam will behave as though the game was still running:
+the user is responsible for terminating the service when it is no
+longer needed.
+
+This is a generic **steam-runtime-launcher-service**(1) option,
+and is not specific to **steam-runtime-launcher-interface-0**.
+
+</dd>
+<dt>
 
 `SRT_LAUNCHER_SERVICE_STOP_ON_NAME_LOSS` (ignored)
-:   Ignored.
-    For robustness, the **steam-runtime-launcher-service**(1) run from
-    this tool always behaves as though this variable is set to `0`.
-    Even if its D-Bus well-known name is taken over by another process,
-    it can still be contacted via its D-Bus unique name.
+
+</dt><dd>
+
+Ignored.
+For robustness, the **steam-runtime-launcher-service**(1) run from
+this tool always behaves as though this variable is set to `0`.
+Even if its D-Bus well-known name is taken over by another process,
+it can still be contacted via its D-Bus unique name.
+
+</dd>
+<dt>
 
 `SRT_LOG`
-:   A sequence of tokens separated by colons, spaces or commas
-    affecting how output is recorded. See source code for details.
+
+</dt><dd>
+
+A sequence of tokens separated by colons, spaces or commas
+affecting how output is recorded. See source code for details.
+
+</dd>
+</dl>
 
 # OUTPUT
 
@@ -102,6 +129,8 @@ Unstructured diagnostic messages are printed on standard error.
 The *COMMAND* inherits standard output and standard error.
 
 # EXIT STATUS
+
+The exit status is similar to **env**(1):
 
 0
 :   The *COMMAND* exited successfully

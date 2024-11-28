@@ -83,34 +83,61 @@ taking precedence.
 Each event is a JSON object with a single key. Consumers should ignore
 unknown keys to allow for future expansion.
 
-**all-for-now**
-:   The initial device enumeration has finished. If the **--once** option
-    was used, **steam-runtime-input-monitor** will exit. If not, it will
-    contine to monitor device hotplug events.
+<dl>
+<dt>
 
-    The value is **true**.
+**all-for-now**
+
+</dt><dd>
+
+The initial device enumeration has finished. If the **--once** option
+was used, **steam-runtime-input-monitor** will exit. If not, it will
+contine to monitor device hotplug events.
+
+The value is **true**.
+
+</dd>
+<dt>
 
 **added**
-:   A device was added. The value is an object describing the device,
-    with the following keys and values:
 
-    **dev_node**
-    :   The device node in `/dev` for this device.
+</dt><dd>
 
-    **sys_path**
-    :   The device directory in `/sys` for this device.
+A device was added. The value is an object describing the device,
+with the following keys and values:
 
-    **subsystem**
-    :   The Linux kernel subsystem, either **input** or **hidraw**.
+**dev_node**
+:   The device node in `/dev` for this device.
 
-    Additional keys and values are likely to be added in future versions.
+**sys_path**
+:   The device directory in `/sys` for this device.
+
+**subsystem**
+:   The Linux kernel subsystem, either **input** or **hidraw**.
+
+Additional keys and values are likely to be added in future versions.
+
+</dd>
+<dt>
 
 **removed**
-:   A device was removed. The value is an object with keys **dev_node**
-    and **sys_path**, as above.
+
+</dt><dd>
+
+A device was removed. The value is an object with keys **dev_node**
+and **sys_path**, as above.
+
+</dd>
+<dt>
 
 **#**
-:   Informational messages which are not intended to be machine-readable.
+
+</dt><dd>
+
+Informational messages which are not intended to be machine-readable.
+
+</dd>
+</dl>
 
 # EXIT STATUS
 
