@@ -134,7 +134,8 @@ pv_wrap_add_gamescope_args (FlatpakBwrap *sharing_bwrap,
  * X11 and PulseAudio sockets.
  */
 FlatpakBwrap *
-pv_wrap_share_sockets (SrtEnvOverlay *container_env,
+pv_wrap_share_sockets (PvWrapContext *self,
+                       SrtEnvOverlay *container_env,
                        const char * const *original_environ,
                        gboolean using_a_runtime,
                        gboolean is_flatpak_env)
@@ -208,6 +209,8 @@ pv_wrap_share_sockets (SrtEnvOverlay *container_env,
       flatpak_run_add_system_dbus_args (sharing_bwrap);
       flatpak_run_add_socket_args_late (sharing_bwrap, shares);
       flatpak_run_add_a11y_dbus_args (sharing_bwrap);
+      if (self->options.import_openxr_1_runtimes)
+        pv_wrap_add_openxr_args (sharing_bwrap);
       pv_wrap_add_pipewire_args (sharing_bwrap, container_env);
       pv_wrap_add_discord_args (sharing_bwrap);
     }

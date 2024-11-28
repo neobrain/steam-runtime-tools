@@ -1028,7 +1028,8 @@ main (int argc,
     {
       g_autoptr(FlatpakBwrap) sharing_bwrap = NULL;
 
-      sharing_bwrap = pv_wrap_share_sockets (container_env,
+      sharing_bwrap = pv_wrap_share_sockets (self,
+                                             container_env,
                                              _srt_const_strv (self->original_environ),
                                              (self->runtime != NULL),
                                              self->is_flatpak_env);

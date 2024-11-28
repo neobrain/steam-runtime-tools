@@ -193,6 +193,8 @@ pressure_vessel_wrap_lib = static_library(
     'wrap-flatpak.h',
     'wrap-home.h',
     'wrap-home.c',
+    'wrap-openxr.c',
+    'wrap-openxr.h',
     'wrap-pipewire.c',
     'wrap-pipewire.h',
     'wrap-setup.c',
