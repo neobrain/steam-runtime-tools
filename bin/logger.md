@@ -188,8 +188,8 @@ If the fifo is successfully created, the caller is responsible for
 deleting both the fifo itself and its parent directory after use.
 If **srt-logger** fails to create a fifo, no cleanup is required.
 The current implementation for this option creates a subdirectory
-with a random name in either **$XDG_RUNTIME_DIR**, **$TMPDIR**
-or **/tmp**, similar to **mktemp -d**, then creates the fifo inside
+with a random name in either `$XDG_RUNTIME_DIR`, `$TMPDIR`
+or `/tmp`, similar to `mktemp -d`, then creates the fifo inside
 that subdirectory.
 If one of those directories cannot hold fifo objects, **srt-logger**
 will show a warning and fall back to the next.

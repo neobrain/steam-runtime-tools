@@ -412,7 +412,7 @@ The text printed to the **--info-fd** includes one or more of these:
 <dl>
 <dt>
 
-**socket=**PATH
+`socket=`*PATH*
 
 </dt><dd>
 
@@ -424,7 +424,7 @@ corresponding to _PATH_.
 </dd>
 <dt>
 
-**dbus_address=**ADDRESS
+`dbus_address=`*ADDRESS*
 
 </dt><dd>
 
@@ -436,7 +436,7 @@ or by connecting another peer-to-peer D-Bus client
 </dd>
 <dt>
 
-**bus_name=**NAME
+`bus_name=`*NAME*
 
 </dt><dd>
 

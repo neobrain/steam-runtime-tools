@@ -30,7 +30,7 @@ steam-runtime-system-info - examine the Steam runtime environment and diagnose p
 </dt><dd>
 
 Path to a directory containing details of the libraries that are
-expected to be available. By default, *$STEAM_RUNTIME***/usr/lib/steamrt**
+expected to be available. By default, _$STEAM_RUNTIME_**/usr/lib/steamrt**
 or **/usr/lib/steamrt** is used.
 
 </dd>
