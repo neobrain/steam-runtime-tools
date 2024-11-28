@@ -312,13 +312,13 @@ changed to be more like **env**(1) in future.
 :   An error occurred while setting up the execution environment or
     starting the *COMMAND*
 
-64 (**EX_USAGE**)
+64 (`EX_USAGE` from `sysexits.h`)
 :   Invalid arguments were given
 
-69 (**EX_UNAVAILABLE**)
+69 (`EX_UNAVAILABLE` from `sysexits.h`)
 :   An error occurred while setting up the execution environment
 
-75 (**EX_TEMPFAIL**)
+75 (`EX_TEMPFAIL` from `sysexits.h`)
 :   A **--lock-file** could not be acquired, and **--wait** was not given
 
 126

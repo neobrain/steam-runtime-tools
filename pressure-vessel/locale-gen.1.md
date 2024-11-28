@@ -66,18 +66,18 @@ the output directory is empty (exit status 0),
 :   All necessary locales were already available without altering
     the **LOCPATH** environment variable.
 
-64 (**EX_USAGE** from **sysexits.h**)
+64 (`EX_USAGE` from `sysexits.h`)
 :   Invalid arguments were given.
 
-72 (**EX_OSFILE**)
+72 (`EX_OSFILE` from `sysexits.h`)
 :   Not all of the necessary locales were already available, but all
     were generated in the output directory.
 
-73 (**EX_CANTCREAT**)
+73 (`EX_CANTCREAT` from `sysexits.h`)
 :   At least one locale was not generated successfully. Some other
     locales might have been generated in the output directory as usual.
 
-78 (**EX_CONFIG**)
+78 (`EX_CONFIG` from `sysexits.h`)
 :   One of the locales given was invalid or could lead to path traversal.
     Other locales might have been generated as usual.
 

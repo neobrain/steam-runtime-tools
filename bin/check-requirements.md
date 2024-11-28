@@ -44,9 +44,8 @@ Unstructured diagnostic messages appear on standard error.
 :   **steam-runtime-check-requirements** ran successfully and all the Steam
     client requirements are met.
 
-71
-:   At least one of the requirements is not met. In this case the exit status
-    will be 71 (EX_OSERR).
+71 (`EX_OSERR` from `sysexits.h`)
+:   At least one of the requirements is not met.
 
 Other Nonzero
 :   An error occurred.

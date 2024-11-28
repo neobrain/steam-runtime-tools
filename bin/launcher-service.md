@@ -300,7 +300,7 @@ inherits standard error.
     or by *NAME* being replaced by another process
     (with **--bus-name** and **--replace**).
 
-64 (**EX_USAGE** from **sysexits.h**)
+64 (`EX_USAGE` from `sysexits.h`)
 :   Invalid arguments were given.
 
 Other nonzero values

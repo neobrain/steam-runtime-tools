@@ -60,8 +60,8 @@ the `LD_LIBRARY_PATH` Steam Runtime) but unsuitable for more general uses.
 0
 :   Success.
 
-64
-:   Invalid arguments were given (EX_USAGE).
+64 (`EX_USAGE` from `sysexits.h`)
+:   Invalid arguments were given.
 
 Other Nonzero
 :   An error occurred.
