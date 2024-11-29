@@ -699,6 +699,9 @@ _srt_util_set_glib_log_handler (const char *prgname,
   if (_srt_boolean_environment ("PRESSURE_VESSEL_LOG_WITH_TIMESTAMP", FALSE))
     flags |= SRT_LOG_FLAGS_TIMESTAMP;
 
+  if (_srt_boolean_environment ("DEBUG_INVOCATION", FALSE))
+    flags |= SRT_LOG_FLAGS_DEBUG;
+
   if (_srt_boolean_environment ("PRESSURE_VESSEL_LOG_INFO", FALSE))
     flags |= SRT_LOG_FLAGS_INFO;
 
