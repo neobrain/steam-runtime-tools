@@ -632,6 +632,11 @@ The host system's `/usr`, `/bin`, `/sbin` and `/lib*` appear below
 `/run/host` in the container.
 For example, a Fedora host system might provide
 `/run/host/usr/lib64/libz.so.1`.
+However, these executables and libraries cannot normally be used directly
+within the container,
+because the container's shared library stack is not compatible with the host's.
+See [Running commands outside the container][], below,
+for the closest equivalent.
 
 Files imported from the host system appear as symbolic links in the
 `/usr/lib/pressure-vessel/overrides` hierarchy.
@@ -718,6 +723,91 @@ $ /path/to/steamlibrary/steamapps/common/SteamLinuxRuntime_sniper/run \
     ./my-game.sh \
     +set extra_texture_path /resources/my-game/textures
 ```
+
+## <a name="launch-alongside-steam"></a>Running commands outside the container
+
+[Running commands outside the container]: #launch-alongside-steam
+
+For some development and debugging use-cases,
+it can be desirable to run commands that are not part of the container.
+
+The `steam-runtime-launch-client` utility can be used to run commands
+that are not available inside the container,
+such as `ping`, like this:
+
+    $ steam-runtime-launch-client --alongside-steam --host -- \
+        ping store.steampowered.com
+
+This can be used
+[from an interactive shell](#shell),
+or it can be used programmatically via normal APIs for running external
+commands,
+for example `posix_spawnp()`, `GSubprocess` or `system()`.
+
+App and game developers should avoid using this mechanism for normal
+app/game functionality,
+because the command will not benefit from any of Steam's usual mechanisms
+for providing cross-distribution compatibility.
+As a result, there are many limitations to be aware of, such as:
+
+* the command might not be installed
+* the command might be installed in an unexpected location
+* the command might not work correctly
+* the command or the OS might be a version 10 years older than you expect
+* the command or the OS might be a version 10 years *newer* than you expect
+* the OS distribution might be structured in an unexpected way
+* the user might have made extensive customizations to the OS distribution
+
+However,
+with some appropriate expectations-management,
+this mechanism can be useful for non-core use-cases such as game mod
+development tools.
+
+You can think of this as being like connecting to a remote machine
+using `ssh`:
+the command runs outside the container,
+"in a different world".
+For example,
+the meaning of some filesystem paths is different:
+`cat /etc/os-release` will show you the [os-release(5)][] file inside the
+container,
+but
+`steam-runtime-launch-client --alongside-steam --host -- cat /etc/os-release`
+will show you the equivalent file outside the container.
+Similarly,
+process parameters such as environment variables,
+the current working directory
+and resource limits will be different.
+
+As a special case,
+many of the [paths that are shared with the container][shared-paths]
+will normally have the same meaning inside and outside the container.
+In particular,
+the paths used inside the container for
+the game itself (`$STEAM_COMPAT_INSTALL_PATH`),
+the Steam client (`$STEAM_COMPAT_CLIENT_INSTALL_PATH`),
+and the user's Steam libraries (`$STEAM_COMPAT_LIBRARY_PATHS`)
+will normally be equally valid outside the container.
+
+Various options can be placed before the `--` separator,
+for example to select which environment variables from inside the
+container are sent to the command.
+See the
+[steam-runtime-launch-client documentation][steam-runtime-launch-client]
+for full details of the options that are available.
+
+This mechanism works by contacting an instance of
+`steam-runtime-launcher-service` that is run automatically by the Steam
+client (`--alongside-steam`),
+or if that is not available,
+by attempting to use a similar interface provided by Flatpak (`--host`).
+
+As currently implemented,
+this mechanism requires a working D-Bus session bus.
+This is a facility that is available on all typical Linux desktop systems,
+as well as on the Steam Deck,
+but might not always be available on enthusiasts' heavily-customized
+Linux systems.
 
 ## <a name="developer-mode"></a>Developer mode
 
@@ -1343,4 +1433,5 @@ but does not include external modules like `pip`.
 [sniper]: https://gitlab.steamos.cloud/steamrt/steamrt/-/blob/steamrt/sniper/README.md
 [soldier SDK]: https://gitlab.steamos.cloud/steamrt/soldier/sdk/-/blob/steamrt/soldier/README.md
 [soldier]: https://gitlab.steamos.cloud/steamrt/steamrt/-/blob/steamrt/soldier/README.md
+[steam-runtime-launch-client]: https://gitlab.steamos.cloud/steamrt/steam-runtime-tools/-/blob/main/bin/launch-client.md?ref_type=heads
 [switching a game to a beta branch]: https://help.steampowered.com/en/faqs/view/5A86-0DF4-C59E-8C4A
