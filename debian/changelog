@@ -1,3 +1,16 @@
+steam-runtime-tools (0.20241129.0) UNRELEASED; urgency=medium
+
+  [ Simon McVittie ]
+  * Documentation updates
+    - In particular, this includes developer documentation for how to
+      launch debugging and development commands outside the SLR container
+      (see docs/slr-for-game-developers.md)
+
+  [ Ludovico de Nittis ]
+  * Set a default merge request template
+
+ -- Simon McVittie <smcv@collabora.com>  Fri, 29 Nov 2024 16:00:36 +0000
+
 steam-runtime-tools (0.20241125.0) steamrt; urgency=medium
 
   * pressure-vessel:
