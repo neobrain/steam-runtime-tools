@@ -1,6 +1,12 @@
-steam-runtime-tools (0.20241129.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250106.0) UNRELEASED; urgency=medium
 
   [ Simon McVittie ]
+  * log: Treat DEBUG_INVOCATION=1 as equivalent to SRT_LOG=debug
+  * Update libglnx to 2025-01-06
+    - Fix an assertion failure if creating a parent directory encounters
+      a dangling symlink
+    - Fix compiler warnings with clang 19.1.6
+    - Fix Meson warnings with Meson 1.1.0
   * Documentation updates
     - In particular, this includes developer documentation for how to
       launch debugging and development commands outside the SLR container
@@ -9,7 +15,7 @@ steam-runtime-tools (0.20241129.0) UNRELEASED; urgency=medium
   [ Ludovico de Nittis ]
   * Set a default merge request template
 
- -- Simon McVittie <smcv@collabora.com>  Fri, 29 Nov 2024 16:00:36 +0000
+ -- Simon McVittie <smcv@collabora.com>  Mon, 06 Jan 2025 16:58:37 +0000
 
 steam-runtime-tools (0.20241125.0) steamrt; urgency=medium
 
