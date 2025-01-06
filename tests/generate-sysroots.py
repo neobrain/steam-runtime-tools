@@ -95,6 +95,7 @@ fake-icds/etc/xdg/vulkan/icd.d
 fake-icds/datadir/vulkan/icd.d
 fake-icds/egl1
 fake-icds/opt
+fake-icds/openxr/link
 fake-icds/datahome/vulkan/icd.d
 fake-icds/usr/lib/i386-mock-abi
 fake-icds/usr/lib/x86_64-mock-abi/vulkan/icd.d
@@ -766,6 +767,46 @@ with open(
         "library_path": "/usr/lib/x86_64-mock-abi/libvulkan_intel.so"
     },
     "file_format_version": "1.0.0"
+}''')
+
+with open('fake-icds/openxr/monado.json', 'w') as writer:
+    writer.write('''\
+{
+    "file_format_version": "1.0.0",
+    "runtime": {
+        "library_path": "/usr/lib/libopenxr_monado.so",
+        "name": "Monado"
+    }
+}''')
+
+os.symlink('../monado.json', 'fake-icds/openxr/link/monado.json')
+
+with open('fake-icds/openxr/function-overrides.json', 'w') as writer:
+    writer.write('''\
+{
+    "file_format_version": "1.0.0",
+    "runtime": {
+        "library_path": "liboverrides.so",
+        "functions": {
+            "xrNegotiateLoaderRuntimeInterface": "my_xrNegotiateLoaderRuntimeInterface"
+        }
+    }
+}''')
+
+with open('fake-icds/openxr/missing-fields.json', 'w') as writer:
+    writer.write('''\
+{
+    "runtime": {
+        "library_path": "libbad.so"
+    }
+}''')
+
+with open('fake-icds/openxr/syntax-error.json', 'w') as writer:
+    writer.write('''\
+{
+    "file_format_version" : "1.0.0",
+    "runtime": {
+        "library_path": "libbad.so"
 }''')
 
 with open(

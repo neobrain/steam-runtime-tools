@@ -37,7 +37,7 @@ tests = [
   {'name': 'display', 'static': true},
   {'name': 'env-overlay', 'static': true},
   {'name': 'file-lock', 'static': true},
-  {'name': 'graphics'},
+  {'name': 'graphics', 'static': true},
   {
     'name': 'input-device',
     'static': true,

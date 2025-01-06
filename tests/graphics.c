@@ -39,10 +39,12 @@
 #include <glib/gstdio.h>
 
 #include "steam-runtime-tools/graphics-internal.h"
+#include "steam-runtime-tools/graphics-drivers-json-based-internal.h"
 #include "steam-runtime-tools/system-info.h"
 #include "steam-runtime-tools/utils-internal.h"
 #include "graphics-test-defines.h"
 #include "test-utils.h"
+#include "test-json-utils.h"
 
 static const char *argv0;
 static gchar *global_sysroots;
@@ -1885,6 +1887,240 @@ test_icd_vulkan_implicit_multiarch (Fixture *f,
   assert_vulkan_icds (f->sysroot, icds, context);
 }
 
+static void
+compare_openxr_content (Fixture *f,
+                        SrtOpenXr1Runtime *rt,
+                        const char *expected_json_relative)
+{
+  g_autoptr(GError) error = NULL;
+  g_autofree char *tmp_dir = NULL;
+  g_autofree char *tmp_json_path = NULL;
+  g_autofree char *tmp_json_contents = NULL;
+  g_autofree char *tmp_json_contents_unformatted = NULL;
+  g_autofree char *expected_json_path = NULL;
+  g_autofree char *expected_json_contents = NULL;
+  g_autofree char *resolved_library_path = NULL;
+  gsize tmp_json_len;
+
+  tmp_dir = g_dir_make_tmp ("openxr-json-test-XXXXXX", &error);
+  g_assert_no_error (error);
+  tmp_json_path = g_build_filename (tmp_dir, "output.json", NULL);
+
+  expected_json_path = g_build_filename (f->sysroot,
+                                         expected_json_relative,
+                                         NULL);
+
+  srt_openxr_1_runtime_write_to_file (rt, tmp_json_path, &error);
+  g_assert_no_error (error);
+
+  g_debug ("Wrote OpenXR runtime to path: %s", tmp_json_path);
+
+  g_file_get_contents (tmp_json_path, &tmp_json_contents_unformatted,
+                       &tmp_json_len, &error);
+  g_assert_no_error (error);
+  g_assert_cmpuint (tmp_json_len, ==, strlen (tmp_json_contents_unformatted));
+
+  tmp_json_contents = _srt_json_pretty (tmp_json_contents_unformatted);
+  expected_json_contents = _srt_json_pretty_from_file (expected_json_path);
+  _srt_assert_streq_diff (expected_json_contents, tmp_json_contents);
+
+  if (!_srt_rm_rf (tmp_dir))
+    g_debug ("Unable to remove temp directory: %s", tmp_dir);
+}
+
+static void
+test_icd_openxr_json (Fixture *f,
+                      gconstpointer context)
+{
+  static const char sysroot_path_runtime_link[] = "/openxr/link/monado.json";
+  static const char sysroot_path_runtime[] = "/openxr/monado.json";
+
+  g_autoptr(SrtSysroot) sysroot = NULL;
+  g_autoptr(SrtOpenXr1Runtime) rt = NULL;
+  g_autoptr(SrtOpenXr1Runtime) rt_basename = NULL;
+  g_autoptr(SrtOpenXr1Runtime) rt_relative = NULL;
+  g_autoptr(GList) list = NULL;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *resolved_library_path = NULL;
+  g_autofree char *prop_json_path = NULL;
+  g_autofree char *prop_json_origin = NULL;
+  g_autofree char *prop_library_path = NULL;
+  g_autofree char *prop_resolved_library_path = NULL;
+
+  g_test_message ("Entering %s", G_STRFUNC);
+
+  sysroot = _srt_sysroot_new (f->sysroot, NULL);
+  load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
+                           sysroot,
+                           sysroot_path_runtime_link,
+                           _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME,
+                           &list);
+
+  rt = list->data;
+  g_assert_nonnull (rt);
+  g_assert_null (list->next);
+
+  srt_openxr_1_runtime_check_error (rt, &error);
+  g_assert_no_error (error);
+
+  g_assert_cmpstr (srt_openxr_1_runtime_get_json_path (rt),
+                   ==, sysroot_path_runtime);
+  g_assert_cmpstr (srt_openxr_1_runtime_get_json_origin (rt),
+                   ==, sysroot_path_runtime_link);
+  g_assert_cmpstr (srt_openxr_1_runtime_get_library_path (rt),
+                   ==, "/usr/lib/libopenxr_monado.so");
+  g_assert_cmpstr (srt_openxr_1_runtime_get_name (rt), ==, "Monado");
+
+  resolved_library_path = srt_openxr_1_runtime_resolve_library_path (rt);
+  g_assert_cmpstr (resolved_library_path, ==, "/usr/lib/libopenxr_monado.so");
+  g_clear_pointer (&resolved_library_path, free);
+
+  compare_openxr_content (f, rt, sysroot_path_runtime);
+
+  g_object_get (rt,
+                "json-path", &prop_json_path,
+                "json-origin", &prop_json_origin,
+                "library-path", &prop_library_path,
+                "resolved-library-path", &prop_resolved_library_path,
+                NULL);
+
+  g_assert_cmpstr (prop_json_path, ==, sysroot_path_runtime);
+  g_assert_cmpstr (prop_json_origin, ==, sysroot_path_runtime_link);
+  g_assert_cmpstr (prop_library_path, ==, "/usr/lib/libopenxr_monado.so");
+  g_assert_cmpstr (prop_resolved_library_path, ==, "/usr/lib/libopenxr_monado.so");
+
+  rt_basename = srt_openxr_1_runtime_new_replace_library_path (rt,
+                                                               "libopenxr_monado.so");
+
+  g_assert_cmpstr (srt_openxr_1_runtime_get_json_path (rt_basename),
+                   ==, sysroot_path_runtime);
+  g_assert_cmpstr (srt_openxr_1_runtime_get_json_origin (rt_basename),
+                   ==, sysroot_path_runtime_link);
+  g_assert_cmpstr (srt_openxr_1_runtime_get_library_path (rt_basename),
+                   ==, "libopenxr_monado.so");
+  g_assert_cmpstr (srt_openxr_1_runtime_get_name (rt_basename), ==, "Monado");
+
+  resolved_library_path = srt_openxr_1_runtime_resolve_library_path (rt_basename);
+  g_assert_cmpstr (resolved_library_path, ==, "libopenxr_monado.so");
+  g_clear_pointer (&resolved_library_path, free);
+
+  rt_relative = srt_openxr_1_runtime_new_replace_library_path (rt,
+                                                               "../libopenxr_monado.so");
+
+  g_assert_cmpstr (srt_openxr_1_runtime_get_json_path (rt_relative),
+                   ==, sysroot_path_runtime);
+  g_assert_cmpstr (srt_openxr_1_runtime_get_library_path (rt_relative),
+                   ==, "../libopenxr_monado.so");
+  g_assert_cmpstr (srt_openxr_1_runtime_get_name (rt_relative), ==, "Monado");
+
+  /* This specifically makes sure that, following the behavior of the
+   * official OpenXR loader,  the library path is resolved relative to the
+   * *canonicalized* loader path (i.e. json-path), and not the path found during
+   * lookup (json-origin). Using the latter would incorrectly result in
+   * `/openxr/link/../libopenxr_monado.so` instead. */
+  resolved_library_path = srt_openxr_1_runtime_resolve_library_path (rt_relative);
+  g_assert_cmpstr (resolved_library_path, ==, "/openxr/../libopenxr_monado.so");
+}
+
+static void
+test_icd_openxr_json_functions (Fixture *f,
+                                gconstpointer context)
+{
+  static const char sysroot_path_runtime[] = "/openxr/function-overrides.json";
+
+  g_autoptr(SrtSysroot) sysroot = NULL;
+  g_autoptr(SrtOpenXr1Runtime) rt = NULL;
+  g_autoptr(GList) list = NULL;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *resolved_library_path = NULL;
+
+  g_test_message ("Entering %s", G_STRFUNC);
+
+  sysroot = _srt_sysroot_new (f->sysroot, NULL);
+  load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
+                           sysroot,
+                           sysroot_path_runtime,
+                           _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME,
+                           &list);
+
+  rt = list->data;
+  g_assert_nonnull (rt);
+  g_assert_null (list->next);
+
+  srt_openxr_1_runtime_check_error (rt, &error);
+  g_assert_no_error (error);
+
+  g_assert_cmpstr (srt_openxr_1_runtime_get_json_path (rt),
+                   ==, sysroot_path_runtime);
+  g_assert_cmpstr (srt_openxr_1_runtime_get_library_path (rt),
+                   ==, "liboverrides.so");
+  g_assert_cmpstr (srt_openxr_1_runtime_get_name (rt), ==, NULL);
+
+  compare_openxr_content (f, rt, sysroot_path_runtime);
+
+  g_assert_cmpint (g_hash_table_size (rt->parent.functions), ==, 1);
+  g_assert_cmpstr (
+    g_hash_table_lookup (rt->parent.functions, "xrNegotiateLoaderRuntimeInterface"),
+    ==,
+    "my_xrNegotiateLoaderRuntimeInterface");
+}
+
+static void
+test_icd_openxr_json_errors (Fixture *f,
+                             gconstpointer context)
+{
+  struct {
+    const char *sysroot_runtime_path;
+    GQuark error_domain;
+  } tests[] = {
+    {
+      .sysroot_runtime_path = "/openxr/missing-fields.json",
+      .error_domain = G_IO_ERROR,
+    },
+    {
+      .sysroot_runtime_path = "/openxr/syntax-error.json",
+      .error_domain = JSON_PARSER_ERROR,
+    },
+  };
+
+  g_autoptr(SrtSysroot) sysroot = NULL;
+  gsize i;
+
+  g_test_message ("Entering %s", G_STRFUNC);
+
+  sysroot = _srt_sysroot_new (f->sysroot, NULL);
+
+  for (i = 0; i < G_N_ELEMENTS (tests); i++)
+    {
+      g_autoptr(SrtOpenXr1Runtime) rt = NULL;
+      g_autoptr(GList) list = NULL;
+      g_autoptr(SrtOpenXr1Runtime) rt_replaced = NULL;
+      g_autoptr(GError) error = NULL;
+      SrtLoadableIssues issues = SRT_LOADABLE_ISSUES_NONE;
+
+      load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
+                               sysroot,
+                               tests[i].sysroot_runtime_path,
+                               _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME,
+                               &list);
+
+      rt = list->data;
+      g_assert_nonnull (rt);
+      g_assert_null (list->next);
+
+      g_assert_false (srt_openxr_1_runtime_check_error (rt, &error));
+      /* Accept any error code from the expected domain. */
+      g_assert_error (error, tests[i].error_domain, error->code);
+
+      issues = srt_openxr_1_runtime_get_issues (rt);
+      g_assert_cmpint (issues, ==, SRT_LOADABLE_ISSUES_CANNOT_LOAD);
+
+      /* Replacing the library path in an error object just returns the same object */
+      rt_replaced = srt_openxr_1_runtime_new_replace_library_path (rt, "whatever");
+      g_assert_true (rt == rt_replaced);
+    }
+}
+
 typedef struct
 {
   const gchar *name;
@@ -3612,6 +3848,12 @@ main (int argc,
               setup, test_icd_vulkan_implicit_multiarch, teardown);
   g_test_add ("/graphics/icd/vulkan_imp/xdg", Fixture, &xdg_config,
               setup, test_icd_vulkan_implicit_multiarch, teardown);
+  g_test_add ("/graphics/icd/openxr/json", Fixture, NULL,
+              setup, test_icd_openxr_json, teardown);
+  g_test_add ("/graphics/icd/openxr/json/functions", Fixture, NULL,
+              setup, test_icd_openxr_json_functions, teardown);
+  g_test_add ("/graphics/icd/openxr/json/errors", Fixture, NULL,
+              setup, test_icd_openxr_json_errors, teardown);
 
   g_test_add ("/graphics/layers/vulkan/xdg", Fixture, NULL,
               setup, test_layer_vulkan, teardown);
