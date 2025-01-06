@@ -65,6 +65,7 @@ static const SrtKnownArchitecture known_architectures[] =
     {
       .multiarch_tuple = SRT_ABI_X86_64,
       .interoperable_runtime_linker = "/lib64/ld-linux-x86-64.so.2",
+      .openxr_1_architecture = "x86_64",
       .machine_type = EM_X86_64,
       .elf_class = ELFCLASS64,
       .elf_encoding = ELFDATA2LSB,
@@ -74,6 +75,7 @@ static const SrtKnownArchitecture known_architectures[] =
     {
       .multiarch_tuple = SRT_ABI_I386,
       .interoperable_runtime_linker = "/lib/ld-linux.so.2",
+      .openxr_1_architecture = "i686",
       .machine_type = EM_386,
       .elf_class = ELFCLASS32,
       .elf_encoding = ELFDATA2LSB,
@@ -83,6 +85,7 @@ static const SrtKnownArchitecture known_architectures[] =
     {
       .multiarch_tuple = "x86_64-linux-gnux32",
       .interoperable_runtime_linker = "/libx32/ld-linux-x32.so.2",
+      .openxr_1_architecture = "x32",
       .machine_type = EM_X86_64,
       .elf_class = ELFCLASS32,
       .elf_encoding = ELFDATA2LSB,
@@ -92,6 +95,7 @@ static const SrtKnownArchitecture known_architectures[] =
     {
       .multiarch_tuple = SRT_ABI_AARCH64,
       .interoperable_runtime_linker = "/lib/ld-linux-aarch64.so.1",
+      .openxr_1_architecture = "aarch64",
       .machine_type = EM_AARCH64,
       .elf_class = ELFCLASS64,
       .elf_encoding = ELFDATA2LSB,

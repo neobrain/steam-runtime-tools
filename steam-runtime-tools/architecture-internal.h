@@ -34,6 +34,10 @@ typedef struct
 {
   const char *multiarch_tuple;
   const char *interoperable_runtime_linker;
+  /* One of the values from:
+   * https://registry.khronos.org/OpenXR/specs/1.1/loader.html#architecture-identifiers
+   */
+  const char *openxr_1_architecture;
   guint16 machine_type;
   guint8 elf_class;
   guint8 elf_encoding;
