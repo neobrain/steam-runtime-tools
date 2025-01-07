@@ -1,4 +1,11 @@
-steam-runtime-tools (0.20250106.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250107.0) UNRELEASED; urgency=medium
+
+  [ Timothee Besset ]
+  * steamwebhelper support scripts:
+    - If we cannot detect the uncompressed size, guess 250M for the
+      purposes of block size and progress reporting.
+      This speeds up detection of corrupted archives.
+      (steam-for-linux#11602, steam-runtime-tools!775)
 
   [ Simon McVittie ]
   * log: Treat DEBUG_INVOCATION=1 as equivalent to SRT_LOG=debug
@@ -15,7 +22,7 @@ steam-runtime-tools (0.20250106.0) UNRELEASED; urgency=medium
   [ Ludovico de Nittis ]
   * Set a default merge request template
 
- -- Simon McVittie <smcv@collabora.com>  Mon, 06 Jan 2025 16:58:37 +0000
+ -- Simon McVittie <smcv@collabora.com>  Tue, 07 Jan 2025 12:10:10 +0000
 
 steam-runtime-tools (0.20241125.0) steamrt; urgency=medium
 
