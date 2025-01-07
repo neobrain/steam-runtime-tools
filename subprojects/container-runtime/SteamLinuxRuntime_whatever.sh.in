@@ -108,6 +108,10 @@ extract_archive() {
         uncompressed_size=$(xz --robot --list "$2" | awk '/totals/ {print $5; exit}' || true)
         ;;
     esac
+    # The above may fail if the archive is corrupted
+    if [[ "$uncompressed_size" -eq 0 ]]; then
+        uncompressed_size=250000000
+    fi
     if [ -n "$uncompressed_size" ]; then
         # Choose the blocking factor (counting in 512-byte blocks) so that
         # we process slightly more than 1% of the file per record, for a
