@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250107.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250107.0) steamrt; urgency=medium
 
   [ Timothee Besset ]
   * steamwebhelper support scripts:
@@ -22,7 +22,7 @@ steam-runtime-tools (0.20250107.0) UNRELEASED; urgency=medium
   [ Ludovico de Nittis ]
   * Set a default merge request template
 
- -- Simon McVittie <smcv@collabora.com>  Tue, 07 Jan 2025 12:10:10 +0000
+ -- Simon McVittie <smcv@collabora.com>  Tue, 07 Jan 2025 20:52:34 +0000
 
 steam-runtime-tools (0.20241125.0) steamrt; urgency=medium
 
