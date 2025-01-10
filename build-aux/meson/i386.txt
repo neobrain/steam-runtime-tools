@@ -6,6 +6,7 @@ cpp = 'g++'
 ar = 'ar'
 strip = 'strip'
 pkgconfig = 'i686-linux-gnu-pkg-config'
+pkg-config = 'i686-linux-gnu-pkg-config'
 exe_wrapper = 'env'
 
 [built-in options]
