@@ -1022,9 +1022,7 @@ class Main:
                 exist_ok=True,
             )
 
-        with open(
-            os.path.join(self.depot, 'run-in-' + runtime.name), 'w'
-        ) as writer:
+        with open(os.path.join(self.depot, 'run'), 'w') as writer:
             writer.write(
                 RUN_IN_DIR_SOURCE.format(
                     escaped_dir=shlex.quote(subdir),
@@ -1034,13 +1032,13 @@ class Main:
                 )
             )
 
-        os.chmod(os.path.join(self.depot, 'run-in-' + runtime.name), 0o755)
+        os.chmod(os.path.join(self.depot, 'run'), 0o755)
 
         shutil.copy2(
-            os.path.join(self.depot, 'run-in-' + runtime.name),
             os.path.join(self.depot, 'run'),
+            os.path.join(self.depot, 'run-in-' + runtime.name),
         )
-        os.chmod(os.path.join(self.depot, 'run'), 0o755)
+        os.chmod(os.path.join(self.depot, 'run-in-' + runtime.name), 0o755)
 
         comment = ', '.join(sorted(runtime_files))
 
