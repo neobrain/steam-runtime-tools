@@ -1036,6 +1036,12 @@ class Main:
 
         os.chmod(os.path.join(self.depot, 'run-in-' + runtime.name), 0o755)
 
+        shutil.copy2(
+            os.path.join(self.depot, 'run-in-' + runtime.name),
+            os.path.join(self.depot, 'run'),
+        )
+        os.chmod(os.path.join(self.depot, 'run'), 0o755)
+
         comment = ', '.join(sorted(runtime_files))
 
         if runtime.path and not runtime.official:
@@ -1104,12 +1110,6 @@ class Main:
                 )
 
                 vdf.dump(content, writer, pretty=True, escaped=True)
-
-            shutil.copy2(
-                os.path.join(self.depot, 'run-in-' + runtime.name),
-                os.path.join(self.depot, 'run'),
-            )
-            os.chmod(os.path.join(self.depot, 'run'), 0o755)
 
         self.write_component_versions()
 
