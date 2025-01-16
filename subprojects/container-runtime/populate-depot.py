@@ -1034,11 +1034,12 @@ class Main:
 
         os.chmod(os.path.join(self.depot, 'run'), 0o755)
 
-        shutil.copy2(
-            os.path.join(self.depot, 'run'),
-            os.path.join(self.depot, 'run-in-' + runtime.name),
-        )
-        os.chmod(os.path.join(self.depot, 'run-in-' + runtime.name), 0o755)
+        if runtime.name in ('scout', 'soldier', 'sniper'):
+            shutil.copy2(
+                os.path.join(self.depot, 'run'),
+                os.path.join(self.depot, 'run-in-' + runtime.name),
+            )
+            os.chmod(os.path.join(self.depot, 'run-in-' + runtime.name), 0o755)
 
         comment = ', '.join(sorted(runtime_files))
 

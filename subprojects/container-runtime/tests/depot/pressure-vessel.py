@@ -363,9 +363,7 @@ class TestPressureVessel(unittest.TestCase):
         scout_layered=False
     ):
         # type: (...) -> typing.List[str]
-        adverb = [
-            os.path.join(self.depot, 'run-in-' + self.suite),
-        ]
+        adverb = [os.path.join(self.depot, 'run')]
 
         if self.ld_library_path_runtime is not None:
             adverb = adverb + [
