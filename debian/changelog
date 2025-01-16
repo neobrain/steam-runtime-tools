@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250116.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250116.0) steamrt; urgency=medium
 
   * SteamLinuxRuntime family:
     - Always generate ./run (steamrt/tasks#634)
@@ -7,7 +7,7 @@ steam-runtime-tools (0.20250116.0) UNRELEASED; urgency=medium
   * Tests/CI:
     - meson: Add pkg-config field next to deprecated pkgconfig
 
- -- Simon McVittie <smcv@collabora.com>  Thu, 16 Jan 2025 18:03:51 +0000
+ -- Simon McVittie <smcv@collabora.com>  Thu, 16 Jan 2025 18:06:11 +0000
 
 steam-runtime-tools (0.20250107.0) steamrt; urgency=medium
 
