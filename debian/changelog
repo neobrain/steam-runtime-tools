@@ -1,3 +1,14 @@
+steam-runtime-tools (0.20250116.0) UNRELEASED; urgency=medium
+
+  * SteamLinuxRuntime family:
+    - Always generate ./run (steamrt/tasks#634)
+    - Only generate ./run-in-SUITE for branches with a
+      backwards-compatibility requirement for it to exist
+  * Tests/CI:
+    - meson: Add pkg-config field next to deprecated pkgconfig
+
+ -- Simon McVittie <smcv@collabora.com>  Thu, 16 Jan 2025 18:03:51 +0000
+
 steam-runtime-tools (0.20250107.0) steamrt; urgency=medium
 
   [ Timothee Besset ]
