@@ -560,19 +560,7 @@ class TestPressureVessel(unittest.TestCase):
 
             self.assertIn(multiarch, parsed['architectures'])
             arch_info = parsed['architectures'][multiarch]
-
-            with self.catch(
-                'per-architecture information',
-                diagnostic=arch_info,
-                arch=arch,
-            ):
-                self.assertTrue(arch_info['can-run'])
-                self.assertEqual([], arch_info['library-issues-summary'])
-                # Graphics driver support depends on the host system, so we
-                # don't assert that everything is fine, only that we have
-                # the information.
-                self.assertIn('graphics-details', arch_info)
-                self.assertIn('glx/gl', arch_info['graphics-details'])
+            library_issues = set()
 
             for soname, details in arch_info['library-details'].items():
                 with self.catch(
@@ -582,15 +570,42 @@ class TestPressureVessel(unittest.TestCase):
                     soname=soname,
                 ):
                     self.assertIn('path', details)
-                    self.assertEqual(
-                        [],
-                        details.get('missing-symbols', []),
-                    )
+                    missing_symbols = details.get('missing-symbols', [])
+                    issues = details.get('issues', [])
+
+                    if soname == 'libgbm.so.1':
+                        # We still test on Steam Runtime 2 and Debian 10,
+                        # which have a sufficiently old Mesa version that
+                        # they do not have all the symbols we expect to find
+                        # in libgbm.so.1.
+                        library_issues |= set(issues)
+                        issues = list(set(issues) - set(['missing-symbols']))
+                        missing_symbols = list(
+                            set(missing_symbols) - set(['gbm_format_get_name'])
+                        )
+
+                    self.assertEqual([], missing_symbols)
                     self.assertEqual(
                         [],
                         details.get('misversioned-symbols', []),
                     )
-                    self.assertEqual([], details.get('issues', []))
+                    self.assertEqual([], issues)
+
+            with self.catch(
+                'per-architecture information',
+                diagnostic=arch_info,
+                arch=arch,
+            ):
+                self.assertTrue(arch_info['can-run'])
+                self.assertEqual(
+                    library_issues,
+                    set(arch_info['library-issues-summary']),
+                )
+                # Graphics driver support depends on the host system, so we
+                # don't assert that everything is fine, only that we have
+                # the information.
+                self.assertIn('graphics-details', arch_info)
+                self.assertIn('glx/gl', arch_info['graphics-details'])
 
         # Locale support depends on the host system, so we don't assert
         # that everything is fine, only that we have the information.
