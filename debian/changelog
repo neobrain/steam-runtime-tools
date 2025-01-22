@@ -1,3 +1,10 @@
+steam-runtime-tools (0.20250122.0) steamrt; urgency=medium
+
+  * Tests/CI:
+    - Don't fail testing if libgbm.so.1 is incomplete (steamrt/tasks#647)
+
+ -- Simon McVittie <smcv@collabora.com>  Wed, 22 Jan 2025 15:39:02 +0000
+
 steam-runtime-tools (0.20250116.0) steamrt; urgency=medium
 
   * SteamLinuxRuntime family:
