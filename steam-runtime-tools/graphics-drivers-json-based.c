@@ -825,20 +825,23 @@ load_json_dirs (SrtSysroot *sysroot,
 }
 
 /*
- * load_icd_from_json:
+ * load_manifest_from_json:
  * @type: %SRT_TYPE_EGL_ICD or %SRT_TYPE_EGL_EXTERNAL_PLATFORM or %SRT_TYPE_VULKAN_ICD
  * @sysroot: (not nullable): The root directory, usually `/`
  * @filename: The filename of the metadata
+ * @json_member_name: Name of the JSON object beneath the root, containing the
+ *  main body of the manifest.
  * @list: (element-type GObject) (transfer full) (inout): Prepend the
  *  resulting #SrtEglIcd or #SrtEglExternalPlatform or #SrtVulkanIcd to this list
  *
  * Load an EGL or Vulkan ICD from a JSON metadata file.
  */
 void
-load_icd_from_json (GType type,
-                    SrtSysroot *sysroot,
-                    const char *filename,
-                    GList **list)
+load_manifest_from_json (GType type,
+                         SrtSysroot *sysroot,
+                         const char *filename,
+                         const char *json_member_name,
+                         GList **list)
 {
   g_autoptr(JsonParser) parser = NULL;
   g_autofree gchar *canon = NULL;
@@ -848,7 +851,7 @@ load_icd_from_json (GType type,
   JsonNode *node;
   JsonObject *object;
   JsonNode *subnode;
-  JsonObject *icd_object;
+  JsonObject *member_object;
   const char *file_format_version;
   const char *api_version = NULL;
   const char *library_path = NULL;
@@ -977,45 +980,45 @@ load_icd_from_json (GType type,
         }
     }
 
-  subnode = json_object_get_member (object, "ICD");
+  subnode = json_object_get_member (object, json_member_name);
 
   if (subnode == NULL
       || !JSON_NODE_HOLDS_OBJECT (subnode))
     {
       g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No \"ICD\" object in \"%s%s\"",
-                   sysroot->path, filename);
+                   "No \"%s\" object in \"%s%s\"",
+                   json_member_name, sysroot->path, filename);
       issues |= SRT_LOADABLE_ISSUES_CANNOT_LOAD;
       goto out;
     }
 
-  icd_object = json_node_get_object (subnode);
+  member_object = json_node_get_object (subnode);
 
   if (type == SRT_TYPE_VULKAN_ICD)
     {
-      library_arch = _srt_json_object_get_string_member (icd_object, "library_arch");
-      api_version = _srt_json_object_get_string_member (icd_object, "api_version");
+      library_arch = _srt_json_object_get_string_member (member_object, "library_arch");
+      api_version = _srt_json_object_get_string_member (member_object, "api_version");
       if (api_version == NULL)
         {
           g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "ICD.api_version in \"%s%s\" is either missing or not a string",
-                       sysroot->path, filename);
+                       "%s.api_version in \"%s%s\" is either missing or not a string",
+                       json_member_name, sysroot->path, filename);
           issues |= SRT_LOADABLE_ISSUES_CANNOT_LOAD;
           goto out;
         }
-      portability_driver = json_object_get_boolean_member_with_default (icd_object,
+      portability_driver = json_object_get_boolean_member_with_default (member_object,
                                                                         "is_portability_driver",
                                                                         FALSE);
       if (portability_driver)
         issues |= SRT_LOADABLE_ISSUES_API_SUBSET;
     }
 
-  library_path = _srt_json_object_get_string_member (icd_object, "library_path");
+  library_path = _srt_json_object_get_string_member (member_object, "library_path");
   if (library_path == NULL)
     {
       g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "ICD.library_path in \"%s%s\" is either missing or not a string",
-                   sysroot->path, filename);
+                   "%s.library_path in \"%s%s\" is either missing or not a string",
+                   json_member_name, sysroot->path, filename);
       issues |= SRT_LOADABLE_ISSUES_CANNOT_LOAD;
       goto out;
     }

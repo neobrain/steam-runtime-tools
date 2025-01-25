@@ -531,7 +531,8 @@ egl_icd_load_json_cb (SrtSysroot *sysroot,
                       const char *filename,
                       void *user_data)
 {
-  load_icd_from_json (SRT_TYPE_EGL_ICD, sysroot, filename, user_data);
+  load_manifest_from_json (SRT_TYPE_EGL_ICD, sysroot, filename,
+                           MANIFEST_JSON_MEMBER_NAME_ICD, user_data);
 }
 
 static void
@@ -539,7 +540,8 @@ egl_external_platform_load_json_cb (SrtSysroot *sysroot,
                                     const char *filename,
                                     void *user_data)
 {
-  load_icd_from_json (SRT_TYPE_EGL_EXTERNAL_PLATFORM, sysroot, filename, user_data);
+  load_manifest_from_json (SRT_TYPE_EGL_EXTERNAL_PLATFORM, sysroot, filename,
+                           MANIFEST_JSON_MEMBER_NAME_ICD, user_data);
 }
 
 #define EGL_VENDOR_SUFFIX "glvnd/egl_vendor.d"
@@ -655,7 +657,8 @@ _srt_load_egl_things (GType which,
       g_auto(GStrv) filenames = g_strsplit (value, G_SEARCHPATH_SEPARATOR_S, -1);
 
       for (i = 0; filenames[i] != NULL; i++)
-        load_icd_from_json (which, sysroot, filenames[i], &ret);
+        load_manifest_from_json (which, sysroot, filenames[i],
+                                 MANIFEST_JSON_MEMBER_NAME_ICD, &ret);
     }
   else
     {
