@@ -11,6 +11,7 @@
 #include "steam-runtime-tools/resolve-in-sysroot-internal.h"
 #include "steam-runtime-tools/utils-internal.h"
 
+#include "pressure-vessel/adverb-preload.h"
 #include "pressure-vessel/flatpak-exports-private.h"
 
 #include "pressure-vessel/wrap-interactive.h"
@@ -39,15 +40,9 @@ typedef enum
   TRISTATE_MAYBE
 } Tristate;
 
-typedef enum
-{
-  PRELOAD_VARIABLE_INDEX_LD_AUDIT,
-  PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
-} PreloadVariableIndex;
-
 typedef struct
 {
-  PreloadVariableIndex which;
+  PvPreloadVariableIndex which;
   gchar *preload;
 } WrapPreloadModule;
 

@@ -26,6 +26,7 @@
 #include "steam-runtime-tools/env-overlay-internal.h"
 #include "steam-runtime-tools/utils-internal.h"
 
+#include "adverb-preload.h"
 #include "bwrap.h"
 #include "flatpak-bwrap-private.h"
 #include "flatpak-exports-private.h"
@@ -84,8 +85,7 @@ typedef enum
 } PvAppendPreloadFlags;
 
 void pv_wrap_append_preload (GPtrArray *argv,
-                             const char *variable,
-                             const char *option,
+                             PvPreloadVariableIndex which,
                              const char *preload,
                              GStrv env,
                              PvAppendPreloadFlags flags,

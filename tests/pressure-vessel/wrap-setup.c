@@ -979,37 +979,37 @@ test_options_true (Fixture *f,
 
   g_assert_cmpuint (options->preload_modules->len, >, i);
   module = &g_array_index (options->preload_modules, WrapPreloadModule, i++);
-  g_assert_cmpint (module->which, ==, PRELOAD_VARIABLE_INDEX_LD_AUDIT);
+  g_assert_cmpint (module->which, ==, PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT);
   g_assert_cmpstr (module->preload, ==, "libaudit.so");
 
   g_assert_cmpuint (options->preload_modules->len, >, i);
   module = &g_array_index (options->preload_modules, WrapPreloadModule, i++);
-  g_assert_cmpint (module->which, ==, PRELOAD_VARIABLE_INDEX_LD_AUDIT);
+  g_assert_cmpint (module->which, ==, PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT);
   g_assert_cmpstr (module->preload, ==, "libaudit1.so");
 
   g_assert_cmpuint (options->preload_modules->len, >, i);
   module = &g_array_index (options->preload_modules, WrapPreloadModule, i++);
-  g_assert_cmpint (module->which, ==, PRELOAD_VARIABLE_INDEX_LD_AUDIT);
+  g_assert_cmpint (module->which, ==, PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT);
   g_assert_cmpstr (module->preload, ==, "libaudit2.so");
 
   g_assert_cmpuint (options->preload_modules->len, >, i);
   module = &g_array_index (options->preload_modules, WrapPreloadModule, i++);
-  g_assert_cmpint (module->which, ==, PRELOAD_VARIABLE_INDEX_LD_PRELOAD);
+  g_assert_cmpint (module->which, ==, PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD);
   g_assert_cmpstr (module->preload, ==, "libpreload.so");
 
   g_assert_cmpuint (options->preload_modules->len, >, i);
   module = &g_array_index (options->preload_modules, WrapPreloadModule, i++);
-  g_assert_cmpint (module->which, ==, PRELOAD_VARIABLE_INDEX_LD_PRELOAD);
+  g_assert_cmpint (module->which, ==, PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD);
   g_assert_cmpstr (module->preload, ==, "libpreload1.so");
 
   g_assert_cmpuint (options->preload_modules->len, >, i);
   module = &g_array_index (options->preload_modules, WrapPreloadModule, i++);
-  g_assert_cmpint (module->which, ==, PRELOAD_VARIABLE_INDEX_LD_PRELOAD);
+  g_assert_cmpint (module->which, ==, PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD);
   g_assert_cmpstr (module->preload, ==, "libpreload2.so");
 
   g_assert_cmpuint (options->preload_modules->len, >, i);
   module = &g_array_index (options->preload_modules, WrapPreloadModule, i++);
-  g_assert_cmpint (module->which, ==, PRELOAD_VARIABLE_INDEX_LD_PRELOAD);
+  g_assert_cmpint (module->which, ==, PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD);
   g_assert_cmpstr (module->preload, ==, "libpreload3.so");
 
   g_assert_cmpuint (i, ==, options->preload_modules->len);
@@ -1612,8 +1612,7 @@ populate_ld_preload (Fixture *f,
         }
 
       pv_wrap_append_preload (argv,
-                              "LD_PRELOAD",
-                              "--ld-preload",
+                              PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
                               preloads[i].string,
                               f->env,
                               flags | PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS,

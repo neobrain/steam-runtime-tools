@@ -18,6 +18,15 @@ typedef enum
   PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
 } PvPreloadVariableIndex;
 
+typedef struct
+{
+  const char *variable;
+  const char *adverb_option;
+  const char *separators;
+} PvPreloadVariable;
+
+extern const PvPreloadVariable pv_preload_variables[2];
+
 #define PV_UNSPECIFIED_ABI (G_MAXSIZE)
 
 typedef struct
