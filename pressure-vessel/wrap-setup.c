@@ -712,9 +712,6 @@ append_preload_per_architecture (GPtrArray *argv,
   g_autoptr(SrtSystemInfo) system_info = srt_system_info_new (NULL);
   gsize i;
 
-  if (system_info == NULL)
-    system_info = srt_system_info_new (NULL);
-
   for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES; i++)
     {
       g_autoptr(GString) mock_path = NULL;
