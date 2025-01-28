@@ -92,15 +92,41 @@ test_basic (Fixture *f,
 {
   static const PvAdverbPreloadModule modules[] =
   {
-    { (char *) "", PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT, 0 },
-    { (char *) "/opt/libaudit.so", PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT, 0 },
-    { (char *) "", PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT, PV_UNSPECIFIED_ABI },
-    { (char *) "/opt/libpreload.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 0 },
-    { (char *) "/opt/unspecified.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
-      PV_UNSPECIFIED_ABI },
-    { (char *) "/opt/libpreload2.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 0 },
-    { (char *) "/opt/unspecified2.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
-      PV_UNSPECIFIED_ABI },
+    {
+      .name = (char *) "",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT,
+      .abi_index = 0,
+    },
+    {
+      .name = (char *) "/opt/libaudit.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT,
+      .abi_index = 0,
+    },
+    {
+      .name = (char *) "",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
+    {
+      .name = (char *) "/opt/libpreload.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 0,
+    },
+    {
+      .name = (char *) "/opt/unspecified.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
+    {
+      .name = (char *) "/opt/libpreload2.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 0,
+    },
+    {
+      .name = (char *) "/opt/unspecified2.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
   };
   g_autoptr(GError) local_error = NULL;
   g_autoptr(GString) expected = g_string_new ("");
@@ -198,11 +224,23 @@ test_biarch (Fixture *f,
 #if PV_N_SUPPORTED_ARCHITECTURES >= 2
   static const PvAdverbPreloadModule modules[] =
   {
-    { (char *) "/opt/libpreload.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, PV_UNSPECIFIED_ABI },
+    {
+      .name = (char *) "/opt/libpreload.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
     /* In practice x86_64-linux-gnu */
-    { (char *) "/opt/lib0/libpreload.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 0 },
+    {
+      .name = (char *) "/opt/lib0/libpreload.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 0,
+    },
     /* In practice i386-linux-gnu */
-    { (char *) "/opt/lib1/libpreload.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 1 },
+    {
+      .name = (char *) "/opt/lib1/libpreload.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 1,
+    },
   };
   g_autoptr(GError) local_error = NULL;
   g_autoptr(GString) expected = g_string_new ("");
@@ -285,14 +323,26 @@ test_gameoverlayrenderer (Fixture *f,
 #if defined(__x86_64__) || defined(__i386__)
   static const PvAdverbPreloadModule modules[] =
   {
-    { (char *) "/opt/steam/some-other-abi/gameoverlayrenderer.so",
-      PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, PV_UNSPECIFIED_ABI },
-    { (char *) "/opt/steam/ubuntu12_32/gameoverlayrenderer.so",
-      PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, PV_UNSPECIFIED_ABI },
-    { (char *) "/opt/steam/ubuntu12_64/gameoverlayrenderer.so",
-      PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, PV_UNSPECIFIED_ABI },
-    { (char *) "/opt/steam/some-other-abi/gameoverlayrenderer.so",
-      PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, PV_UNSPECIFIED_ABI },
+    {
+      .name = (char *) "/opt/steam/some-other-abi/gameoverlayrenderer.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
+    {
+      .name = (char *) "/opt/steam/ubuntu12_32/gameoverlayrenderer.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
+    {
+      .name = (char *) "/opt/steam/ubuntu12_64/gameoverlayrenderer.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
+    {
+      .name = (char *) "/opt/steam/some-other-abi/gameoverlayrenderer.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
   };
   g_autoptr(GError) local_error = NULL;
   g_autoptr(GString) expected = g_string_new ("");
@@ -373,33 +423,79 @@ test_repetition (Fixture *f,
 {
   static const PvAdverbPreloadModule modules[] =
   {
-    { (char *) "/opt/lib0/libfirst.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 0 },
-    { (char *) "/opt/lib0/one/same-basename.so",
-      PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 0 },
-    { (char *) "/opt/lib0/two/same-basename.so",
-      PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 0 },
-    { (char *) "/opt/lib0/libpreload.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 0 },
+    {
+      .name = (char *) "/opt/lib0/libfirst.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 0,
+    },
+    {
+      .name = (char *) "/opt/lib0/one/same-basename.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 0,
+    },
+    {
+      .name = (char *) "/opt/lib0/two/same-basename.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 0,
+    },
+    {
+      .name = (char *) "/opt/lib0/libpreload.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 0,
+    },
 #if PV_N_SUPPORTED_ARCHITECTURES > 1
-    { (char *) "/opt/lib1/libpreload.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 1 },
+    {
+      .name = (char *) "/opt/lib1/libpreload.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 1,
+    },
 #endif
 #if defined(__x86_64__) || defined(__i386__)
-    { (char *) "/opt/steam/ubuntu12_32/gameoverlayrenderer.so",
-      PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, PV_UNSPECIFIED_ABI },
-    { (char *) "/opt/steam/ubuntu12_64/gameoverlayrenderer.so",
-      PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, PV_UNSPECIFIED_ABI },
+    {
+      .name = (char *) "/opt/steam/ubuntu12_32/gameoverlayrenderer.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
+    {
+      .name = (char *) "/opt/steam/ubuntu12_64/gameoverlayrenderer.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
 #endif
-    { (char *) "/opt/lib0/libmiddle.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 0 },
-    { (char *) "/opt/lib0/libpreload.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 0 },
+    {
+      .name = (char *) "/opt/lib0/libmiddle.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 0,
+    },
+    {
+      .name = (char *) "/opt/lib0/libpreload.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 0,
+    },
 #if PV_N_SUPPORTED_ARCHITECTURES > 1
-    { (char *) "/opt/lib1/libpreload.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 1 },
+    {
+      .name = (char *) "/opt/lib1/libpreload.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 1,
+    },
 #endif
 #if defined(__x86_64__) || defined(__i386__)
-    { (char *) "/opt/steam/ubuntu12_32/gameoverlayrenderer.so",
-      PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, PV_UNSPECIFIED_ABI },
-    { (char *) "/opt/steam/ubuntu12_64/gameoverlayrenderer.so",
-      PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, PV_UNSPECIFIED_ABI },
+    {
+      .name = (char *) "/opt/steam/ubuntu12_32/gameoverlayrenderer.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
+    {
+      .name = (char *) "/opt/steam/ubuntu12_64/gameoverlayrenderer.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = PV_UNSPECIFIED_ABI,
+    },
 #endif
-    { (char *) "/opt/lib0/liblast.so", PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD, 0 },
+    {
+      .name = (char *) "/opt/lib0/liblast.so",
+      .index_in_preload_variables = PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+      .abi_index = 0,
+    },
   };
   g_autoptr(GError) local_error = NULL;
   g_autoptr(GString) expected = g_string_new ("");
