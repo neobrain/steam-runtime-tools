@@ -22,34 +22,50 @@ typedef struct
 
 typedef struct
 {
-  int unused;
+  gboolean can_discover_platform;
 } Config;
+
+static const Config default_config = {
+  .can_discover_platform = TRUE,
+};
 
 static void
 setup (Fixture *f,
        gconstpointer context)
 {
-  G_GNUC_UNUSED const Config *config = context;
+  const Config *config = context;
   g_autoptr(GError) local_error = NULL;
   gsize i;
 
+  if (config == NULL)
+    config = &default_config;
+
   f->old_fds = tests_check_fd_leaks_enter ();
   f->bwrap = flatpak_bwrap_new (flatpak_bwrap_empty_env);
-  f->lib_temp_dirs = pv_per_arch_dirs_new (&local_error);
 
-  if (f->lib_temp_dirs == NULL)
+  if (config->can_discover_platform)
     {
-      g_test_skip (local_error->message);
-      return;
+      f->lib_temp_dirs = pv_per_arch_dirs_new (&local_error);
+
+      if (f->lib_temp_dirs == NULL)
+        {
+          g_test_skip (local_error->message);
+          return;
+        }
+
+      g_test_message ("Cross-platform module prefix: %s",
+                      f->lib_temp_dirs->libdl_token_path);
+
+      for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES; i++)
+        g_test_message ("Concrete path for %s architecture: %s",
+                        pv_multiarch_tuples[i],
+                        f->lib_temp_dirs->abi_paths[i]);
+
     }
-
-  g_test_message ("Cross-platform module prefix: %s",
-                  f->lib_temp_dirs->libdl_token_path);
-
-  for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES; i++)
-    g_test_message ("Concrete path for %s architecture: %s",
-                    pv_multiarch_tuples[i],
-                    f->lib_temp_dirs->abi_paths[i]);
+  else
+    {
+      g_test_message ("Pretending we cannot use $LIB/$PLATFORM");
+    }
 }
 
 static void
@@ -85,9 +101,6 @@ test_basic (Fixture *f,
   gboolean ret;
   gsize i;
 
-  if (f->lib_temp_dirs == NULL)
-    return;
-
   ret = pv_adverb_set_up_preload_modules (f->bwrap,
                                           f->lib_temp_dirs,
                                           modules,
@@ -101,20 +114,35 @@ test_basic (Fixture *f,
   i = 0;
 
   g_string_assign (expected, "LD_AUDIT=");
-  g_string_append_printf (expected, "%s/libaudit.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    g_string_append_printf (expected, "%s/libaudit.so",
+                            f->lib_temp_dirs->libdl_token_path);
+  else
+    g_string_append (expected, "/opt/libaudit.so");
+
   g_assert_cmpstr (f->bwrap->envp[i], ==, expected->str);
   i++;
 
   /* Order is preserved, independent of whether an ABI is specified */
   g_string_assign (expected, "LD_PRELOAD=");
-  g_string_append_printf (expected, "%s/libpreload.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    g_string_append_printf (expected, "%s/libpreload.so",
+                            f->lib_temp_dirs->libdl_token_path);
+  else
+    g_string_append (expected, "/opt/libpreload.so");
+
   g_string_append_c (expected, ':');
   g_string_append (expected, "/opt/unspecified.so");
   g_string_append_c (expected, ':');
-  g_string_append_printf (expected, "%s/libpreload2.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    g_string_append_printf (expected, "%s/libpreload2.so",
+                            f->lib_temp_dirs->libdl_token_path);
+  else
+    g_string_append (expected, "/opt/libpreload2.so");
+
   g_string_append_c (expected, ':');
   g_string_append (expected, "/opt/unspecified2.so");
   g_assert_cmpstr (f->bwrap->envp[i], ==, expected->str);
@@ -125,6 +153,9 @@ test_basic (Fixture *f,
   for (i = 0; i < G_N_ELEMENTS (modules); i++)
     {
       g_autofree gchar *target = NULL;
+
+      if (f->lib_temp_dirs == NULL)
+        continue;
 
       /* Empty module entries are ignored */
       if (modules[i].name[0] == '\0')
@@ -172,9 +203,6 @@ test_biarch (Fixture *f,
   gboolean ret;
   gsize i;
 
-  if (f->lib_temp_dirs == NULL)
-    return;
-
   ret = pv_adverb_set_up_preload_modules (f->bwrap,
                                           f->lib_temp_dirs,
                                           modules,
@@ -194,8 +222,19 @@ test_biarch (Fixture *f,
   g_string_assign (expected, "LD_PRELOAD=");
   g_string_append (expected, "/opt/libpreload.so");
   g_string_append_c (expected, ':');
-  g_string_append_printf (expected, "%s/libpreload.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    {
+      g_string_append_printf (expected, "%s/libpreload.so",
+                              f->lib_temp_dirs->libdl_token_path);
+    }
+  else
+    {
+      g_string_append (expected, "/opt/lib0/libpreload.so");
+      g_string_append_c (expected, ':');
+      g_string_append (expected, "/opt/lib1/libpreload.so");
+    }
+
   g_assert_cmpstr (f->bwrap->envp[i], ==, expected->str);
   i++;
 
@@ -204,6 +243,9 @@ test_biarch (Fixture *f,
   for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES; i++)
     {
       g_autofree gchar *target = NULL;
+
+      if (f->lib_temp_dirs == NULL)
+        continue;
 
       g_string_assign (path, f->lib_temp_dirs->abi_paths[i]);
       g_string_append_c (path, G_DIR_SEPARATOR);
@@ -253,9 +295,6 @@ test_gameoverlayrenderer (Fixture *f,
 
   G_STATIC_ASSERT (PV_N_SUPPORTED_ARCHITECTURES == 2);
 
-  if (f->lib_temp_dirs == NULL)
-    return;
-
   ret = pv_adverb_set_up_preload_modules (f->bwrap,
                                           f->lib_temp_dirs,
                                           modules,
@@ -271,8 +310,19 @@ test_gameoverlayrenderer (Fixture *f,
   g_string_assign (expected, "LD_PRELOAD=");
   g_string_append (expected, "/opt/steam/some-other-abi/gameoverlayrenderer.so");
   g_string_append_c (expected, ':');
-  g_string_append_printf (expected, "%s/gameoverlayrenderer.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    {
+      g_string_append_printf (expected, "%s/gameoverlayrenderer.so",
+                              f->lib_temp_dirs->libdl_token_path);
+    }
+  else
+    {
+      g_string_append (expected, "/opt/steam/ubuntu12_32/gameoverlayrenderer.so");
+      g_string_append_c (expected, ':');
+      g_string_append (expected, "/opt/steam/ubuntu12_64/gameoverlayrenderer.so");
+    }
+
   g_string_append_c (expected, ':');
   g_string_append (expected, "/opt/steam/some-other-abi/gameoverlayrenderer.so");
   g_assert_cmpstr (f->bwrap->envp[i], ==, expected->str);
@@ -283,6 +333,9 @@ test_gameoverlayrenderer (Fixture *f,
   for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES; i++)
     {
       g_autofree gchar *target = NULL;
+
+      if (f->lib_temp_dirs == NULL)
+        continue;
 
       g_string_assign (path, f->lib_temp_dirs->abi_paths[i]);
       g_string_append_c (path, G_DIR_SEPARATOR);
@@ -347,9 +400,6 @@ test_repetition (Fixture *f,
   gboolean ret;
   gsize i;
 
-  if (f->lib_temp_dirs == NULL)
-    return;
-
   ret = pv_adverb_set_up_preload_modules (f->bwrap,
                                           f->lib_temp_dirs,
                                           modules,
@@ -363,30 +413,95 @@ test_repetition (Fixture *f,
   i = 0;
 
   g_string_assign (expected, "LD_PRELOAD=");
-  g_string_append_printf (expected, "%s/libfirst.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    g_string_append_printf (expected, "%s/libfirst.so",
+                            f->lib_temp_dirs->libdl_token_path);
+  else
+    g_string_append (expected, "/opt/lib0/libfirst.so");
+
   g_string_append_c (expected, ':');
-  g_string_append_printf (expected, "%s/same-basename.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    g_string_append_printf (expected, "%s/same-basename.so",
+                            f->lib_temp_dirs->libdl_token_path);
+  else
+    g_string_append (expected, "/opt/lib0/one/same-basename.so");
+
   g_string_append_c (expected, ':');
   /* We don't do the per-architecture split if there's a basename
    * collision */
   g_string_append (expected, "/opt/lib0/two/same-basename.so");
   g_string_append_c (expected, ':');
-  g_string_append_printf (expected, "%s/libpreload.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    {
+      g_string_append_printf (expected, "%s/libpreload.so",
+                              f->lib_temp_dirs->libdl_token_path);
+    }
+  else
+    {
+      g_string_append (expected, "/opt/lib0/libpreload.so");
+#if PV_N_SUPPORTED_ARCHITECTURES > 1
+      g_string_append_c (expected, ':');
+      g_string_append (expected, "/opt/lib1/libpreload.so");
+#endif
+    }
+
 #if defined(__x86_64__) || defined(__i386__)
   g_string_append_c (expected, ':');
-  g_string_append_printf (expected, "%s/gameoverlayrenderer.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    {
+      g_string_append_printf (expected, "%s/gameoverlayrenderer.so",
+                              f->lib_temp_dirs->libdl_token_path);
+    }
+  else
+    {
+      g_string_append (expected, "/opt/steam/ubuntu12_32/gameoverlayrenderer.so");
+      g_string_append_c (expected, ':');
+      g_string_append (expected, "/opt/steam/ubuntu12_64/gameoverlayrenderer.so");
+    }
 #endif
+
   g_string_append_c (expected, ':');
-  g_string_append_printf (expected, "%s/libmiddle.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    g_string_append_printf (expected, "%s/libmiddle.so",
+                            f->lib_temp_dirs->libdl_token_path);
+  else
+    g_string_append (expected, "/opt/lib0/libmiddle.so");
+
   g_string_append_c (expected, ':');
-  /* The duplicates don't appear in the search path a second time */
-  g_string_append_printf (expected, "%s/liblast.so",
-                          f->lib_temp_dirs->libdl_token_path);
+
+  if (f->lib_temp_dirs != NULL)
+    {
+      /* If we are able to split up the modules by architecture,
+       * then the duplicates don't appear in the search path a second time */
+      g_string_append_printf (expected, "%s/liblast.so",
+                              f->lib_temp_dirs->libdl_token_path);
+    }
+  else
+    {
+      /* If we were unable to split up the modules by architecture,
+       * we change as little as possible, so in this case we do not
+       * deduplicate */
+      g_string_append (expected, "/opt/lib0/libpreload.so");
+      g_string_append_c (expected, ':');
+#if PV_N_SUPPORTED_ARCHITECTURES > 1
+      g_string_append (expected, "/opt/lib1/libpreload.so");
+      g_string_append_c (expected, ':');
+#endif
+#if defined(__x86_64__) || defined(__i386__)
+      g_string_append (expected, "/opt/steam/ubuntu12_32/gameoverlayrenderer.so");
+      g_string_append_c (expected, ':');
+      g_string_append (expected, "/opt/steam/ubuntu12_64/gameoverlayrenderer.so");
+      g_string_append_c (expected, ':');
+#endif
+
+      g_string_append (expected, "/opt/lib0/liblast.so");
+    }
+
   g_assert_cmpstr (f->bwrap->envp[i], ==, expected->str);
   i++;
 
@@ -397,6 +512,9 @@ test_repetition (Fixture *f,
   for (i = 0; i < MIN (PV_N_SUPPORTED_ARCHITECTURES, 2); i++)
     {
       gsize j;
+
+      if (f->lib_temp_dirs == NULL)
+        continue;
 
       for (j = 0; j < G_N_ELEMENTS (modules); j++)
         {
@@ -434,6 +552,9 @@ test_repetition (Fixture *f,
     {
       g_autofree gchar *target = NULL;
 
+      if (f->lib_temp_dirs == NULL)
+        continue;
+
       g_string_assign (path, f->lib_temp_dirs->abi_paths[i]);
       g_string_append_c (path, G_DIR_SEPARATOR);
       g_string_append (path, "gameoverlayrenderer.so");
@@ -450,6 +571,10 @@ test_repetition (Fixture *f,
 #endif
 }
 
+static const Config cannot_discover_platform = {
+  .can_discover_platform = FALSE,
+};
+
 int
 main (int argc,
       char **argv)
@@ -462,14 +587,21 @@ main (int argc,
   g_setenv ("PRESSURE_VESSEL_TEST_STANDARDIZE_PLATFORM", "1", TRUE);
 
   _srt_tests_init (&argc, &argv, NULL);
-  g_test_add ("/basic", Fixture, NULL,
-              setup, test_basic, teardown);
-  g_test_add ("/biarch", Fixture, NULL,
-              setup, test_biarch, teardown);
-  g_test_add ("/gameoverlayrenderer", Fixture, NULL,
-              setup, test_gameoverlayrenderer, teardown);
-  g_test_add ("/repetition", Fixture, NULL,
-              setup, test_repetition, teardown);
+
+#define add_test(name, function) \
+  do { \
+    g_test_add (name, \
+                Fixture, NULL, \
+                setup, function, teardown); \
+    g_test_add (name "/cannot-discover-platform", \
+                Fixture, &cannot_discover_platform, \
+                setup, function, teardown); \
+  } while (0)
+
+  add_test ("/basic", test_basic);
+  add_test ("/biarch", test_biarch);
+  add_test ("/gameoverlayrenderer", test_gameoverlayrenderer);
+  add_test ("/repetition", test_repetition);
 
   return g_test_run ();
 }
