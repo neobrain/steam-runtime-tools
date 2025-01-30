@@ -547,7 +547,7 @@ pv_wrap_move_into_scope (const char *steam_app_id)
 
 static void
 append_preload_internal (GPtrArray *argv,
-                         const char *option,
+                         PvPreloadVariableIndex which,
                          const char *multiarch_tuple,
                          const char *export_path,
                          const char *original_path,
@@ -556,6 +556,7 @@ append_preload_internal (GPtrArray *argv,
                          PvRuntime *runtime,
                          FlatpakExports *exports)
 {
+  const char *option = pv_preload_variables[which].adverb_option;
   gboolean flatpak_subsandbox = ((flags & PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX) != 0);
 
   if (runtime != NULL
@@ -628,7 +629,7 @@ append_preload_internal (GPtrArray *argv,
  */
 static void
 append_preload_unsupported_token (GPtrArray *argv,
-                                  const char *option,
+                                  PvPreloadVariableIndex which,
                                   const char *preload,
                                   GStrv env,
                                   PvAppendPreloadFlags flags,
@@ -681,7 +682,7 @@ append_preload_unsupported_token (GPtrArray *argv,
     }
 
   append_preload_internal (argv,
-                           option,
+                           which,
                            NULL,
                            export_path,
                            preload,
@@ -703,7 +704,7 @@ append_preload_unsupported_token (GPtrArray *argv,
  */
 static void
 append_preload_per_architecture (GPtrArray *argv,
-                                 const char *option,
+                                 PvPreloadVariableIndex which,
                                  const char *preload,
                                  GStrv env,
                                  PvAppendPreloadFlags flags,
@@ -783,7 +784,7 @@ append_preload_per_architecture (GPtrArray *argv,
           g_debug ("Found %s version of %s at %s",
                    multiarch_tuple, preload, path);
           append_preload_internal (argv,
-                                   option,
+                                   which,
                                    multiarch_tuple,
                                    path,
                                    path,
@@ -802,7 +803,7 @@ append_preload_per_architecture (GPtrArray *argv,
 
 static void
 append_preload_basename (GPtrArray *argv,
-                         const char *option,
+                         PvPreloadVariableIndex which,
                          const char *preload,
                          GStrv env,
                          PvAppendPreloadFlags flags,
@@ -837,9 +838,10 @@ append_preload_basename (GPtrArray *argv,
        * appropriate). */
       g_debug ("Found \"%s\" in runtime or graphics stack provider, "
                "passing %s through as-is",
-               preload, option);
+               preload,
+               pv_preload_variables[which].variable);
       append_preload_internal (argv,
-                               option,
+                               which,
                                NULL,
                                NULL,
                                preload,
@@ -858,7 +860,7 @@ append_preload_basename (GPtrArray *argv,
                "splitting architectures",
                preload);
       append_preload_per_architecture (argv,
-                                       option,
+                                       which,
                                        preload,
                                        env,
                                        flags,
@@ -897,7 +899,6 @@ pv_wrap_append_preload (GPtrArray *argv,
   SrtLoadableKind kind;
   SrtLoadableFlags loadable_flags;
   const char *variable;
-  const char *option;
 
   g_return_if_fail (argv != NULL);
   g_return_if_fail (preload != NULL);
@@ -906,7 +907,6 @@ pv_wrap_append_preload (GPtrArray *argv,
   g_return_if_fail (which < G_N_ELEMENTS (pv_preload_variables));
 
   variable = pv_preload_variables[which].variable;
-  option = pv_preload_variables[which].adverb_option;
 
   if (strstr (preload, "gtk3-nocsd") != NULL)
     {
@@ -930,7 +930,7 @@ pv_wrap_append_preload (GPtrArray *argv,
         /* Basenames can't have dynamic string tokens. */
         g_warn_if_fail ((loadable_flags & SRT_LOADABLE_FLAGS_DYNAMIC_TOKENS) == 0);
         append_preload_basename (argv,
-                                 option,
+                                 which,
                                  preload,
                                  env,
                                  flags,
@@ -944,7 +944,7 @@ pv_wrap_append_preload (GPtrArray *argv,
                               | SRT_LOADABLE_FLAGS_UNKNOWN_TOKENS))
           {
             append_preload_unsupported_token (argv,
-                                              option,
+                                              which,
                                               preload,
                                               env,
                                               flags,
@@ -956,7 +956,7 @@ pv_wrap_append_preload (GPtrArray *argv,
             g_debug ("Found $LIB or $PLATFORM in \"%s\", splitting architectures",
                      preload);
             append_preload_per_architecture (argv,
-                                             option,
+                                             which,
                                              preload,
                                              env,
                                              flags,
@@ -969,7 +969,7 @@ pv_wrap_append_preload (GPtrArray *argv,
              * assume that preload is a concrete filename */
             g_warn_if_fail ((loadable_flags & SRT_LOADABLE_FLAGS_DYNAMIC_TOKENS) == 0);
             append_preload_internal (argv,
-                                     option,
+                                     which,
                                      NULL,
                                      preload,
                                      preload,
