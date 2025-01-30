@@ -605,6 +605,23 @@ gboolean _srt_string_read_fd_until_eof (GString *buf,
                                         GError **error);
 
 /*
+ * _srt_string_ends_with_len:
+ * @str: A #GString
+ * @suffix: A suffix
+ * @len: Length of suffix
+ *
+ * Returns: %TRUE if @str ends with @suffix
+ */
+static inline gboolean
+_srt_string_ends_with_len (const GString *str,
+                           const char *suffix,
+                           gsize len)
+{
+  return (str->len >= len
+          && memcmp (str->str + str->len - len, suffix, len) == 0);
+}
+
+/*
  * _srt_string_ends_with:
  * @str: A #GString
  * @suffix: A suffix
@@ -615,10 +632,7 @@ static inline gboolean
 _srt_string_ends_with (const GString *str,
                        const char *suffix)
 {
-  size_t len = strlen (suffix);
-
-  return (str->len >= len
-          && strcmp (str->str + str->len - len, suffix) == 0);
+  return _srt_string_ends_with_len (str, suffix, strlen (suffix));
 }
 
 gboolean _srt_is_identifier (const char *name);
