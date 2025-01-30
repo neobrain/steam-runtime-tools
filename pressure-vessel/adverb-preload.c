@@ -183,3 +183,81 @@ pv_adverb_set_up_preload_modules (FlatpakBwrap *wrapped_command,
 
   return TRUE;
 }
+
+/*
+ * pv_adverb_preload_module_parse_adverb_cli:
+ * @self: The module, which must be initialized
+ *  to %PV_ADVERB_PRELOAD_MODULE_INIT
+ * @option: The command-line option that we are parsing, for
+ *  example `--ld-preload`
+ * @which: The corresponding type of module
+ * @value: The argument to the command-line option
+ * @error: Used to report an error if unsuccessful
+ *
+ * Parse the `--ld-preload` or `--ld-audit` option of `pv-adverb`.
+ *
+ * Returns: %TRUE if the argument was parsed successfully
+ */
+gboolean
+pv_adverb_preload_module_parse_adverb_cli (PvAdverbPreloadModule *self,
+                                           const char *option,
+                                           PvPreloadVariableIndex which,
+                                           const char *value,
+                                           GError **error)
+{
+  g_auto(GStrv) parts = NULL;
+  const char *architecture = NULL;
+  gsize abi_index = PV_UNSPECIFIED_ABI;
+  gsize abi;
+
+  g_return_val_if_fail (self->name == NULL, FALSE);
+  g_return_val_if_fail (self->abi_index == PV_UNSPECIFIED_ABI, FALSE);
+
+  parts = g_strsplit (value, ":", 0);
+
+  if (parts[0] != NULL)
+    {
+      gsize i;
+
+      for (i = 1; parts[i] != NULL; i++)
+        {
+          if (g_str_has_prefix (parts[i], "abi="))
+            {
+              architecture = parts[i] + strlen ("abi=");
+
+              for (abi = 0; abi < PV_N_SUPPORTED_ARCHITECTURES; abi++)
+                {
+                  if (strcmp (architecture, pv_multiarch_tuples[abi]) == 0)
+                    {
+                      abi_index = abi;
+                      break;
+                    }
+                }
+
+              if (abi_index == PV_UNSPECIFIED_ABI)
+                {
+                  g_set_error (error, G_OPTION_ERROR, G_OPTION_ERROR_BAD_VALUE,
+                               "Unsupported ABI %s",
+                               architecture);
+                  return FALSE;
+                }
+
+              continue;
+            }
+          else
+            {
+              g_set_error (error, G_OPTION_ERROR, G_OPTION_ERROR_BAD_VALUE,
+                           "Unexpected option in %s=\"%s\": %s",
+                           option, value, parts[i]);
+              return FALSE;
+            }
+        }
+
+      value = parts[0];
+    }
+
+  self->index_in_preload_variables = which;
+  self->name = g_strdup (value);
+  self->abi_index = abi_index;
+  return TRUE;
+}
