@@ -1578,6 +1578,7 @@ static const struct
 {
   { "", 0, "", TRUE },
   { "bar", -1, "bar", TRUE },
+  { "bar", -1, "bard", FALSE },
   { "foobar", -1, "bar", TRUE },
   { "foobar", -1, "BAR", FALSE },
   { "foo\0bar", 7, "ar", TRUE },
