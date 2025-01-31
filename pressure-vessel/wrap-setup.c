@@ -710,9 +710,16 @@ append_preload_per_architecture (GPtrArray *argv,
                                  FlatpakExports *exports)
 {
   g_autoptr(SrtSystemInfo) system_info = srt_system_info_new (NULL);
+  gsize n_supported_architectures = PV_N_SUPPORTED_ARCHITECTURES;
   gsize i;
 
-  for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES; i++)
+  if (flags & PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE)
+    {
+      G_STATIC_ASSERT (PV_N_SUPPORTED_ARCHITECTURES >= 1);
+      n_supported_architectures = 1;
+    }
+
+  for (i = 0; i < n_supported_architectures; i++)
     {
       g_autoptr(GString) mock_path = NULL;
       g_autoptr(SrtLibrary) details = NULL;
