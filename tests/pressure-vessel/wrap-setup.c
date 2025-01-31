@@ -58,6 +58,24 @@
 #define MOCK_LIB_64 "lib/" SRT_ABI_X86_64
 #define MOCK_LIB_GENERIC "lib/" MOCK_ABI
 
+#if defined(__i386__) || defined(__x86_64__)
+  /* On x86, we treat x86_64 as the primary architecture.
+   * This means it's the first one whenever we have a list of
+   * per-architecture things, and if we pretend to only support
+   * one architecture for test coverage purposes, that architecture
+   * will be x86_64. */
+# define PRIMARY_ABI SRT_ABI_X86_64
+# define PRIMARY_PLATFORM MOCK_PLATFORM_64
+# define PRIMARY_LIB MOCK_LIB_64
+#else
+  /* On non-x86, the mock implementation of srt_system_info_check_library()
+   * uses these expansions for ${PLATFORM} and ${LIB} instead of the
+   * real ones. */
+# define PRIMARY_ABI MOCK_ABI
+# define PRIMARY_PLATFORM MOCK_PLATFORM_GENERIC
+# define PRIMARY_LIB MOCK_LIB_GENERIC
+#endif
+
 typedef struct
 {
   TestsOpenFdSet old_fds;
@@ -242,20 +260,23 @@ setup_ld_preload (Fixture *f,
     "steam/lib/gameoverlayrenderer.so",
     "usr/lib/libpreloadU.so",
     "usr/local/lib/libgtk3-nocsd.so.0",
-#if defined(__i386__) || defined(__x86_64__)
-    "opt/" MOCK_LIB_32 "/libpreloadL.so",
-    "opt/" MOCK_LIB_64 "/libpreloadL.so",
-    "platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so",
-    "platform/plat-" MOCK_PLATFORM_64 "/libpreloadP.so",
-    "in-root-plat-" MOCK_PLATFORM_32 "-only-32-bit.so",
-#else
-    "opt/" MOCK_LIB_GENERIC "/libpreloadL.so",
-    "platform/plat-" MOCK_PLATFORM_GENERIC "/libpreloadP.so",
-#endif
+    "opt/" PRIMARY_LIB "/libpreloadL.so",
+    "platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so",
   };
+#if defined(__i386__) || defined(__x86_64__)
+  static const char * const touch_i386[] =
+  {
+    "opt/" MOCK_LIB_32 "/libpreloadL.so",
+    "platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so",
+    "in-root-plat-" MOCK_PLATFORM_32 "-only-32-bit.so",
+  };
+#endif
 
   setup (f, context);
   fixture_populate_dir (f, f->mock_host->fd, touch, G_N_ELEMENTS (touch));
+#if defined(__i386__) || defined(__x86_64__)
+  fixture_populate_dir (f, f->mock_host->fd, touch_i386, G_N_ELEMENTS (touch_i386));
+#endif
   f->env = g_environ_setenv (f->env, "STEAM_COMPAT_CLIENT_INSTALL_PATH",
                              "/steam", TRUE);
 }
@@ -1608,14 +1629,13 @@ populate_ld_preload (Fixture *f,
 static const char * const expected_preload_paths[] =
 {
   "/app/lib/libpreloadA.so",
+  "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so:abi=" PRIMARY_ABI,
 #if defined(__i386__) || defined(__x86_64__)
-  "/platform/plat-" MOCK_PLATFORM_64 "/libpreloadP.so:abi=" SRT_ABI_X86_64,
   "/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so:abi=" SRT_ABI_I386,
-  "/opt/" MOCK_LIB_64 "/libpreloadL.so:abi=" SRT_ABI_X86_64,
+#endif
+  "/opt/" PRIMARY_LIB "/libpreloadL.so:abi=" PRIMARY_ABI,
+#if defined(__i386__) || defined(__x86_64__)
   "/opt/" MOCK_LIB_32 "/libpreloadL.so:abi=" SRT_ABI_I386,
-#else
-  "/platform/plat-" MOCK_PLATFORM_GENERIC "/libpreloadP.so:abi=" MOCK_ABI,
-  "/opt/" MOCK_LIB_GENERIC "/libpreloadL.so:abi=" MOCK_ABI,
 #endif
   "/lib/libpreload-rootfs.so",
   "/usr/lib/libpreloadU.so",
@@ -1632,11 +1652,9 @@ static const char * const expected_preload_paths[] =
   /* Our mock implementation of pv_runtime_has_library() behaves as though
    * libfakeroot is not in the runtime or graphics stack provider, only
    * the current namespace */
+  "/path/to/" PRIMARY_LIB "/libfakeroot.so:abi=" PRIMARY_ABI,
 #if defined(__i386__) || defined(__x86_64__)
-  "/path/to/" MOCK_LIB_64 "/libfakeroot.so:abi=" SRT_ABI_X86_64,
   "/path/to/" MOCK_LIB_32 "/libfakeroot.so:abi=" SRT_ABI_I386,
-#else
-  "/path/to/" MOCK_LIB_GENERIC "/libfakeroot.so:abi=" MOCK_ABI,
 #endif
   /* Our mock implementation of pv_runtime_has_library() behaves as though
    * libpthread.so.0 *is* in the runtime, as we would expect */
@@ -1688,14 +1706,13 @@ test_remap_ld_preload (Fixture *f,
   g_assert_false (flatpak_exports_path_is_visible (exports, "/opt"));
   g_assert_false (flatpak_exports_path_is_visible (exports, "/opt/lib"));
   g_assert_false (flatpak_exports_path_is_visible (exports, "/platform"));
+
+  g_assert_true (flatpak_exports_path_is_visible (exports, "/opt/" PRIMARY_LIB "/libpreloadL.so"));
+  g_assert_true (flatpak_exports_path_is_visible (exports, "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so"));
+
 #if defined(__i386__) || defined(__x86_64__)
   g_assert_true (flatpak_exports_path_is_visible (exports, "/opt/" MOCK_LIB_32 "/libpreloadL.so"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/opt/" MOCK_LIB_64 "/libpreloadL.so"));
   g_assert_true (flatpak_exports_path_is_visible (exports, "/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/platform/plat-" MOCK_PLATFORM_64 "/libpreloadP.so"));
-#else
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/opt/" MOCK_LIB_GENERIC "/libpreloadL.so"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/platform/plat-" MOCK_PLATFORM_GENERIC "/libpreloadP.so"));
 #endif
 
   /* FlatpakExports never exports /lib as /lib */
@@ -1809,14 +1826,13 @@ test_remap_ld_preload_no_runtime (Fixture *f,
   g_assert_false (flatpak_exports_path_is_visible (exports, "/opt"));
   g_assert_false (flatpak_exports_path_is_visible (exports, "/opt/lib"));
   g_assert_false (flatpak_exports_path_is_visible (exports, "/platform"));
+
+  g_assert_true (flatpak_exports_path_is_visible (exports, "/opt/" PRIMARY_LIB "/libpreloadL.so"));
+  g_assert_true (flatpak_exports_path_is_visible (exports, "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so"));
+
 #if defined(__i386__) || defined(__x86_64__)
   g_assert_true (flatpak_exports_path_is_visible (exports, "/opt/" MOCK_LIB_32 "/libpreloadL.so"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/opt/" MOCK_LIB_64 "/libpreloadL.so"));
   g_assert_true (flatpak_exports_path_is_visible (exports, "/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/platform/plat-" MOCK_PLATFORM_64 "/libpreloadP.so"));
-#else
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/opt/" MOCK_LIB_GENERIC "/libpreloadL.so"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/platform/plat-" MOCK_PLATFORM_GENERIC "/libpreloadP.so"));
 #endif
 
   /* FlatpakExports never exports /lib as /lib */
