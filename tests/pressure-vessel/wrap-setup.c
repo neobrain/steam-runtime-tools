@@ -1911,6 +1911,7 @@ test_supported_archs (Fixture *f,
   /* The array of tuples has one extra element, to make it a GStrv */
   g_assert_cmpstr (pv_multiarch_tuples[i], ==, NULL);
 
+#if PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST > 0
   /* Emulator host details and tuples are also in the same order */
   for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST; i++)
     {
@@ -1918,6 +1919,9 @@ test_supported_archs (Fixture *f,
 
       g_assert_cmpstr (pv_multiarch_as_emulator_tuples[i], ==, details->tuple);
     }
+#else
+  i = 0;
+#endif
 
   /* Array of tuples has one extra element, again */
   g_assert_cmpstr (pv_multiarch_as_emulator_tuples[i], ==, NULL);
