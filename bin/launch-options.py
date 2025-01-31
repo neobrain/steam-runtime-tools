@@ -1667,7 +1667,7 @@ class Gui:
                 raise
 
     def build_argv(self):
-        # type: (...) -> typing.Tuple[str, typing.List[str], typing.Dict[str, str]]
+        # type: (...) -> typing.Tuple[str, typing.List[str], typing.Dict[str, str]]  # noqa: E501
 
         lines = []                  # type: typing.List[str]
         argv = []                   # type: typing.List[str]
