@@ -46,6 +46,13 @@ setup (Fixture *f,
   if (config->can_discover_platform)
     {
       f->lib_temp_dirs = pv_per_arch_dirs_new (&local_error);
+#ifdef _SRT_TESTS_STRICT
+      /* We allow this to fail because it might fail on particularly strange
+       * OS configurations, but for platforms we actively support,
+       * we expect it to work */
+      g_assert_no_error (local_error);
+      g_assert_nonnull (f->lib_temp_dirs);
+#endif
 
       if (f->lib_temp_dirs == NULL)
         {

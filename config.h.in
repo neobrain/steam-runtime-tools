@@ -7,6 +7,7 @@
 #define _SRT_SONAME "libsteam-runtime-tools-@api_major@.so.@abi_major"
 #define _GNU_SOURCE 1
 #mesondefine _SRT_MULTIARCH
+#mesondefine _SRT_TESTS_STRICT
 #mesondefine VERSION
 
 /* Allow using stuff from Flatpak with minimal modifications */
