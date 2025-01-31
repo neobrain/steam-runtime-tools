@@ -748,7 +748,6 @@ append_preload_per_architecture (GPtrArray *argv,
           /* As a mock ${PLATFORM}, use the first one listed. */
           platform = pv_multiarch_details[i].platforms[0];
 #else
-          multiarch_tuple = "mock-multiarch-tuple";
           platform = "mock";
 #endif
           /* As a mock ${LIB}, behave like Debian or the fdo SDK. */

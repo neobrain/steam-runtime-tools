@@ -43,8 +43,6 @@
 #include "wrap-setup.h"
 #include "utils.h"
 
-#define MOCK_ABI "mock-multiarch-tuple"
-
 /* These match the first entry in PvMultiArchdetails.platforms,
  * which is the easiest realistic thing for a mock implementation of
  * srt_system_info_check_library() to use. */
@@ -56,7 +54,7 @@
  * a mock implementation of srt_system_info_check_library() to use. */
 #define MOCK_LIB_32 "lib/" SRT_ABI_I386
 #define MOCK_LIB_64 "lib/" SRT_ABI_X86_64
-#define MOCK_LIB_GENERIC "lib/" MOCK_ABI
+#define MOCK_LIB_GENERIC "lib/" _SRT_MULTIARCH
 
 #if defined(__i386__) || defined(__x86_64__)
   /* On x86, we treat x86_64 as the primary architecture.
@@ -71,7 +69,7 @@
   /* On non-x86, the mock implementation of srt_system_info_check_library()
    * uses these expansions for ${PLATFORM} and ${LIB} instead of the
    * real ones. */
-# define PRIMARY_ABI MOCK_ABI
+# define PRIMARY_ABI _SRT_MULTIARCH
 # define PRIMARY_PLATFORM MOCK_PLATFORM_GENERIC
 # define PRIMARY_LIB MOCK_LIB_GENERIC
 #endif
