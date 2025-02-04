@@ -1,3 +1,17 @@
+steam-runtime-tools (0.20250204.0) UNRELEASED; urgency=medium
+
+  * libsteam-runtime-tools:
+    - Refactoring (steamrt/tasks#595)
+    - Improve test coverage (steamrt/tasks#595)
+  * pressure-vessel:
+    - Refactoring (steamrt/tasks#595)
+    - Improve test coverage (steamrt/tasks#595)
+  * Build system:
+    - Add convenience files to cross-compile for arm64, as an example
+      of a non-x86 architecture
+
+ -- Simon McVittie <smcv@collabora.com>  Tue, 04 Feb 2025 15:28:30 +0000
+
 steam-runtime-tools (0.20250122.0) steamrt; urgency=medium
 
   * Tests/CI:
