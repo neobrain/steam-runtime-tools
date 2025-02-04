@@ -393,6 +393,14 @@ Some environment variables are set by Steam, including:
     (For example, a game's Launch Options can be set to
     `STEAM_COMPAT_RUNTIME_SDL2=1 %command%`)
 
+    May also be set to `sdl2-compat` to attempt to use the
+    [sdl2-compat][] library, if available, in preference to
+    "classic" SDL2.
+    This will only work if the container runtime actually contains a
+    copy of sdl2-compat.
+    (For example, a game's Launch Options can be set to
+    `STEAM_COMPAT_RUNTIME_SDL2=sdl2-compat %command%`)
+
 * `STEAM_COMPAT_RUNTIME_SDL3`:
 
     May be set to 1 for the same effect as adding `runtime-sdl3` to
@@ -654,5 +662,6 @@ unless this is set to the game's top-level directory.
 [ldlp]: ld-library-path-runtime.md
 [prctl]: https://manpages.debian.org/unstable/manpages-dev/prctl.2.en.html
 [scout-on-soldier]: container-runtime.md#steam-linux-runtime-scout-on-soldier
+[sdl2-compat]: https://github.com/libsdl-org/sdl2-compat/
 [sniper]: container-runtime.md#steam-runtime-3-sniper
 [soldier]: container-runtime.md#steam-runtime-2-soldier

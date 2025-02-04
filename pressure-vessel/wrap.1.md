@@ -1105,7 +1105,7 @@ be made available read/write in the container.
 </dd>
 <dt>
 
-`STEAM_COMPAT_RUNTIME_SDL2` (boolean)
+`STEAM_COMPAT_RUNTIME_SDL2` (`0`, `1` or `sdl2-compat`)
 
 </dt><dd>
 
@@ -1118,6 +1118,11 @@ is that pressure-vessel-wrap sets up appropriate distribution-specific
 paths so that both 32- and 64-bit SDL 2 will work.
 Typically this would be enabled by setting a game's Steam launch
 options to `STEAM_COMPAT_RUNTIME_SDL2=1 %command%`.
+
+If set to `sdl2-compat`,
+and the runtime contains a copy of `sdl2-compat` as a non-default
+implementation of SDL,
+do the same for that.
 
 </dd>
 <dt>
