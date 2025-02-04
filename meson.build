@@ -262,8 +262,15 @@ elif host_machine.cpu_family() == 'x86'
   multiarch = 'i386-linux-gnu'
 elif host_machine.cpu_family() == 'aarch64' and host_machine.endian() == 'little'
   multiarch = 'aarch64-linux-gnu'
+elif get_option('werror')
+  # Some of our test coverage is skipped if we don't know the multiarch tuple
+  error('-Dmultiarch_tuple is required when building with --werror on an unknown CPU')
 else
   multiarch = ''
+endif
+
+if get_option('werror')
+  conf_data.set('_SRT_TESTS_STRICT', true)
 endif
 
 if multiarch != ''

@@ -1434,6 +1434,11 @@ test_recursive_list (Fixture *f,
         }
       else
         {
+#ifdef _SRT_TESTS_STRICT
+          /* We expect this to exist in our official CI,
+           * so make the test fail if it doesn't. */
+          g_warning ("/dev/pts doesn't exist or isn't a directory");
+#endif
           /* This could conceivably be false in some containers.
            * Mark the test as skipped but intentionally don't early-return
            * here: we can still check for /dev/stderr. */
@@ -1450,6 +1455,11 @@ test_recursive_list (Fixture *f,
         }
       else
         {
+#ifdef _SRT_TESTS_STRICT
+          /* We expect this to exist in our official CI,
+           * so make the test fail if it doesn't. */
+          g_warning ("/dev/stderr isn't a symlink");
+#endif
           /* This could conceivably be false in some containers.
            * Again, intentionally not early-returning here. */
           g_test_skip ("/dev/stderr isn't a symlink");
@@ -1578,6 +1588,7 @@ static const struct
 {
   { "", 0, "", TRUE },
   { "bar", -1, "bar", TRUE },
+  { "bar", -1, "bard", FALSE },
   { "foobar", -1, "bar", TRUE },
   { "foobar", -1, "BAR", FALSE },
   { "foo\0bar", 7, "ar", TRUE },

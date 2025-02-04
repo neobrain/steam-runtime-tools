@@ -71,6 +71,8 @@ enums = gnome.mkenums_simple(
 pressure_vessel_utils = static_library(
   'pressure-vessel-utils',
   sources : [
+    'adverb-preload.c',
+    'adverb-preload.h',
     'flatpak-bwrap.c',
     'flatpak-bwrap-private.h',
     'flatpak-utils-base.c',
@@ -106,8 +108,6 @@ pressure_vessel_utils_dep = declare_dependency(
 pressure_vessel_adverb_lib = static_library(
   'pressure-vessel-adverb-lib',
   sources : [
-    'adverb-preload.c',
-    'adverb-preload.h',
     'adverb-sdl.c',
     'adverb-sdl.h',
     'per-arch-dirs.c',

@@ -2119,6 +2119,28 @@ os_no_os_release (Fixture *f,
   g_free (sysroot);
 }
 
+#ifdef _SRT_TESTS_STRICT
+static void
+os_real (Fixture *f,
+         gconstpointer context)
+{
+  g_autoptr(SrtSystemInfo) info = NULL;
+  gchar *s;
+
+  info = srt_system_info_new (NULL);
+  check_os_release (info);
+
+  /* We expect the ID and NAME to be present on any reasonable OS. */
+  s = srt_system_info_dup_os_id (info);
+  g_assert_cmpstr (s, !=, NULL);
+  g_free (s);
+
+  s = srt_system_info_dup_os_name (info);
+  g_assert_cmpstr (s, !=, NULL);
+  g_free (s);
+}
+#endif
+
 static void
 overrides (Fixture *f,
            gconstpointer context)
@@ -4505,6 +4527,10 @@ main (int argc,
               setup, os_invalid_os_release, teardown);
   g_test_add ("/system-info/os/no-os-release", Fixture, NULL,
               setup, os_no_os_release, teardown);
+#ifdef _SRT_TESTS_STRICT
+  g_test_add ("/system-info/os/real", Fixture, NULL,
+              setup, os_real, teardown);
+#endif
 
   g_test_add ("/system-info/libs/overrides", Fixture, NULL,
               setup, overrides, teardown);

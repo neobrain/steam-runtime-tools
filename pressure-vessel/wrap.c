@@ -66,16 +66,6 @@ static const GDebugKey pv_debug_keys[] =
   { "container", PV_WRAP_LOG_FLAGS_CONTAINER },
 };
 
-static const struct
-{
-  const char *variable;
-  const char *adverb_option;
-} preload_options[] =
-{
-  [PRELOAD_VARIABLE_INDEX_LD_AUDIT] = { "LD_AUDIT", "--ld-audit" },
-  [PRELOAD_VARIABLE_INDEX_LD_PRELOAD] = { "LD_PRELOAD", "--ld-preload" },
-};
-
 #define usage_error(...) _srt_log_failure (__VA_ARGS__)
 
 int
@@ -851,10 +841,9 @@ main (int argc,
                                                             j);
 
           g_assert (module->which >= 0);
-          g_assert (module->which < G_N_ELEMENTS (preload_options));
+          g_assert (module->which < G_N_ELEMENTS (pv_preload_variables));
           pv_wrap_append_preload (adverb_preload_argv,
-                                  preload_options[module->which].variable,
-                                  preload_options[module->which].adverb_option,
+                                  module->which,
                                   module->preload,
                                   environ,
                                   append_preload_flags,

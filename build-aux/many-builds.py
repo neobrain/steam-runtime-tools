@@ -53,6 +53,8 @@ _build/
     coverage/                   Build for host system with coverage
     doc/                        Build for host system with gtk-doc and pandoc
     host-no-asan/               No AddressSanitizer, for use with valgrind
+    arm64/                      Build for host system for arm64, as an
+                                example of a non-x86 platform
     i386/                       Build for host system for i386
 """
 
@@ -296,6 +298,17 @@ class Environment:
                 ('-Dtest_containers_dir='
                  + str(self.abs_builddir_parent / 'containers')),
             ] + args,
+        )
+
+        self.setup_one(
+            'arm64',
+            dev_build + [
+                '-Dintrospection=disabled',
+                '-Dmultiarch_tuple=aarch64-linux-gnu',
+                '--cross-file=build-aux/meson/arm64.txt',
+            ] + args,
+            # Host system doesn't necessarily have an arm64 toolchain
+            check=False,
         )
 
         self.setup_one(

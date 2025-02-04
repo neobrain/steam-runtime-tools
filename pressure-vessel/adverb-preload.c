@@ -9,11 +9,22 @@
 #include "supported-architectures.h"
 #include "utils.h"
 
-/* Indexed by PreloadVariableIndex */
-static const char *preload_variables[] =
+const PvPreloadVariable pv_preload_variables[] =
 {
-  "LD_AUDIT",
-  "LD_PRELOAD",
+  [PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT] = {
+      .variable = "LD_AUDIT",
+      .adverb_option = "--ld-audit",
+      /* "The items in the list are colon-separated, and there is no support
+       * for escaping the separator." —ld.so(8) */
+      .separators = ":",
+  },
+  [PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD] = {
+      .variable = "LD_PRELOAD",
+      .adverb_option = "--ld-preload",
+      /* "The items of the list can be separated by spaces or colons, and
+       * there is no support for escaping either separator." —ld.so(8) */
+      .separators = ": ",
+  },
 };
 
 static gpointer
@@ -45,7 +56,7 @@ pv_adverb_set_up_preload_modules (FlatpakBwrap *wrapped_command,
                                   gsize n_preload_modules,
                                   GError **error)
 {
-  GPtrArray *preload_search_paths[G_N_ELEMENTS (preload_variables)] = { NULL };
+  GPtrArray *preload_search_paths[G_N_ELEMENTS (pv_preload_variables)] = { NULL };
   gsize i;
 
   /* Iterate through all modules, populating preload_search_paths */
@@ -155,11 +166,11 @@ pv_adverb_set_up_preload_modules (FlatpakBwrap *wrapped_command,
 
   /* Serialize search_paths[PRELOAD_VARIABLE_INDEX_LD_AUDIT] into
    * LD_AUDIT, etc. */
-  for (i = 0; i < G_N_ELEMENTS (preload_variables); i++)
+  for (i = 0; i < G_N_ELEMENTS (pv_preload_variables); i++)
     {
       GPtrArray *search_path = preload_search_paths[i];
       g_autoptr(GString) buffer = g_string_new ("");
-      const char *variable = preload_variables[i];
+      const char *variable = pv_preload_variables[i].variable;
 
       if (search_path != NULL)
         g_ptr_array_foreach (search_path, (GFunc) append_to_search_path, buffer);

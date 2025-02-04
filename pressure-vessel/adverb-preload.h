@@ -18,6 +18,15 @@ typedef enum
   PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
 } PvPreloadVariableIndex;
 
+typedef struct
+{
+  const char *variable;
+  const char *adverb_option;
+  const char *separators;
+} PvPreloadVariable;
+
+extern const PvPreloadVariable pv_preload_variables[2];
+
 #define PV_UNSPECIFIED_ABI (G_MAXSIZE)
 
 typedef struct
@@ -28,13 +37,24 @@ typedef struct
   gsize abi_index;
 } PvAdverbPreloadModule;
 
+#define PV_ADVERB_PRELOAD_MODULE_INIT \
+{ \
+  .name = NULL, \
+  .index_in_preload_variables = 0, \
+  .abi_index = PV_UNSPECIFIED_ABI, \
+}
+
 static inline void
 pv_adverb_preload_module_clear (gpointer p)
 {
   PvAdverbPreloadModule *self = p;
+  PvAdverbPreloadModule blank = PV_ADVERB_PRELOAD_MODULE_INIT;
 
   g_free (self->name);
+  *self = blank;
 }
+
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (PvAdverbPreloadModule, pv_adverb_preload_module_clear)
 
 gboolean pv_adverb_set_up_preload_modules (FlatpakBwrap *wrapped_command,
                                            PvPerArchDirs *lib_temp_dirs,

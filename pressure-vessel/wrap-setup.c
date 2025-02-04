@@ -33,6 +33,7 @@
 
 #include <string.h>
 
+#include "adverb-preload.h"
 #include "bwrap.h"
 #include "exports.h"
 #include "flatpak-run-dbus-private.h"
@@ -710,12 +711,16 @@ append_preload_per_architecture (GPtrArray *argv,
                                  FlatpakExports *exports)
 {
   g_autoptr(SrtSystemInfo) system_info = srt_system_info_new (NULL);
+  gsize n_supported_architectures = PV_N_SUPPORTED_ARCHITECTURES;
   gsize i;
 
-  if (system_info == NULL)
-    system_info = srt_system_info_new (NULL);
+  if (flags & PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE)
+    {
+      G_STATIC_ASSERT (PV_N_SUPPORTED_ARCHITECTURES >= 1);
+      n_supported_architectures = 1;
+    }
 
-  for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES; i++)
+  for (i = 0; i < n_supported_architectures; i++)
     {
       g_autoptr(GString) mock_path = NULL;
       g_autoptr(SrtLibrary) details = NULL;
@@ -744,7 +749,6 @@ append_preload_per_architecture (GPtrArray *argv,
           /* As a mock ${PLATFORM}, use the first one listed. */
           platform = pv_multiarch_details[i].platforms[0];
 #else
-          multiarch_tuple = "mock-multiarch-tuple";
           platform = "mock";
 #endif
           /* As a mock ${LIB}, behave like Debian or the fdo SDK. */
@@ -866,10 +870,7 @@ append_preload_basename (GPtrArray *argv,
 /**
  * pv_wrap_append_preload:
  * @argv: (element-type filename): Array of command-line options to populate
- * @variable: (type filename): Environment variable from which this
- *  preload module was taken, either `LD_AUDIT` or `LD_PRELOAD`
- * @option: (type filename): Command-line option to add to @argv,
- *  either `--ld-audit` or `--ld-preload`
+ * @which: Either `LD_AUDIT` or `LD_PRELOAD`
  * @preload: (type filename): Path of preloadable module in current
  *  namespace, possibly including special ld.so tokens such as `$LIB`,
  *  or basename of a preloadable module to be found in the standard
@@ -886,8 +887,7 @@ append_preload_basename (GPtrArray *argv,
  */
 void
 pv_wrap_append_preload (GPtrArray *argv,
-                        const char *variable,
-                        const char *option,
+                        PvPreloadVariableIndex which,
                         const char *preload,
                         GStrv env,
                         PvAppendPreloadFlags flags,
@@ -896,11 +896,17 @@ pv_wrap_append_preload (GPtrArray *argv,
 {
   SrtLoadableKind kind;
   SrtLoadableFlags loadable_flags;
+  const char *variable;
+  const char *option;
 
   g_return_if_fail (argv != NULL);
-  g_return_if_fail (option != NULL);
   g_return_if_fail (preload != NULL);
   g_return_if_fail (runtime == NULL || PV_IS_RUNTIME (runtime));
+  g_return_if_fail (which >= 0);
+  g_return_if_fail (which < G_N_ELEMENTS (pv_preload_variables));
+
+  variable = pv_preload_variables[which].variable;
+  option = pv_preload_variables[which].adverb_option;
 
   if (strstr (preload, "gtk3-nocsd") != NULL)
     {

@@ -192,17 +192,17 @@ opt_ignored_cb (const gchar *option_name,
 
 static gboolean
 opt_ld_something (PvWrapOptions *self,
-                  PreloadVariableIndex which,
+                  PvPreloadVariableIndex which,
                   const char *value,
-                  const char *separators,
+                  gboolean split,
                   GError **error)
 {
   g_auto(GStrv) tokens = NULL;
   size_t i;
 
-  if (separators != NULL)
+  if (split)
     {
-      tokens = g_strsplit_set (value, separators, 0);
+      tokens = g_strsplit_set (value, pv_preload_variables[which].separators, 0);
     }
   else
     {
@@ -230,8 +230,8 @@ opt_ld_audit_cb (const gchar *option_name,
                  gpointer data,
                  GError **error)
 {
-  return opt_ld_something (data, PRELOAD_VARIABLE_INDEX_LD_AUDIT,
-                           value, NULL, error);
+  return opt_ld_something (data, PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT,
+                           value, FALSE, error);
 }
 
 static gboolean
@@ -240,10 +240,8 @@ opt_ld_audits_cb (const gchar *option_name,
                   gpointer data,
                   GError **error)
 {
-  /* "The items in the list are colon-separated, and there is no support
-   * for escaping the separator." —ld.so(8) */
-  return opt_ld_something (data, PRELOAD_VARIABLE_INDEX_LD_AUDIT,
-                           value, ":", error);
+  return opt_ld_something (data, PV_PRELOAD_VARIABLE_INDEX_LD_AUDIT,
+                           value, TRUE, error);
 }
 
 static gboolean
@@ -252,8 +250,8 @@ opt_ld_preload_cb (const gchar *option_name,
                    gpointer data,
                    GError **error)
 {
-  return opt_ld_something (data, PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
-                           value, NULL, error);
+  return opt_ld_something (data, PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+                           value, FALSE, error);
 }
 
 static gboolean
@@ -262,10 +260,8 @@ opt_ld_preloads_cb (const gchar *option_name,
                     gpointer data,
                     GError **error)
 {
-  /* "The items of the list can be separated by spaces or colons, and
-   * there is no support for escaping either separator." —ld.so(8) */
-  return opt_ld_something (data, PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
-                           value, ": ", error);
+  return opt_ld_something (data, PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
+                           value, TRUE, error);
 }
 
 static gboolean

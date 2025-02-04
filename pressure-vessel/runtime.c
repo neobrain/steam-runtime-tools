@@ -96,7 +96,9 @@ struct _PvRuntime
   PvGraphicsProvider *interpreter_host_provider;
   EnumerationThread indep_thread;
   EnumerationThread host_thread;
+#if PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST > 0
   EnumerationThread *arch_host_threads;
+#endif
   EnumerationThread *arch_threads;
   SrtDirentCompareFunc arbitrary_dirent_order;
   GCompareFunc arbitrary_str_order;
@@ -1519,6 +1521,7 @@ pv_runtime_initable_init (GInitable *initable,
                                           self->interpreter_host_provider,
                                           "real-host");
 
+#if PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST > 0
           self->arch_host_threads = g_new0 (EnumerationThread,
                                             PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST);
 
@@ -1527,6 +1530,7 @@ pv_runtime_initable_init (GInitable *initable,
                                            &pv_multiarch_as_emulator_details[i],
                                            self->flags,
                                            self->interpreter_host_provider);
+#endif
         }
 
       self->arch_threads = g_new0 (EnumerationThread,
@@ -1857,8 +1861,10 @@ pv_runtime_dispose (GObject *object)
   g_clear_object (&self->host_root);
   enumeration_thread_clear (&self->indep_thread);
   enumeration_thread_clear (&self->host_thread);
+#if PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST > 0
   enumeration_threads_clear (&self->arch_host_threads,
                              PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST);
+#endif
   enumeration_threads_clear (&self->arch_threads,
                              PV_N_SUPPORTED_ARCHITECTURES);
 
@@ -7101,6 +7107,7 @@ collect_dri_drivers (PvRuntime *self,
   return TRUE;
 }
 
+#if PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST > 0
 /*
  * @search_path: (inout):
  */
@@ -7174,6 +7181,7 @@ pv_append_host_dri_library_paths (PvRuntime *self,
   while (_srt_hash_table_iter_next (&iter, &drivers_path, NULL))
     pv_search_path_append (search_path, drivers_path);
 }
+#endif
 
 /*
  * Returns: (element-type IcdDetails):
@@ -7495,12 +7503,14 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
   if (self->flags & PV_RUNTIME_FLAGS_SINGLE_THREAD)
     {
       system_info = pv_graphics_provider_create_system_info (self->provider);
+
       if (self->interpreter_host_provider != NULL)
         host_system_info = pv_graphics_provider_create_system_info (self->interpreter_host_provider);
     }
   else
     {
       system_info = g_object_ref (enumeration_thread_join (&self->indep_thread));
+
       if (self->interpreter_host_provider != NULL)
         host_system_info = g_object_ref (enumeration_thread_join (&self->host_thread));
     }
@@ -7781,6 +7791,7 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
     {
       g_assert (pv_multiarch_as_emulator_tuples[PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST] == NULL);
 
+#if PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST > 0
       for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES_AS_EMULATOR_HOST; i++)
         {
           SrtSystemInfo *arch_system_info;
@@ -7795,6 +7806,7 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
                                             pv_multiarch_as_emulator_tuples[i],
                                             dri_path);
         }
+#endif
     }
 
   part_timer = _srt_profiling_start ("Finishing graphics stack capture");

@@ -1,0 +1,41 @@
+# Copyright 2022-2025 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+#
+# Loosely based on the output of:
+# /usr/share/meson/debcrossgen --arch arm64
+
+[constants]
+DEB_HOST_GNU_TYPE = 'aarch64-linux-gnu'
+DEB_HOST_MULTIARCH = 'aarch64-linux-gnu'
+
+[binaries]
+c = DEB_HOST_GNU_TYPE + '-gcc'
+cpp = DEB_HOST_GNU_TYPE + '-g++'
+ar = DEB_HOST_GNU_TYPE + '-ar'
+strip = DEB_HOST_GNU_TYPE + '-strip'
+objcopy = DEB_HOST_GNU_TYPE + '-objcopy'
+ld = DEB_HOST_GNU_TYPE + '-ld'
+pkgconfig = DEB_HOST_GNU_TYPE + '-pkg-config'
+pkg-config = DEB_HOST_GNU_TYPE + '-pkg-config'
+cmake = 'cmake'
+cups-config = 'cups-config'
+sdl2-config = 'sdl2-config'
+
+[built-in options]
+libdir = 'lib' / DEB_HOST_MULTIARCH
+
+[properties]
+# This assumes that if we will run tests, we have qemu-static installed
+needs_exe_wrapper = false
+
+[cmake]
+CMAKE_C_COMPILER = DEB_HOST_GNU_TYPE + '-gcc'
+CMAKE_CXX_COMPILER = DEB_HOST_GNU_TYPE + '-g++'
+CMAKE_SYSTEM_NAME = 'Linux'
+CMAKE_SYSTEM_PROCESSOR = 'aarch64'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'aarch64'
+cpu = 'arm64'
+endian = 'little'
