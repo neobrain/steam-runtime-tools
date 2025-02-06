@@ -4,13 +4,19 @@ steam-runtime-tools (0.20250204.0) UNRELEASED; urgency=medium
     - Refactoring (steamrt/tasks#595)
     - Improve test coverage (steamrt/tasks#595)
   * pressure-vessel:
+    - pressure-vessel: Add STEAM_COMPAT_RUNTIME_SDL2=sdl2-compat,
+      which selects a non-default sdl2-compat if present in the runtime,
+      rather than classic SDL 2.
+      This will not be practically useful until we have a release of
+      soldier and/or sniper that includes a copy of sdl2-compat.
+      (steamrt/tasks#579, steamrt/tasks#573)
     - Refactoring (steamrt/tasks#595)
     - Improve test coverage (steamrt/tasks#595)
   * Build system:
     - Add convenience files to cross-compile for arm64, as an example
       of a non-x86 architecture
 
- -- Simon McVittie <smcv@collabora.com>  Tue, 04 Feb 2025 15:28:30 +0000
+ -- Simon McVittie <smcv@collabora.com>  Thu, 06 Feb 2025 16:38:00 +0000
 
 steam-runtime-tools (0.20250122.0) steamrt; urgency=medium
 
