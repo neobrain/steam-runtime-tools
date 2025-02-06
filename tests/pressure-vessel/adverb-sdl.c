@@ -14,6 +14,7 @@
 
 #define SDL_DYNAMIC_API "SDL_DYNAMIC_API"
 #define SDL2_SONAME "libSDL2-2.0.so.0"
+#define SDL2_COMPAT "sdl2-compat/libSDL2-2.0.so.0"
 #define SDL3_DYNAMIC_API "SDL3_DYNAMIC_API"
 #define SDL3_SONAME "libSDL3.so.0"
 
@@ -167,6 +168,8 @@ static void
 test_basic (Fixture *f,
             gconstpointer context)
 {
+  g_autofree gchar *sdl2_compat_target = NULL;
+  g_autofree gchar *sdl2_symlink = NULL;
   g_autofree gchar *sdl2_target = NULL;
   g_autofree gchar *sdl3_target = NULL;
 
@@ -181,6 +184,9 @@ test_basic (Fixture *f,
   touch (&sdl2_target,
          f->mock_prefix.path, "lib", pv_multiarch_tuples[PV_PRIMARY_ARCHITECTURE],
          SDL2_SONAME, NULL);
+  touch (&sdl2_compat_target,
+         f->mock_prefix.path, "lib", pv_multiarch_tuples[PV_PRIMARY_ARCHITECTURE],
+         SDL2_COMPAT, NULL);
   touch (&sdl3_target,
          f->mock_prefix.path, "lib", pv_multiarch_tuples[PV_PRIMARY_ARCHITECTURE],
          SDL3_SONAME, NULL);
@@ -226,6 +232,22 @@ test_basic (Fixture *f,
               f->lib_temp_dirs->libdl_token_path, SDL2_SONAME);
   assert_env (f->bwrap->envp, SDL3_DYNAMIC_API,
               f->lib_temp_dirs->libdl_token_path, SDL3_SONAME);
+
+  flatpak_bwrap_unset_env (f->bwrap, SDL_DYNAMIC_API);
+  sdl2_symlink = g_build_filename (f->lib_temp_dirs->abi_paths[PV_PRIMARY_ARCHITECTURE],
+                                   SDL2_SONAME, NULL);
+  unlink (sdl2_symlink);
+
+  g_test_message ("sdl2-compat flag sets up sdl2-compat...");
+  pv_adverb_set_up_dynamic_sdls (f->bwrap,
+                                 f->lib_temp_dirs,
+                                 f->mock_prefix.path,
+                                 f->mock_overrides.path,
+                                 SRT_STEAM_COMPAT_FLAGS_RUNTIME_SDL2_COMPAT);
+  assert_symlink (f->lib_temp_dirs->abi_paths[PV_PRIMARY_ARCHITECTURE],
+                  SDL2_SONAME, sdl2_compat_target, 0);
+  assert_env (f->bwrap->envp, SDL_DYNAMIC_API,
+              f->lib_temp_dirs->libdl_token_path, SDL2_SONAME);
 }
 
 static void

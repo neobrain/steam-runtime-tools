@@ -760,7 +760,6 @@ _srt_steam_get_compat_flags (const char * const *envp)
   bool_vars[] =
     {
         { "STEAM_COMPAT_TRACING", SRT_STEAM_COMPAT_FLAGS_SYSTEM_TRACING, FALSE },
-        { "STEAM_COMPAT_RUNTIME_SDL2", SRT_STEAM_COMPAT_FLAGS_RUNTIME_SDL2, FALSE },
         { "STEAM_COMPAT_RUNTIME_SDL3", SRT_STEAM_COMPAT_FLAGS_RUNTIME_SDL3, FALSE },
     };
   SrtSteamCompatFlags ret = SRT_STEAM_COMPAT_FLAGS_NONE;
@@ -775,6 +774,22 @@ _srt_steam_get_compat_flags (const char * const *envp)
 
       if (bool_value)
         ret |= bool_vars[i].value;
+    }
+
+  value = _srt_environ_getenv (envp, "STEAM_COMPAT_RUNTIME_SDL2");
+
+  if (value != NULL)
+    {
+      if (g_strcmp0 (value, "1") == 0)
+        ret |= SRT_STEAM_COMPAT_FLAGS_RUNTIME_SDL2;
+      else if (g_strcmp0 (value, "sdl2-compat") == 0)
+        ret |= SRT_STEAM_COMPAT_FLAGS_RUNTIME_SDL2_COMPAT;
+      else if (value[0] == '\0' || g_strcmp0 (value, "0") == 0)
+        ret &= ~(SRT_STEAM_COMPAT_FLAGS_RUNTIME_SDL2
+                 | SRT_STEAM_COMPAT_FLAGS_RUNTIME_SDL2_COMPAT);
+      else
+        g_warning ("Unrecognised value \"%s\" for $STEAM_COMPAT_RUNTIME_SDL2",
+                   value);
     }
 
   value = _srt_environ_getenv (envp, "STEAM_COMPAT_FLAGS");
