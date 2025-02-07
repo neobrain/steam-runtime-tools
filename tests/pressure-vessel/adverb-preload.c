@@ -420,12 +420,33 @@ test_cli (Fixture *f,
         }
       else
         {
+          g_autofree gchar *serialized = NULL;
+          g_auto(PvAdverbPreloadModule) reparsed = PV_ADVERB_PRELOAD_MODULE_INIT;
+          gchar *equals;
+
           g_assert_no_error (local_error);
           g_assert_true (ret);
           g_assert_cmpstr (actual.name, ==, test->expected.name);
           g_assert_cmpuint (actual.abi_index, ==, test->expected.abi_index);
           g_assert_cmpuint (actual.index_in_preload_variables, ==, which);
-          pv_adverb_preload_module_clear (&actual);
+
+          /* Check that it round-trips */
+          serialized = pv_adverb_preload_module_to_adverb_cli (&actual);
+          g_assert_true (g_str_has_prefix (serialized, option));
+          equals = serialized + strlen (option);
+          g_assert_cmpint (*equals, ==, '=');
+          *equals = '\0';
+
+          ret = pv_adverb_preload_module_parse_adverb_cli (&reparsed,
+                                                           option,
+                                                           which,
+                                                           equals + 1,
+                                                           &local_error);
+          g_assert_no_error (local_error);
+          g_assert_true (ret);
+          g_assert_cmpstr (reparsed.name, ==, test->expected.name);
+          g_assert_cmpuint (reparsed.abi_index, ==, test->expected.abi_index);
+          g_assert_cmpuint (reparsed.index_in_preload_variables, ==, which);
         }
     }
 }

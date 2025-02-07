@@ -261,3 +261,29 @@ pv_adverb_preload_module_parse_adverb_cli (PvAdverbPreloadModule *self,
   self->abi_index = abi_index;
   return TRUE;
 }
+
+gchar *
+pv_adverb_preload_module_to_adverb_cli (PvAdverbPreloadModule *self)
+{
+  g_autoptr(GString) buf = NULL;
+  const PvPreloadVariable *variable;
+
+  g_return_val_if_fail (self->index_in_preload_variables < G_N_ELEMENTS (pv_preload_variables), NULL);
+  g_return_val_if_fail (self->name != NULL, NULL);
+  g_return_val_if_fail (self->abi_index == PV_UNSPECIFIED_ABI
+                        || self->abi_index < PV_N_SUPPORTED_ARCHITECTURES,
+                        NULL);
+
+  variable = &pv_preload_variables[self->index_in_preload_variables];
+  buf = g_string_new (variable->adverb_option);
+  g_string_append_c (buf, '=');
+  g_string_append (buf, self->name);
+
+  if (self->abi_index != PV_UNSPECIFIED_ABI)
+    {
+      g_string_append (buf, ":abi=");
+      g_string_append (buf, pv_multiarch_tuples[self->abi_index]);
+    }
+
+  return g_string_free (g_steal_pointer (&buf), FALSE);
+}

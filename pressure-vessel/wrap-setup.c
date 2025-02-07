@@ -556,48 +556,27 @@ append_preload_internal (GPtrArray *argv,
                          PvRuntime *runtime,
                          FlatpakExports *exports)
 {
-  const char *option = pv_preload_variables[which].adverb_option;
-  const char *multiarch_tuple;
+  g_auto(PvAdverbPreloadModule) module = PV_ADVERB_PRELOAD_MODULE_INIT;
+  g_autofree gchar *arg = NULL;
   gboolean flatpak_subsandbox = ((flags & PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX) != 0);
 
-  g_return_if_fail (abi_index == PV_UNSPECIFIED_ABI
-                    || abi_index < PV_N_SUPPORTED_ARCHITECTURES);
-
-  if (abi_index == PV_UNSPECIFIED_ABI)
-    multiarch_tuple = NULL;
-  else
-    multiarch_tuple = pv_multiarch_tuples[abi_index];
+  module.index_in_preload_variables = which;
+  module.abi_index = abi_index;
 
   if (runtime != NULL
       && (g_str_has_prefix (original_path, "/usr/")
           || g_str_has_prefix (original_path, "/lib")
           || (flatpak_subsandbox && g_str_has_prefix (original_path, "/app/"))))
     {
-      g_autofree gchar *adjusted_path = NULL;
       const char *target = flatpak_subsandbox ? "/run/parent" : "/run/host";
 
-      adjusted_path = g_build_filename (target, original_path, NULL);
-      g_debug ("%s -> %s", original_path, adjusted_path);
-
-      if (multiarch_tuple != NULL)
-        g_ptr_array_add (argv, g_strdup_printf ("%s=%s:abi=%s",
-                                                option, adjusted_path,
-                                                multiarch_tuple));
-      else
-        g_ptr_array_add (argv, g_strdup_printf ("%s=%s",
-                                                option, adjusted_path));
+      module.name = g_build_filename (target, original_path, NULL);
+      g_debug ("%s -> %s", original_path, module.name);
     }
   else
     {
+      module.name = g_strdup (original_path);
       g_debug ("%s -> unmodified", original_path);
-
-      if (multiarch_tuple != NULL)
-        g_ptr_array_add (argv, g_strdup_printf ("%s=%s:abi=%s",
-                                                option, original_path,
-                                                multiarch_tuple));
-      else
-        g_ptr_array_add (argv, g_strdup_printf ("%s=%s",
-                                                option, original_path));
 
       if (exports != NULL && export_path != NULL && export_path[0] == '/')
         {
@@ -619,6 +598,10 @@ append_preload_internal (GPtrArray *argv,
             }
         }
     }
+
+  arg = pv_adverb_preload_module_to_adverb_cli (&module);
+  g_return_if_fail (arg != NULL);
+  g_ptr_array_add (argv, g_steal_pointer (&arg));
 }
 
 /*
