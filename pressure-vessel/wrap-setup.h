@@ -100,7 +100,6 @@ void pv_wrap_detect_virtualization (SrtSysroot **interpreter_root_out,
 void pv_share_temp_dir (FlatpakExports *exports,
                         SrtEnvOverlay *container_env);
 void pv_bind_and_propagate_from_environ (PvWrapContext *self,
-                                         SrtSysroot *sysroot,
                                          PvHomeMode home_mode,
                                          FlatpakExports *exports,
                                          SrtEnvOverlay *container_env);

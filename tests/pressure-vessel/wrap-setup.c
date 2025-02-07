@@ -243,7 +243,7 @@ setup (Fixture *f,
   glnx_opendirat (AT_FDCWD, f->var, TRUE, &f->var_fd, &local_error);
   g_assert_no_error (local_error);
 
-  f->context = pv_wrap_context_new (&local_error);
+  f->context = pv_wrap_context_new (f->mock_host, &local_error);
   g_assert_no_error (local_error);
   f->bwrap = flatpak_bwrap_new (flatpak_bwrap_empty_env);
   f->env = g_get_environ ();
@@ -2141,7 +2141,6 @@ test_use_home_shared (Fixture *f,
   /* Don't crash on warnings here */
   was_fatal = g_log_set_always_fatal (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL);
   pv_bind_and_propagate_from_environ (f->context,
-                                      f->mock_host,
                                       PV_HOME_MODE_SHARED,
                                       env_exports,
                                       container_env);

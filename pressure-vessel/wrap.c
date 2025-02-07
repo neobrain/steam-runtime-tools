@@ -130,7 +130,18 @@ main (int argc,
       goto out;
     }
 
-  self = pv_wrap_context_new (error);
+  /* FEX-Emu transparently rewrites most file I/O to check its "rootfs"
+   * first, and only use the real root if the corresponding file
+   * doesn't exist in the "rootfs". In many places we actively don't want
+   * this, because we're inspecting paths in order to pass them to bwrap,
+   * which will use them to set up bind-mounts, which are not subject to
+   * FEX-Emu's rewriting; so bypass it here. */
+  real_root = _srt_sysroot_new_real_root (error);
+
+  if (real_root == NULL)
+    return FALSE;
+
+  self = pv_wrap_context_new (real_root, error);
 
   if (self == NULL)
     goto out;
@@ -437,17 +448,6 @@ main (int argc,
       ret = 0;
       goto out;
     }
-
-  /* FEX-Emu transparently rewrites most file I/O to check its "rootfs"
-   * first, and only use the real root if the corresponding file
-   * doesn't exist in the "rootfs". In many places we actively don't want
-   * this, because we're inspecting paths in order to pass them to bwrap,
-   * which will use them to set up bind-mounts, which are not subject to
-   * FEX-Emu's rewriting; so bypass it here. */
-  real_root = _srt_sysroot_new_real_root (error);
-
-  if (real_root == NULL)
-    return FALSE;
 
   /* Invariant: we are in exactly one of these two modes */
   g_assert (((flatpak_subsandbox != NULL)
@@ -853,8 +853,7 @@ main (int argc,
     }
   while (0);
 
-  pv_bind_and_propagate_from_environ (self, real_root, home_mode,
-                                      exports, container_env);
+  pv_bind_and_propagate_from_environ (self, home_mode, exports, container_env);
 
   if (flatpak_subsandbox == NULL)
     {

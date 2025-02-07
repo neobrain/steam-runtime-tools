@@ -93,6 +93,7 @@ struct _PvWrapContext
   GObject parent_instance;
 
   GHashTable *paths_not_exported;
+  SrtSysroot *current_root;
   gchar **original_argv;
   gchar **original_environ;
 
@@ -118,7 +119,8 @@ struct _PvWrapContext
 GType pv_wrap_context_get_type (void);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (PvWrapContext, g_object_unref)
 
-PvWrapContext *pv_wrap_context_new (GError **error);
+PvWrapContext *pv_wrap_context_new (SrtSysroot *current_root,
+                                    GError **error);
 
 gboolean pv_wrap_options_parse_environment (PvWrapOptions *self,
                                             GError **error);

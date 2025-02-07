@@ -98,8 +98,11 @@ pv_wrap_options_clear (PvWrapOptions *self)
 
 enum {
   PROP_0,
+  PROP_CURRENT_ROOT,
   N_PROPERTIES
 };
+
+static GParamSpec *properties[N_PROPERTIES] = { NULL };
 
 struct _PvWrapContextClass
 {
@@ -121,6 +124,56 @@ pv_wrap_context_init (PvWrapContext *self)
 }
 
 static void
+pv_wrap_context_get_property (GObject *object,
+                              guint prop_id,
+                              GValue *value,
+                              GParamSpec *pspec)
+{
+  PvWrapContext *self = PV_WRAP_CONTEXT (object);
+
+  switch (prop_id)
+    {
+      case PROP_CURRENT_ROOT:
+        g_value_set_object (value, self->current_root);
+        break;
+
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+pv_wrap_context_set_property (GObject *object,
+                              guint prop_id,
+                              const GValue *value,
+                              GParamSpec *pspec)
+{
+  PvWrapContext *self = PV_WRAP_CONTEXT (object);
+
+  switch (prop_id)
+    {
+      case PROP_CURRENT_ROOT:
+        /* Construct-only */
+        g_return_if_fail (self->current_root == NULL);
+        self->current_root = g_value_dup_object (value);
+        break;
+
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+pv_wrap_context_dispose (GObject *object)
+{
+  PvWrapContext *self = PV_WRAP_CONTEXT (object);
+
+  g_clear_object (&self->current_root);
+
+  G_OBJECT_CLASS (pv_wrap_context_parent_class)->dispose (object);
+}
+
+static void
 pv_wrap_context_finalize (GObject *object)
 {
   PvWrapContext *self = PV_WRAP_CONTEXT (object);
@@ -139,13 +192,29 @@ pv_wrap_context_class_init (PvWrapContextClass *cls)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (cls);
 
+  object_class->get_property = pv_wrap_context_get_property;
+  object_class->set_property = pv_wrap_context_set_property;
+  object_class->dispose = pv_wrap_context_dispose;
   object_class->finalize = pv_wrap_context_finalize;
+
+  properties[PROP_CURRENT_ROOT] =
+    g_param_spec_object ("current-root", "Current root",
+                         ("Real or mock root directory for the current "
+                          "filesystem namespace"),
+                         SRT_TYPE_SYSROOT,
+                         (G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
+                          G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_properties (object_class, N_PROPERTIES, properties);
 }
 
 PvWrapContext *
-pv_wrap_context_new (GError **error)
+pv_wrap_context_new (SrtSysroot *current_root,
+                     GError **error)
 {
+  /* Can't actually fail right now */
   return g_object_new (PV_TYPE_WRAP_CONTEXT,
+                       "current-root", current_root,
                        NULL);
 }
 

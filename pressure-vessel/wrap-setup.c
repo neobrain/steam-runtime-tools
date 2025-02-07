@@ -1161,7 +1161,6 @@ static const EnvMount known_required_env[] =
 
 static void
 bind_and_propagate_from_environ (PvWrapContext *self,
-                                 SrtSysroot *sysroot,
                                  PvHomeMode home_mode,
                                  FlatpakExports *exports,
                                  SrtEnvOverlay *container_env,
@@ -1171,14 +1170,18 @@ bind_and_propagate_from_environ (PvWrapContext *self,
 {
   g_auto(GStrv) values = NULL;
   FlatpakFilesystemMode mode = FLATPAK_FILESYSTEM_MODE_READ_WRITE;
+  SrtSysroot *sysroot;
   const char *value;
   const char *before;
   const char *after;
   gboolean changed = FALSE;
   gsize i;
 
+  g_return_if_fail (PV_IS_WRAP_CONTEXT (self));
   g_return_if_fail (exports != NULL);
   g_return_if_fail (variable != NULL);
+  sysroot = self->current_root;
+  g_return_if_fail (sysroot != NULL);
 
   if (home_mode != PV_HOME_MODE_SHARED
       && (flags & ENV_MOUNT_FLAGS_IF_HOME_SHARED))
@@ -1266,7 +1269,6 @@ bind_and_propagate_from_environ (PvWrapContext *self,
  */
 void
 pv_bind_and_propagate_from_environ (PvWrapContext *self,
-                                    SrtSysroot *sysroot,
                                     PvHomeMode home_mode,
                                     FlatpakExports *exports,
                                     SrtEnvOverlay *container_env)
@@ -1285,7 +1287,7 @@ pv_bind_and_propagate_from_environ (PvWrapContext *self,
         {
           /* If we're using bubblewrap directly, we can and must make
            * sure that all required directories are bind-mounted */
-          bind_and_propagate_from_environ (self, sysroot, home_mode,
+          bind_and_propagate_from_environ (self, home_mode,
                                            exports, container_env,
                                            name,
                                            known_required_env[i].flags,
