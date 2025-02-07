@@ -845,7 +845,7 @@ main (int argc,
           pv_wrap_append_preload (adverb_preload_argv,
                                   module->which,
                                   module->preload,
-                                  environ,
+                                  _srt_const_strv (environ),
                                   append_preload_flags,
                                   runtime,
                                   exports);

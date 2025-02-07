@@ -551,7 +551,7 @@ append_preload_internal (GPtrArray *argv,
                          gsize abi_index,
                          const char *export_path,
                          const char *original_path,
-                         GStrv env,
+                         const char * const *env,
                          PvAppendPreloadFlags flags,
                          PvRuntime *runtime,
                          FlatpakExports *exports)
@@ -580,7 +580,7 @@ append_preload_internal (GPtrArray *argv,
 
       if (exports != NULL && export_path != NULL && export_path[0] == '/')
         {
-          const gchar *steam_path = g_environ_getenv (env, "STEAM_COMPAT_CLIENT_INSTALL_PATH");
+          const gchar *steam_path = _srt_environ_getenv (env, "STEAM_COMPAT_CLIENT_INSTALL_PATH");
 
           if (steam_path != NULL
               && flatpak_has_path_prefix (export_path, steam_path))
@@ -623,7 +623,7 @@ static void
 append_preload_unsupported_token (GPtrArray *argv,
                                   PvPreloadVariableIndex which,
                                   const char *preload,
-                                  GStrv env,
+                                  const char * const *env,
                                   PvAppendPreloadFlags flags,
                                   PvRuntime *runtime,
                                   FlatpakExports *exports)
@@ -698,7 +698,7 @@ static void
 append_preload_per_architecture (GPtrArray *argv,
                                  PvPreloadVariableIndex which,
                                  const char *preload,
-                                 GStrv env,
+                                 const char * const *env,
                                  PvAppendPreloadFlags flags,
                                  PvRuntime *runtime,
                                  FlatpakExports *exports)
@@ -797,7 +797,7 @@ static void
 append_preload_basename (GPtrArray *argv,
                          PvPreloadVariableIndex which,
                          const char *preload,
-                         GStrv env,
+                         const char * const *env,
                          PvAppendPreloadFlags flags,
                          PvRuntime *runtime,
                          FlatpakExports *exports)
@@ -883,7 +883,7 @@ void
 pv_wrap_append_preload (GPtrArray *argv,
                         PvPreloadVariableIndex which,
                         const char *preload,
-                        GStrv env,
+                        const char * const *env,
                         PvAppendPreloadFlags flags,
                         PvRuntime *runtime,
                         FlatpakExports *exports)

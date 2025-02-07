@@ -87,7 +87,7 @@ typedef enum
 void pv_wrap_append_preload (GPtrArray *argv,
                              PvPreloadVariableIndex which,
                              const char *preload,
-                             GStrv env,
+                             const char * const *env,
                              PvAppendPreloadFlags flags,
                              PvRuntime *runtime,
                              FlatpakExports *exports);
