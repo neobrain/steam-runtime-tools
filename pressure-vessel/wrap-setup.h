@@ -66,7 +66,6 @@ void pv_wrap_move_into_scope (const char *steam_app_id);
  * PvAppendPreloadFlags:
  * @PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX: The game will be run in
  *  a Flatpak subsandbox
- * @PV_APPEND_PRELOAD_FLAGS_REMOVE_GAME_OVERLAY: Disable the Steam Overlay
  * @PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS: Normalize $LIB and $PLATFORM,
  *  for unit testing
  * @PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE: Behave as though there is
@@ -78,7 +77,6 @@ void pv_wrap_move_into_scope (const char *steam_app_id);
 typedef enum
 {
   PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX = (1 << 0),
-  PV_APPEND_PRELOAD_FLAGS_REMOVE_GAME_OVERLAY = (1 << 1),
   PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS = (1 << 2),
   PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE = (1 << 3),
   PV_APPEND_PRELOAD_FLAGS_NONE = 0

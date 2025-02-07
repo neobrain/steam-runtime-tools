@@ -1819,8 +1819,7 @@ test_remap_ld_preload_flatpak (Fixture *f,
 
 /*
  * In addition to testing the rare case where there's no runtime,
- * this one also exercises PV_APPEND_PRELOAD_FLAGS_REMOVE_GAME_OVERLAY,
- * which is the implementation of --remove-game-overlay.
+ * this one also exercises --remove-game-overlay.
  */
 static void
 test_remap_ld_preload_no_runtime (Fixture *f,
@@ -1833,16 +1832,15 @@ test_remap_ld_preload_no_runtime (Fixture *f,
   gsize i, j;
   gboolean expect_i386 = FALSE;
 
+  f->context->options.remove_game_overlay = TRUE;
+
 #if defined(__i386__) || defined(__x86_64__)
   if (!(config->preload_flags & PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE))
     expect_i386 = TRUE;
 #endif
 
   g_assert_null (f->context->runtime);
-  populate_ld_preload (f, argv,
-                       (config->preload_flags
-                        | PV_APPEND_PRELOAD_FLAGS_REMOVE_GAME_OVERLAY),
-                       exports);
+  populate_ld_preload (f, argv, config->preload_flags, exports);
 
   g_assert_cmpuint (argv->len, ==, filtered->len - 1);
 
@@ -1855,7 +1853,7 @@ test_remap_ld_preload_no_runtime (Fixture *f,
       argument += strlen("--ld-preload=");
 
       /* /steam/lib/gameoverlayrenderer.so is missing because we used the
-       * REMOVE_GAME_OVERLAY flag */
+       * equivalent of --remove-game-overlay */
       if (g_str_has_suffix (expected, "/gameoverlayrenderer.so"))
         {
           /* We expect to skip only one element */

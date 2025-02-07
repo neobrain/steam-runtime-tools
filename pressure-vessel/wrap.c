@@ -820,9 +820,6 @@ main (int argc,
 
   adverb_preload_argv = g_ptr_array_new_with_free_func (g_free);
 
-  if (self->options.remove_game_overlay)
-    append_preload_flags |= PV_APPEND_PRELOAD_FLAGS_REMOVE_GAME_OVERLAY;
-
   /* We need the LD_PRELOADs from Steam visible at the paths that were
    * used for them, which might be their physical rather than logical
    * locations. Steam doesn't generally use LD_AUDIT, but the Steam app

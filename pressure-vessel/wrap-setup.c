@@ -896,7 +896,7 @@ pv_wrap_append_preload (PvWrapContext *context,
       return;
     }
 
-  if ((flags & PV_APPEND_PRELOAD_FLAGS_REMOVE_GAME_OVERLAY)
+  if (context->options.remove_game_overlay
       && g_str_has_suffix (preload, "/gameoverlayrenderer.so"))
     {
       g_info ("Disabling Steam Overlay: %s", preload);
