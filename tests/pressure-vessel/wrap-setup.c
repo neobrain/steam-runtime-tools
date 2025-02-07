@@ -83,7 +83,6 @@ typedef struct
   gchar *tmpdir;
   gchar *mock_runtime;
   gchar *var;
-  GStrv env;
   int tmpdir_fd;
   int mock_runtime_fd;
   int var_fd;
@@ -246,7 +245,13 @@ setup (Fixture *f,
   f->context = pv_wrap_context_new (f->mock_host, &local_error);
   g_assert_no_error (local_error);
   f->bwrap = flatpak_bwrap_new (flatpak_bwrap_empty_env);
-  f->env = g_get_environ ();
+
+  /* Some tests need to know where Steam is installed;
+   * pretend that we have it installed in /steam */
+  f->context->original_environ = g_environ_setenv (f->context->original_environ,
+                                                   "STEAM_COMPAT_CLIENT_INSTALL_PATH",
+                                                   "/steam",
+                                                   TRUE);
 }
 
 static void
@@ -285,9 +290,6 @@ setup_ld_preload (Fixture *f,
       fixture_populate_dir (f, f->mock_host->fd, touch_i386, G_N_ELEMENTS (touch_i386));
 #endif
     }
-
-  f->env = g_environ_setenv (f->env, "STEAM_COMPAT_CLIENT_INSTALL_PATH",
-                             "/steam", TRUE);
 }
 
 static void
@@ -311,7 +313,6 @@ teardown (Fixture *f,
   g_clear_pointer (&f->mock_runtime, g_free);
   g_clear_pointer (&f->tmpdir, g_free);
   g_clear_pointer (&f->var, g_free);
-  g_clear_pointer (&f->env, g_strfreev);
   g_clear_pointer (&f->bwrap, flatpak_bwrap_free);
 
   tests_check_fd_leaks_leave (f->old_fds);
@@ -1614,7 +1615,7 @@ populate_ld_preload (Fixture *f,
       pv_wrap_append_preload (argv,
                               PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
                               preloads[i].string,
-                              _srt_const_strv (f->env),
+                              _srt_const_strv (f->context->original_environ),
                               flags | PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS,
                               runtime,
                               exports);
