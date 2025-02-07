@@ -169,6 +169,7 @@ pv_wrap_context_dispose (GObject *object)
   PvWrapContext *self = PV_WRAP_CONTEXT (object);
 
   g_clear_object (&self->current_root);
+  g_clear_object (&self->runtime);
 
   G_OBJECT_CLASS (pv_wrap_context_parent_class)->dispose (object);
 }

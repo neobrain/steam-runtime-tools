@@ -13,6 +13,7 @@
 
 #include "pressure-vessel/adverb-preload.h"
 #include "pressure-vessel/flatpak-exports-private.h"
+#include "pressure-vessel/runtime.h"
 
 #include "pressure-vessel/wrap-interactive.h"
 
@@ -93,6 +94,7 @@ struct _PvWrapContext
   GObject parent_instance;
 
   GHashTable *paths_not_exported;
+  PvRuntime *runtime;
   SrtSysroot *current_root;
   gchar **original_argv;
   gchar **original_environ;

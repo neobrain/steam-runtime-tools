@@ -89,7 +89,6 @@ void pv_wrap_append_preload (PvWrapContext *context,
                              PvPreloadVariableIndex which,
                              const char *preload,
                              PvAppendPreloadFlags flags,
-                             PvRuntime *runtime,
                              FlatpakExports *exports);
 
 gboolean pv_wrap_maybe_load_nvidia_modules (GError **error);

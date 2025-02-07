@@ -97,7 +97,6 @@ main (int argc,
   g_autofree gchar *private_home = NULL;
   const gchar *home;
   g_autofree gchar *tools_dir = NULL;
-  g_autoptr(PvRuntime) runtime = NULL;
   glnx_autofd int original_stdout = -1;
   glnx_autofd int original_stderr = -1;
   const char *graphics_provider_mount_point = NULL;
@@ -678,20 +677,20 @@ main (int argc,
           goto out;
         }
 
-      runtime = pv_runtime_new (runtime_path,
-                                self->options.variable_dir,
-                                bwrap_executable,
-                                graphics_provider,
-                                interpreter_host_provider,
-                                _srt_const_strv (self->original_environ),
-                                flags,
-                                workarounds,
-                                error);
+      self->runtime = pv_runtime_new (runtime_path,
+                                      self->options.variable_dir,
+                                      bwrap_executable,
+                                      graphics_provider,
+                                      interpreter_host_provider,
+                                      _srt_const_strv (self->original_environ),
+                                      flags,
+                                      workarounds,
+                                      error);
 
-      if (runtime == NULL)
+      if (self->runtime == NULL)
         goto out;
 
-      if (!pv_runtime_bind (runtime,
+      if (!pv_runtime_bind (self->runtime,
                             exports,
                             bwrap_filesystem_arguments,
                             container_env,
@@ -700,8 +699,8 @@ main (int argc,
 
       if (flatpak_subsandbox != NULL)
         {
-          const char *app = pv_runtime_get_modified_app (runtime);
-          const char *usr = pv_runtime_get_modified_usr (runtime);
+          const char *app = pv_runtime_get_modified_app (self->runtime);
+          const char *usr = pv_runtime_get_modified_usr (self->runtime);
 
           flatpak_bwrap_add_args (flatpak_subsandbox,
                                   "--app-path", app == NULL ? "" : app,
@@ -847,7 +846,6 @@ main (int argc,
                                   module->which,
                                   module->preload,
                                   append_preload_flags,
-                                  runtime,
                                   exports);
         }
     }
@@ -867,14 +865,14 @@ main (int argc,
        * udev directly. We only do that when the host's version of libudev.so.1
        * is in use, because there is no guarantees that the container's libudev
        * is compatible with the host's udevd. */
-      if (runtime != NULL)
+      if (self->runtime != NULL)
         {
           for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES; i++)
             {
               GStatBuf ignored;
               g_autofree gchar *override = NULL;
 
-              override = g_build_filename (pv_runtime_get_overrides (runtime),
+              override = g_build_filename (pv_runtime_get_overrides (self->runtime),
                                            "lib", pv_multiarch_tuples[i],
                                            "libudev.so.1", NULL);
 
@@ -960,7 +958,7 @@ main (int argc,
 
   /* Put Steam Runtime environment variables back, if /usr is mounted
    * from the host. */
-  if (runtime == NULL)
+  if (self->runtime == NULL)
     {
       g_debug ("Making Steam Runtime available...");
 
@@ -1034,7 +1032,7 @@ main (int argc,
 
       sharing_bwrap = pv_wrap_share_sockets (container_env,
                                              _srt_const_strv (self->original_environ),
-                                             (runtime != NULL),
+                                             (self->runtime != NULL),
                                              self->is_flatpak_env);
       g_warn_if_fail (g_strv_length (sharing_bwrap->envp) == 0);
 
@@ -1048,9 +1046,9 @@ main (int argc,
       pv_wrap_set_icons_env_vars (container_env, _srt_const_strv (self->original_environ));
     }
 
-  if (runtime != NULL)
+  if (self->runtime != NULL)
     {
-      if (!pv_runtime_use_shared_sockets (runtime, bwrap, container_env,
+      if (!pv_runtime_use_shared_sockets (self->runtime, bwrap, container_env,
                                           error))
         goto out;
     }
@@ -1142,11 +1140,11 @@ main (int argc,
 
       adverb_argv = flatpak_bwrap_new (flatpak_bwrap_empty_env);
 
-      if (runtime != NULL)
+      if (self->runtime != NULL)
         {
           /* This includes the arguments necessary to regenerate the
            * ld.so cache */
-          if (!pv_runtime_get_adverb (runtime, adverb_argv, error))
+          if (!pv_runtime_get_adverb (self->runtime, adverb_argv, error))
             goto out;
         }
       else
@@ -1337,11 +1335,11 @@ main (int argc,
 
   if (_srt_util_is_debugging ())
     {
-      if (runtime != NULL && (pv_log_flags & PV_WRAP_LOG_FLAGS_OVERRIDES))
-        pv_runtime_log_overrides (runtime);
+      if (self->runtime != NULL && (pv_log_flags & PV_WRAP_LOG_FLAGS_OVERRIDES))
+        pv_runtime_log_overrides (self->runtime);
 
-      if (runtime != NULL && (pv_log_flags & PV_WRAP_LOG_FLAGS_CONTAINER))
-        pv_runtime_log_container (runtime);
+      if (self->runtime != NULL && (pv_log_flags & PV_WRAP_LOG_FLAGS_CONTAINER))
+        pv_runtime_log_container (self->runtime);
 
       g_debug ("Final command to execute:");
 
@@ -1365,8 +1363,8 @@ main (int argc,
     }
 
   /* Clean up temporary directory before running our long-running process */
-  if (runtime != NULL)
-    pv_runtime_cleanup (runtime);
+  if (self->runtime != NULL)
+    pv_runtime_cleanup (self->runtime);
 
   flatpak_bwrap_finish (final_argv);
 

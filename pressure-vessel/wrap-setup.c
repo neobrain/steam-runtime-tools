@@ -553,7 +553,6 @@ append_preload_internal (PvWrapContext *context,
                          const char *export_path,
                          const char *original_path,
                          PvAppendPreloadFlags flags,
-                         PvRuntime *runtime,
                          FlatpakExports *exports)
 {
   g_auto(PvAdverbPreloadModule) module = PV_ADVERB_PRELOAD_MODULE_INIT;
@@ -563,7 +562,7 @@ append_preload_internal (PvWrapContext *context,
   module.index_in_preload_variables = which;
   module.abi_index = abi_index;
 
-  if (runtime != NULL
+  if (context->runtime != NULL
       && (g_str_has_prefix (original_path, "/usr/")
           || g_str_has_prefix (original_path, "/lib")
           || (flatpak_subsandbox && g_str_has_prefix (original_path, "/app/"))))
@@ -625,7 +624,6 @@ append_preload_unsupported_token (PvWrapContext *context,
                                   PvPreloadVariableIndex which,
                                   const char *preload,
                                   PvAppendPreloadFlags flags,
-                                  PvRuntime *runtime,
                                   FlatpakExports *exports)
 {
   g_autofree gchar *export_path = NULL;
@@ -680,7 +678,6 @@ append_preload_unsupported_token (PvWrapContext *context,
                            export_path,
                            preload,
                            flags,
-                           runtime,
                            exports);
 }
 
@@ -700,7 +697,6 @@ append_preload_per_architecture (PvWrapContext *context,
                                  PvPreloadVariableIndex which,
                                  const char *preload,
                                  PvAppendPreloadFlags flags,
-                                 PvRuntime *runtime,
                                  FlatpakExports *exports)
 {
   g_autoptr(SrtSystemInfo) system_info = srt_system_info_new (NULL);
@@ -782,7 +778,6 @@ append_preload_per_architecture (PvWrapContext *context,
                                    path,
                                    path,
                                    flags,
-                                   runtime,
                                    exports);
         }
       else
@@ -799,13 +794,12 @@ append_preload_basename (PvWrapContext *context,
                          PvPreloadVariableIndex which,
                          const char *preload,
                          PvAppendPreloadFlags flags,
-                         PvRuntime *runtime,
                          FlatpakExports *exports)
 {
   gboolean runtime_has_library = FALSE;
 
-  if (runtime != NULL)
-    runtime_has_library = pv_runtime_has_library (runtime, preload);
+  if (context->runtime != NULL)
+    runtime_has_library = pv_runtime_has_library (context->runtime, preload);
 
   if (flags & PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS)
     {
@@ -839,7 +833,6 @@ append_preload_basename (PvWrapContext *context,
                                NULL,
                                preload,
                                flags,
-                               runtime,
                                NULL);
     }
   else
@@ -856,7 +849,6 @@ append_preload_basename (PvWrapContext *context,
                                        which,
                                        preload,
                                        flags,
-                                       runtime,
                                        exports);
     }
 }
@@ -871,7 +863,6 @@ append_preload_basename (PvWrapContext *context,
  *  or basename of a preloadable module to be found in the standard
  *  library search path
  * @flags: Flags to adjust behaviour
- * @runtime: (nullable): Runtime to be used in container
  * @exports: (nullable): Used to configure extra paths that need to be
  *  exported into the container
  *
@@ -884,7 +875,6 @@ pv_wrap_append_preload (PvWrapContext *context,
                         PvPreloadVariableIndex which,
                         const char *preload,
                         PvAppendPreloadFlags flags,
-                        PvRuntime *runtime,
                         FlatpakExports *exports)
 {
   SrtLoadableKind kind;
@@ -894,7 +884,6 @@ pv_wrap_append_preload (PvWrapContext *context,
   g_return_if_fail (PV_IS_WRAP_CONTEXT (context));
   g_return_if_fail (argv != NULL);
   g_return_if_fail (preload != NULL);
-  g_return_if_fail (runtime == NULL || PV_IS_RUNTIME (runtime));
   g_return_if_fail (which >= 0);
   g_return_if_fail (which < G_N_ELEMENTS (pv_preload_variables));
 
@@ -926,7 +915,6 @@ pv_wrap_append_preload (PvWrapContext *context,
                                  which,
                                  preload,
                                  flags,
-                                 runtime,
                                  exports);
         break;
 
@@ -940,7 +928,6 @@ pv_wrap_append_preload (PvWrapContext *context,
                                               which,
                                               preload,
                                               flags,
-                                              runtime,
                                               exports);
           }
         else if (loadable_flags & SRT_LOADABLE_FLAGS_ABI_DEPENDENT)
@@ -952,7 +939,6 @@ pv_wrap_append_preload (PvWrapContext *context,
                                              which,
                                              preload,
                                              flags,
-                                             runtime,
                                              exports);
           }
         else
@@ -967,7 +953,6 @@ pv_wrap_append_preload (PvWrapContext *context,
                                      preload,
                                      preload,
                                      flags,
-                                     runtime,
                                      exports);
           }
         break;
