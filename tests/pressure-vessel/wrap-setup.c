@@ -1612,10 +1612,10 @@ populate_ld_preload (Fixture *f,
                                  preloads[i].warning);
         }
 
-      pv_wrap_append_preload (argv,
+      pv_wrap_append_preload (f->context,
+                              argv,
                               PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
                               preloads[i].string,
-                              _srt_const_strv (f->context->original_environ),
                               flags | PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS,
                               runtime,
                               exports);

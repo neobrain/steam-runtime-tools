@@ -84,10 +84,10 @@ typedef enum
   PV_APPEND_PRELOAD_FLAGS_NONE = 0
 } PvAppendPreloadFlags;
 
-void pv_wrap_append_preload (GPtrArray *argv,
+void pv_wrap_append_preload (PvWrapContext *context,
+                             GPtrArray *argv,
                              PvPreloadVariableIndex which,
                              const char *preload,
-                             const char * const *env,
                              PvAppendPreloadFlags flags,
                              PvRuntime *runtime,
                              FlatpakExports *exports);

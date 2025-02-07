@@ -842,10 +842,10 @@ main (int argc,
 
           g_assert (module->which >= 0);
           g_assert (module->which < G_N_ELEMENTS (pv_preload_variables));
-          pv_wrap_append_preload (adverb_preload_argv,
+          pv_wrap_append_preload (self,
+                                  adverb_preload_argv,
                                   module->which,
                                   module->preload,
-                                  _srt_const_strv (environ),
                                   append_preload_flags,
                                   runtime,
                                   exports);

@@ -546,12 +546,12 @@ pv_wrap_move_into_scope (const char *steam_app_id)
 }
 
 static void
-append_preload_internal (GPtrArray *argv,
+append_preload_internal (PvWrapContext *context,
+                         GPtrArray *argv,
                          PvPreloadVariableIndex which,
                          gsize abi_index,
                          const char *export_path,
                          const char *original_path,
-                         const char * const *env,
                          PvAppendPreloadFlags flags,
                          PvRuntime *runtime,
                          FlatpakExports *exports)
@@ -580,7 +580,7 @@ append_preload_internal (GPtrArray *argv,
 
       if (exports != NULL && export_path != NULL && export_path[0] == '/')
         {
-          const gchar *steam_path = _srt_environ_getenv (env, "STEAM_COMPAT_CLIENT_INSTALL_PATH");
+          const gchar *steam_path = g_environ_getenv (context->original_environ, "STEAM_COMPAT_CLIENT_INSTALL_PATH");
 
           if (steam_path != NULL
               && flatpak_has_path_prefix (export_path, steam_path))
@@ -620,10 +620,10 @@ append_preload_internal (GPtrArray *argv,
  * Arguments are the same as for pv_wrap_append_preload().
  */
 static void
-append_preload_unsupported_token (GPtrArray *argv,
+append_preload_unsupported_token (PvWrapContext *context,
+                                  GPtrArray *argv,
                                   PvPreloadVariableIndex which,
                                   const char *preload,
-                                  const char * const *env,
                                   PvAppendPreloadFlags flags,
                                   PvRuntime *runtime,
                                   FlatpakExports *exports)
@@ -673,12 +673,12 @@ append_preload_unsupported_token (GPtrArray *argv,
                preload);
     }
 
-  append_preload_internal (argv,
+  append_preload_internal (context,
+                           argv,
                            which,
                            PV_UNSPECIFIED_ABI,
                            export_path,
                            preload,
-                           env,
                            flags,
                            runtime,
                            exports);
@@ -695,10 +695,10 @@ append_preload_unsupported_token (GPtrArray *argv,
  * Arguments are the same as for pv_wrap_append_preload().
  */
 static void
-append_preload_per_architecture (GPtrArray *argv,
+append_preload_per_architecture (PvWrapContext *context,
+                                 GPtrArray *argv,
                                  PvPreloadVariableIndex which,
                                  const char *preload,
-                                 const char * const *env,
                                  PvAppendPreloadFlags flags,
                                  PvRuntime *runtime,
                                  FlatpakExports *exports)
@@ -775,12 +775,12 @@ append_preload_per_architecture (GPtrArray *argv,
         {
           g_debug ("Found %s version of %s at %s",
                    multiarch_tuple, preload, path);
-          append_preload_internal (argv,
+          append_preload_internal (context,
+                                   argv,
                                    which,
                                    i,
                                    path,
                                    path,
-                                   env,
                                    flags,
                                    runtime,
                                    exports);
@@ -794,10 +794,10 @@ append_preload_per_architecture (GPtrArray *argv,
 }
 
 static void
-append_preload_basename (GPtrArray *argv,
+append_preload_basename (PvWrapContext *context,
+                         GPtrArray *argv,
                          PvPreloadVariableIndex which,
                          const char *preload,
-                         const char * const *env,
                          PvAppendPreloadFlags flags,
                          PvRuntime *runtime,
                          FlatpakExports *exports)
@@ -832,12 +832,12 @@ append_preload_basename (GPtrArray *argv,
                "passing %s through as-is",
                preload,
                pv_preload_variables[which].variable);
-      append_preload_internal (argv,
+      append_preload_internal (context,
+                               argv,
                                which,
                                PV_UNSPECIFIED_ABI,
                                NULL,
                                preload,
-                               env,
                                flags,
                                runtime,
                                NULL);
@@ -851,10 +851,10 @@ append_preload_basename (GPtrArray *argv,
       g_debug ("Did not find \"%s\" in runtime or graphics stack provider, "
                "splitting architectures",
                preload);
-      append_preload_per_architecture (argv,
+      append_preload_per_architecture (context,
+                                       argv,
                                        which,
                                        preload,
-                                       env,
                                        flags,
                                        runtime,
                                        exports);
@@ -863,14 +863,13 @@ append_preload_basename (GPtrArray *argv,
 
 /**
  * pv_wrap_append_preload:
+ * @context: Context we are running in
  * @argv: (element-type filename): Array of command-line options to populate
  * @which: Either `LD_AUDIT` or `LD_PRELOAD`
  * @preload: (type filename): Path of preloadable module in current
  *  namespace, possibly including special ld.so tokens such as `$LIB`,
  *  or basename of a preloadable module to be found in the standard
  *  library search path
- * @env: (array zero-terminated=1) (element-type filename): Environment
- *  variables to be used instead of `environ`
  * @flags: Flags to adjust behaviour
  * @runtime: (nullable): Runtime to be used in container
  * @exports: (nullable): Used to configure extra paths that need to be
@@ -880,10 +879,10 @@ append_preload_basename (GPtrArray *argv,
  * to @argv.
  */
 void
-pv_wrap_append_preload (GPtrArray *argv,
+pv_wrap_append_preload (PvWrapContext *context,
+                        GPtrArray *argv,
                         PvPreloadVariableIndex which,
                         const char *preload,
-                        const char * const *env,
                         PvAppendPreloadFlags flags,
                         PvRuntime *runtime,
                         FlatpakExports *exports)
@@ -892,6 +891,7 @@ pv_wrap_append_preload (GPtrArray *argv,
   SrtLoadableFlags loadable_flags;
   const char *variable;
 
+  g_return_if_fail (PV_IS_WRAP_CONTEXT (context));
   g_return_if_fail (argv != NULL);
   g_return_if_fail (preload != NULL);
   g_return_if_fail (runtime == NULL || PV_IS_RUNTIME (runtime));
@@ -921,10 +921,10 @@ pv_wrap_append_preload (GPtrArray *argv,
       case SRT_LOADABLE_KIND_BASENAME:
         /* Basenames can't have dynamic string tokens. */
         g_warn_if_fail ((loadable_flags & SRT_LOADABLE_FLAGS_DYNAMIC_TOKENS) == 0);
-        append_preload_basename (argv,
+        append_preload_basename (context,
+                                 argv,
                                  which,
                                  preload,
-                                 env,
                                  flags,
                                  runtime,
                                  exports);
@@ -935,10 +935,10 @@ pv_wrap_append_preload (GPtrArray *argv,
         if (loadable_flags & (SRT_LOADABLE_FLAGS_ORIGIN
                               | SRT_LOADABLE_FLAGS_UNKNOWN_TOKENS))
           {
-            append_preload_unsupported_token (argv,
+            append_preload_unsupported_token (context,
+                                              argv,
                                               which,
                                               preload,
-                                              env,
                                               flags,
                                               runtime,
                                               exports);
@@ -947,10 +947,10 @@ pv_wrap_append_preload (GPtrArray *argv,
           {
             g_debug ("Found $LIB or $PLATFORM in \"%s\", splitting architectures",
                      preload);
-            append_preload_per_architecture (argv,
+            append_preload_per_architecture (context,
+                                             argv,
                                              which,
                                              preload,
-                                             env,
                                              flags,
                                              runtime,
                                              exports);
@@ -960,12 +960,12 @@ pv_wrap_append_preload (GPtrArray *argv,
             /* All dynamic tokens should be handled above, so we can
              * assume that preload is a concrete filename */
             g_warn_if_fail ((loadable_flags & SRT_LOADABLE_FLAGS_DYNAMIC_TOKENS) == 0);
-            append_preload_internal (argv,
+            append_preload_internal (context,
+                                     argv,
                                      which,
                                      PV_UNSPECIFIED_ABI,
                                      preload,
                                      preload,
-                                     env,
                                      flags,
                                      runtime,
                                      exports);
