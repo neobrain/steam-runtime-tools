@@ -98,6 +98,7 @@ pv_wrap_options_clear (PvWrapOptions *self)
 
 enum {
   PROP_0,
+  PROP_CURRENT_HOME,
   PROP_CURRENT_ROOT,
   N_PROPERTIES
 };
@@ -133,6 +134,10 @@ pv_wrap_context_get_property (GObject *object,
 
   switch (prop_id)
     {
+      case PROP_CURRENT_HOME:
+        g_value_set_string (value, self->current_home);
+        break;
+
       case PROP_CURRENT_ROOT:
         g_value_set_object (value, self->current_root);
         break;
@@ -152,6 +157,12 @@ pv_wrap_context_set_property (GObject *object,
 
   switch (prop_id)
     {
+      case PROP_CURRENT_HOME:
+        /* Construct-only */
+        g_return_if_fail (self->current_home == NULL);
+        self->current_home = g_value_dup_string (value);
+        break;
+
       case PROP_CURRENT_ROOT:
         /* Construct-only */
         g_return_if_fail (self->current_root == NULL);
@@ -161,6 +172,17 @@ pv_wrap_context_set_property (GObject *object,
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
+}
+
+static void
+pv_wrap_context_constructed (GObject *object)
+{
+  PvWrapContext *self = PV_WRAP_CONTEXT (object);
+
+  G_OBJECT_CLASS (pv_wrap_context_parent_class)->constructed (object);
+
+  if (self->current_home == NULL)
+    self->current_home = g_strdup (g_get_home_dir ());
 }
 
 static void
@@ -185,6 +207,7 @@ pv_wrap_context_finalize (GObject *object)
   g_clear_pointer (&self->paths_not_exported, g_hash_table_unref);
   g_strfreev (self->original_argv);
   g_strfreev (self->original_environ);
+  g_free (self->current_home);
 
   G_OBJECT_CLASS (pv_wrap_context_parent_class)->finalize (object);
 }
@@ -196,8 +219,17 @@ pv_wrap_context_class_init (PvWrapContextClass *cls)
 
   object_class->get_property = pv_wrap_context_get_property;
   object_class->set_property = pv_wrap_context_set_property;
+  object_class->constructed = pv_wrap_context_constructed;
   object_class->dispose = pv_wrap_context_dispose;
   object_class->finalize = pv_wrap_context_finalize;
+
+  properties[PROP_CURRENT_HOME] =
+    g_param_spec_string ("current-home", "Current $HOME",
+                         ("Path to real or mock home directory "
+                          "within current-root"),
+                         NULL,
+                         (G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
+                          G_PARAM_STATIC_STRINGS));
 
   properties[PROP_CURRENT_ROOT] =
     g_param_spec_object ("current-root", "Current root",
@@ -212,10 +244,12 @@ pv_wrap_context_class_init (PvWrapContextClass *cls)
 
 PvWrapContext *
 pv_wrap_context_new (SrtSysroot *current_root,
+                     const char *current_home,
                      GError **error)
 {
   /* Can't actually fail right now */
   return g_object_new (PV_TYPE_WRAP_CONTEXT,
+                       "current-home", current_home,
                        "current-root", current_root,
                        NULL);
 }

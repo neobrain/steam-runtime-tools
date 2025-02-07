@@ -99,6 +99,7 @@ struct _PvWrapContext
   SrtSysroot *current_root;
   gchar **original_argv;
   gchar **original_environ;
+  gchar *current_home;
 
   PvWrapOptions options;
 
@@ -123,6 +124,7 @@ GType pv_wrap_context_get_type (void);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (PvWrapContext, g_object_unref)
 
 PvWrapContext *pv_wrap_context_new (SrtSysroot *current_root,
+                                    const char *current_home,
                                     GError **error);
 
 gboolean pv_wrap_options_parse_environment (PvWrapOptions *self,

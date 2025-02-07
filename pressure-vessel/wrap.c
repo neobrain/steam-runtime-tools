@@ -94,7 +94,6 @@ main (int argc,
   g_autofree gchar *cwd_l = NULL;
   g_autofree gchar *cwd_p_host = NULL;
   g_autofree gchar *private_home = NULL;
-  const gchar *home;
   g_autofree gchar *tools_dir = NULL;
   glnx_autofd int original_stdout = -1;
   glnx_autofd int original_stderr = -1;
@@ -139,7 +138,7 @@ main (int argc,
   if (real_root == NULL)
     return FALSE;
 
-  self = pv_wrap_context_new (real_root, error);
+  self = pv_wrap_context_new (real_root, g_get_home_dir (), error);
 
   if (self == NULL)
     goto out;
@@ -241,8 +240,6 @@ main (int argc,
   else
     steam_app_id = _srt_get_steam_app_id ();
 
-  home = g_get_home_dir ();
-
   if (self->options.share_home == TRISTATE_YES)
     {
       home_mode = PV_HOME_MODE_SHARED;
@@ -259,7 +256,7 @@ main (int argc,
   else if (self->options.freedesktop_app_id)
     {
       home_mode = PV_HOME_MODE_PRIVATE;
-      private_home = g_build_filename (home, ".var", "app",
+      private_home = g_build_filename (self->current_home, ".var", "app",
                                        self->options.freedesktop_app_id,
                                        NULL);
     }
@@ -268,7 +265,7 @@ main (int argc,
       home_mode = PV_HOME_MODE_PRIVATE;
       self->options.freedesktop_app_id = g_strdup_printf ("com.steampowered.App%s",
                                                           steam_app_id);
-      private_home = g_build_filename (home, ".var", "app",
+      private_home = g_build_filename (self->current_home, ".var", "app",
                                        self->options.freedesktop_app_id,
                                        NULL);
     }
@@ -768,7 +765,7 @@ main (int argc,
 
       bwrap_home_arguments = flatpak_bwrap_new (flatpak_bwrap_empty_env);
 
-      if (!pv_wrap_use_home (home_mode, home, private_home,
+      if (!pv_wrap_use_home (home_mode, self->current_home, private_home,
                              self->exports, bwrap_home_arguments, container_env,
                              error))
         goto out;
@@ -918,7 +915,7 @@ main (int argc,
 
       cwd_p_host = pv_current_namespace_path_to_host_path (cwd_p);
 
-      if (_srt_is_same_file (home, cwd_p))
+      if (_srt_is_same_file (self->current_home, cwd_p))
         {
           g_info ("Not making physical working directory \"%s\" available to "
                   "container because it is the home directory",
@@ -1008,7 +1005,8 @@ main (int argc,
 
       flatpak_exports_append_bwrap_args (self->exports, exports_bwrap);
       g_warn_if_fail (g_strv_length (exports_bwrap->envp) == 0);
-      if (!pv_bwrap_append_adjusted_exports (bwrap, exports_bwrap, home,
+      if (!pv_bwrap_append_adjusted_exports (bwrap, exports_bwrap,
+                                             self->current_home,
                                              interpreter_root, workarounds,
                                              error))
         goto out;
@@ -1031,7 +1029,8 @@ main (int argc,
                                              self->is_flatpak_env);
       g_warn_if_fail (g_strv_length (sharing_bwrap->envp) == 0);
 
-      if (!pv_bwrap_append_adjusted_exports (bwrap, sharing_bwrap, home,
+      if (!pv_bwrap_append_adjusted_exports (bwrap, sharing_bwrap,
+                                             self->current_home,
                                              interpreter_root, workarounds,
                                              error))
         goto out;

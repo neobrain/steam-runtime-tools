@@ -242,7 +242,7 @@ setup (Fixture *f,
   glnx_opendirat (AT_FDCWD, f->var, TRUE, &f->var_fd, &local_error);
   g_assert_no_error (local_error);
 
-  f->context = pv_wrap_context_new (f->mock_host, &local_error);
+  f->context = pv_wrap_context_new (f->mock_host, "/home/me", &local_error);
   g_assert_no_error (local_error);
   f->bwrap = flatpak_bwrap_new (flatpak_bwrap_empty_env);
 
