@@ -117,6 +117,7 @@ pv_wrap_context_init (PvWrapContext *self)
 {
   self->is_flatpak_env = g_file_test ("/.flatpak-info", G_FILE_TEST_IS_REGULAR);
   self->original_environ = g_get_environ ();
+  self->current_home_fd = -1;
 
   pv_wrap_options_init (&self->options);
 
@@ -178,11 +179,27 @@ static void
 pv_wrap_context_constructed (GObject *object)
 {
   PvWrapContext *self = PV_WRAP_CONTEXT (object);
+  g_autoptr(GError) local_error = NULL;
 
   G_OBJECT_CLASS (pv_wrap_context_parent_class)->constructed (object);
 
   if (self->current_home == NULL)
     self->current_home = g_strdup (g_get_home_dir ());
+
+  self->current_home_fd = _srt_sysroot_open (self->current_root,
+                                             self->current_home,
+                                             (SRT_RESOLVE_FLAGS_READABLE
+                                              | SRT_RESOLVE_FLAGS_MUST_BE_DIRECTORY),
+                                             NULL,
+                                             &local_error);
+
+
+  if (self->current_home_fd < 0)
+    {
+      g_warning ("Cannot open current home directory \"%s\": %s",
+                 self->current_home, local_error->message);
+      g_clear_error (&local_error);
+    }
 }
 
 static void
@@ -208,6 +225,7 @@ pv_wrap_context_finalize (GObject *object)
   g_strfreev (self->original_argv);
   g_strfreev (self->original_environ);
   g_free (self->current_home);
+  glnx_close_fd (&self->current_home_fd);
 
   G_OBJECT_CLASS (pv_wrap_context_parent_class)->finalize (object);
 }

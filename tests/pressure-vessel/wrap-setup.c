@@ -80,6 +80,7 @@ typedef struct
   PvWrapContext *context;
   SrtSysroot *mock_host;
   FlatpakBwrap *bwrap;
+  gchar *home;
   gchar *tmpdir;
   gchar *mock_runtime;
   gchar *var;
@@ -242,6 +243,9 @@ setup (Fixture *f,
   glnx_opendirat (AT_FDCWD, f->var, TRUE, &f->var_fd, &local_error);
   g_assert_no_error (local_error);
 
+  f->home = g_build_filename (f->mock_host->path, "home", "me", NULL);
+  glnx_shutil_mkdir_p_at (AT_FDCWD, f->home, 0755, NULL, &local_error);
+  g_assert_no_error (local_error);
   f->context = pv_wrap_context_new (f->mock_host, "/home/me", &local_error);
   g_assert_no_error (local_error);
   f->bwrap = flatpak_bwrap_new (flatpak_bwrap_empty_env);
@@ -311,6 +315,7 @@ teardown (Fixture *f,
   g_clear_object (&f->context);
   g_clear_object (&f->mock_host);
   g_clear_pointer (&f->mock_runtime, g_free);
+  g_clear_pointer (&f->home, g_free);
   g_clear_pointer (&f->tmpdir, g_free);
   g_clear_pointer (&f->var, g_free);
   g_clear_pointer (&f->bwrap, flatpak_bwrap_free);

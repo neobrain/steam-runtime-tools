@@ -915,7 +915,8 @@ main (int argc,
 
       cwd_p_host = pv_current_namespace_path_to_host_path (cwd_p);
 
-      if (_srt_is_same_file (self->current_home, cwd_p))
+      if (self->current_home_fd >= 0
+          && _srt_fstatat_is_same_file (self->current_home_fd, "", AT_FDCWD, cwd_p))
         {
           g_info ("Not making physical working directory \"%s\" available to "
                   "container because it is the home directory",

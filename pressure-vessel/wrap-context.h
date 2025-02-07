@@ -105,6 +105,7 @@ struct _PvWrapContext
 
   gboolean is_flatpak_env;
   int original_argc;
+  int current_home_fd;
 };
 
 #define PV_TYPE_WRAP_CONTEXT \
