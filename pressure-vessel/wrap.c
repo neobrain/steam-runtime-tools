@@ -86,7 +86,6 @@ main (int argc,
   g_autoptr(FlatpakBwrap) bwrap_home_arguments = NULL;
   g_autoptr(FlatpakBwrap) argv_in_container = NULL;
   g_autoptr(FlatpakBwrap) final_argv = NULL;
-  g_autoptr(FlatpakExports) exports = NULL;
   g_autoptr(SrtSysroot) real_root = NULL;
   g_autoptr(SrtSysroot) interpreter_root = NULL;
   g_autofree gchar *bwrap_executable = NULL;
@@ -460,7 +459,7 @@ main (int argc,
       g_assert (bwrap_executable != NULL);
       flatpak_bwrap_add_arg (bwrap, bwrap_executable);
       bwrap_filesystem_arguments = flatpak_bwrap_new (flatpak_bwrap_empty_env);
-      exports = flatpak_exports_new ();
+      self->exports = flatpak_exports_new ();
     }
   else
     {
@@ -468,7 +467,7 @@ main (int argc,
     }
 
   /* Invariant: we have bwrap or exports iff we also have the other */
-  g_assert ((bwrap != NULL) == (exports != NULL));
+  g_assert ((bwrap != NULL) == (self->exports != NULL));
   g_assert ((bwrap != NULL) == (bwrap_filesystem_arguments != NULL));
   g_assert ((bwrap != NULL) == (bwrap_executable != NULL));
 
@@ -478,7 +477,7 @@ main (int argc,
     {
       FlatpakFilesystemMode sysfs_mode = FLATPAK_FILESYSTEM_MODE_READ_ONLY;
 
-      g_assert (exports != NULL);
+      g_assert (self->exports != NULL);
       g_assert (bwrap_filesystem_arguments != NULL);
 
       if ((_srt_util_get_log_flags () & SRT_LOG_FLAGS_LEVEL)
@@ -691,7 +690,7 @@ main (int argc,
         goto out;
 
       if (!pv_runtime_bind (self->runtime,
-                            exports,
+                            self->exports,
                             bwrap_filesystem_arguments,
                             container_env,
                             error))
@@ -725,10 +724,10 @@ main (int argc,
       g_assert (!self->is_flatpak_env);
       g_assert (bwrap != NULL);
       g_assert (bwrap_filesystem_arguments != NULL);
-      g_assert (exports != NULL);
+      g_assert (self->exports != NULL);
 
       if (!pv_wrap_use_host_os (_srt_sysroot_get_fd (real_root),
-                                exports, bwrap_filesystem_arguments,
+                                self->exports, bwrap_filesystem_arguments,
                                 cmp, error))
         goto out;
     }
@@ -738,9 +737,9 @@ main (int argc,
    * so that it can be overridden by --filesystem=/home or
    * pv_wrap_use_home(), and so that it is sorted correctly with
    * respect to all the other home-directory-related exports. */
-  if (exports != NULL
+  if (self->exports != NULL
       && g_file_test ("/home", G_FILE_TEST_EXISTS))
-    pv_exports_mask_or_log (exports, "/home");
+    pv_exports_mask_or_log (self->exports, "/home");
 
   g_debug ("Making home directory available...");
 
@@ -765,12 +764,12 @@ main (int argc,
       g_assert (!self->is_flatpak_env);
       g_assert (bwrap != NULL);
       g_assert (bwrap_filesystem_arguments != NULL);
-      g_assert (exports != NULL);
+      g_assert (self->exports != NULL);
 
       bwrap_home_arguments = flatpak_bwrap_new (flatpak_bwrap_empty_env);
 
       if (!pv_wrap_use_home (home_mode, home, private_home,
-                             exports, bwrap_home_arguments, container_env,
+                             self->exports, bwrap_home_arguments, container_env,
                              error))
         goto out;
     }
@@ -792,8 +791,8 @@ main (int argc,
         }
     }
 
-  if (exports != NULL)
-    pv_share_temp_dir (exports, container_env);
+  if (self->exports != NULL)
+    pv_share_temp_dir (self->exports, container_env);
 
   if (flatpak_subsandbox != NULL)
     {
@@ -842,13 +841,12 @@ main (int argc,
                                   adverb_preload_argv,
                                   module->which,
                                   module->preload,
-                                  append_preload_flags,
-                                  exports);
+                                  append_preload_flags);
         }
     }
   while (0);
 
-  pv_bind_and_propagate_from_environ (self, home_mode, exports, container_env);
+  pv_bind_and_propagate_from_environ (self, home_mode, container_env);
 
   if (flatpak_subsandbox == NULL)
     {
@@ -856,7 +854,7 @@ main (int argc,
 
       g_assert (bwrap != NULL);
       g_assert (bwrap_filesystem_arguments != NULL);
-      g_assert (exports != NULL);
+      g_assert (self->exports != NULL);
 
       /* Bind-mount /run/udev to support games that detect joysticks by using
        * udev directly. We only do that when the host's version of libudev.so.1
@@ -876,7 +874,7 @@ main (int argc,
               if (g_lstat (override, &ignored) == 0)
                 {
                   g_debug ("We are using the host's version of \"libudev.so.1\", trying to bind-mount /run/udev too...");
-                  pv_exports_expose_or_log (exports,
+                  pv_exports_expose_or_log (self->exports,
                                             FLATPAK_FILESYSTEM_MODE_READ_ONLY,
                                             "/run/udev");
                   break;
@@ -894,7 +892,7 @@ main (int argc,
             g_warning ("Not sharing %s with container to work around %s",
                        framework_paths->path, framework_paths->bug);
           else
-            pv_exports_expose_or_log (exports,
+            pv_exports_expose_or_log (self->exports,
                                       FLATPAK_FILESYSTEM_MODE_READ_ONLY,
                                       framework_paths->path);
         }
@@ -906,7 +904,7 @@ main (int argc,
           g_debug ("Processing --filesystem arguments...");
 
           for (i = 0; self->options.filesystems[i] != NULL; i++)
-            pv_wrap_context_export_if_allowed (self, exports,
+            pv_wrap_context_export_if_allowed (self,
                                                FLATPAK_FILESYSTEM_MODE_READ_WRITE,
                                                self->options.filesystems[i],
                                                self->options.filesystems[i],
@@ -935,7 +933,7 @@ main (int argc,
            * current namespace as well as in the host, because it's
            * either in our ~/.var/app/$FLATPAK_ID, or a --filesystem that
            * was exposed from the host. */
-          pv_exports_expose_or_warn (exports,
+          pv_exports_expose_or_warn (self->exports,
                                      FLATPAK_FILESYSTEM_MODE_READ_WRITE,
                                      cwd_p_host);
         }
@@ -971,10 +969,10 @@ main (int argc,
 
               /* $STEAM_RUNTIME is functionally necessary if used, so
                * always warn if it cannot be exposed */
-              if (exports != NULL
+              if (self->exports != NULL
                   && g_str_has_prefix (self->options.env_if_host[i],
                                        "STEAM_RUNTIME=/"))
-                pv_exports_expose_or_warn (exports,
+                pv_exports_expose_or_warn (self->exports,
                                            FLATPAK_FILESYSTEM_MODE_READ_ONLY,
                                            equals + 1);
 
@@ -989,7 +987,7 @@ main (int argc,
     }
 
   /* Convert the exported directories into extra bubblewrap arguments */
-  if (exports != NULL)
+  if (self->exports != NULL)
     {
       g_autoptr(FlatpakBwrap) exports_bwrap =
         flatpak_bwrap_new (flatpak_bwrap_empty_env);
@@ -1008,7 +1006,7 @@ main (int argc,
           g_clear_pointer (&bwrap_home_arguments, flatpak_bwrap_free);
         }
 
-      flatpak_exports_append_bwrap_args (exports, exports_bwrap);
+      flatpak_exports_append_bwrap_args (self->exports, exports_bwrap);
       g_warn_if_fail (g_strv_length (exports_bwrap->envp) == 0);
       if (!pv_bwrap_append_adjusted_exports (bwrap, exports_bwrap, home,
                                              interpreter_root, workarounds,

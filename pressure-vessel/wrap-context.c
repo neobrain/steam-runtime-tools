@@ -181,6 +181,7 @@ pv_wrap_context_finalize (GObject *object)
 
   pv_wrap_options_clear (&self->options);
 
+  g_clear_pointer (&self->exports, flatpak_exports_free);
   g_clear_pointer (&self->paths_not_exported, g_hash_table_unref);
   g_strfreev (self->original_argv);
   g_strfreev (self->original_environ);
@@ -1103,7 +1104,6 @@ export_not_allowed (PvWrapContext *self,
 /*
  * pv_wrap_context_export_if_allowed:
  * @self: The context
- * @exports: List of exported paths
  * @export_mode: Mode with which to add @path
  * @path: The path we propose to export, as an absolute path within the
  *  current execution environment
@@ -1122,7 +1122,6 @@ export_not_allowed (PvWrapContext *self,
  */
 gboolean
 pv_wrap_context_export_if_allowed (PvWrapContext *self,
-                                   FlatpakExports *exports,
                                    FlatpakFilesystemMode export_mode,
                                    const char *path,
                                    const char *host_path,
@@ -1135,7 +1134,7 @@ pv_wrap_context_export_if_allowed (PvWrapContext *self,
   size_t i;
 
   g_return_val_if_fail (PV_IS_WRAP_CONTEXT (self), FALSE);
-  g_return_val_if_fail (exports != NULL, FALSE);
+  g_return_val_if_fail (self->exports != NULL, FALSE);
   g_return_val_if_fail (export_mode > FLATPAK_FILESYSTEM_MODE_NONE, FALSE);
   g_return_val_if_fail (export_mode <= FLATPAK_FILESYSTEM_MODE_LAST, FALSE);
   g_return_val_if_fail (g_path_is_absolute (path), FALSE);
@@ -1176,7 +1175,7 @@ pv_wrap_context_export_if_allowed (PvWrapContext *self,
 
   /* This generally shouldn't fail in practice, because we already checked
    * against reserved_paths[] above */
-  pv_exports_expose_or_log (exports, export_mode, path);
+  pv_exports_expose_or_log (self->exports, export_mode, path);
 
   return TRUE;
 }

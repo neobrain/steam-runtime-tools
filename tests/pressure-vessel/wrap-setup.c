@@ -171,14 +171,14 @@ fixture_populate_dir (Fixture *f,
     }
 }
 
-static FlatpakExports *
+static void
 fixture_create_exports (Fixture *f)
 {
-  g_autoptr(FlatpakExports) exports = flatpak_exports_new ();
   glnx_autofd int fd = open_or_die (f->mock_host->path, O_RDONLY | O_DIRECTORY, 0755);
 
-  flatpak_exports_take_host_fd (exports, g_steal_fd (&fd));
-  return g_steal_pointer (&exports);
+  g_return_if_fail (f->context->exports == NULL);
+  f->context->exports = flatpak_exports_new ();
+  flatpak_exports_take_host_fd (f->context->exports, g_steal_fd (&fd));
 }
 
 static void
@@ -618,18 +618,20 @@ test_export_root_dirs (Fixture *f,
     "usr/local/",
     "var/tmp/",
   };
-  g_autoptr(FlatpakExports) exports = fixture_create_exports (f);
   g_autoptr(GError) local_error = NULL;
   gboolean ret;
 
+  fixture_create_exports (f);
+  g_assert_nonnull (f->context->exports);
   fixture_populate_dir (f, f->mock_host->fd, paths, G_N_ELEMENTS (paths));
-  ret = pv_export_root_dirs_like_filesystem_host (f->mock_host->fd, exports,
+  ret = pv_export_root_dirs_like_filesystem_host (f->mock_host->fd,
+                                                  f->context->exports,
                                                   FLATPAK_FILESYSTEM_MODE_READ_WRITE,
                                                   _srt_dirent_strcmp,
                                                   &local_error);
   g_assert_no_error (local_error);
   g_assert_true (ret);
-  flatpak_exports_append_bwrap_args (exports, f->bwrap);
+  flatpak_exports_append_bwrap_args (f->context->exports, f->bwrap);
 
   dump_bwrap (f->bwrap);
 
@@ -1555,8 +1557,7 @@ test_passwd (Fixture *f,
 static void
 populate_ld_preload (Fixture *f,
                      GPtrArray *argv,
-                     PvAppendPreloadFlags flags,
-                     FlatpakExports *exports)
+                     PvAppendPreloadFlags flags)
 {
   static const struct
   {
@@ -1589,6 +1590,11 @@ populate_ld_preload (Fixture *f,
   };
   gsize i;
 
+  if (flags & PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX)
+    g_assert_null (f->context->exports);
+  else
+    g_assert_nonnull (f->context->exports);
+
   for (i = 0; i < G_N_ELEMENTS (preloads); i++)
     {
       GLogLevelFlags old_fatal_mask = G_LOG_FATAL_MASK;
@@ -1615,8 +1621,7 @@ populate_ld_preload (Fixture *f,
                               argv,
                               PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
                               preloads[i].string,
-                              flags | PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS,
-                              exports);
+                              flags | PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS);
 
       /* If we modified the fatal mask, put back the old value. */
       if (preloads[i].warning != NULL)
@@ -1693,7 +1698,7 @@ test_remap_ld_preload (Fixture *f,
                        gconstpointer context)
 {
   const Config *config = context;
-  g_autoptr(FlatpakExports) exports = fixture_create_exports (f);
+  FlatpakExports *exports;
   g_autoptr(GPtrArray) argv = g_ptr_array_new_with_free_func (g_free);
   g_autoptr(GPtrArray) filtered = filter_expected_paths (config);
   gsize i;
@@ -1704,9 +1709,13 @@ test_remap_ld_preload (Fixture *f,
     expect_i386 = TRUE;
 #endif
 
+  fixture_create_exports (f);
+  exports = f->context->exports;
+  g_assert_nonnull (exports);
+
   fixture_create_runtime (f, PV_RUNTIME_FLAGS_NONE);
   g_assert_nonnull (f->context->runtime);
-  populate_ld_preload (f, argv, config->preload_flags, exports);
+  populate_ld_preload (f, argv, config->preload_flags);
 
   g_assert_cmpuint (argv->len, ==, filtered->len);
 
@@ -1792,8 +1801,7 @@ test_remap_ld_preload_flatpak (Fixture *f,
   g_assert_nonnull (f->context->runtime);
   populate_ld_preload (f, argv,
                        (config->preload_flags
-                        | PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX),
-                       NULL);
+                        | PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX));
 
   g_assert_cmpuint (argv->len, ==, filtered->len);
 
@@ -1828,7 +1836,7 @@ test_remap_ld_preload_no_runtime (Fixture *f,
   const Config *config = context;
   g_autoptr(GPtrArray) argv = g_ptr_array_new_with_free_func (g_free);
   g_autoptr(GPtrArray) filtered = filter_expected_paths (config);
-  g_autoptr(FlatpakExports) exports = fixture_create_exports (f);
+  FlatpakExports *exports;
   gsize i, j;
   gboolean expect_i386 = FALSE;
 
@@ -1839,8 +1847,12 @@ test_remap_ld_preload_no_runtime (Fixture *f,
     expect_i386 = TRUE;
 #endif
 
+  fixture_create_exports (f);
+  exports = f->context->exports;
+  g_assert_nonnull (exports);
+
   g_assert_null (f->context->runtime);
-  populate_ld_preload (f, argv, config->preload_flags, exports);
+  populate_ld_preload (f, argv, config->preload_flags);
 
   g_assert_cmpuint (argv->len, ==, filtered->len - 1);
 
@@ -1923,8 +1935,7 @@ test_remap_ld_preload_flatpak_no_runtime (Fixture *f,
   g_assert_null (f->context->runtime);
   populate_ld_preload (f, argv,
                        (config->preload_flags
-                        | PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX),
-                       NULL);
+                        | PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX));
 
   g_assert_cmpuint (argv->len, ==, filtered->len);
 
@@ -2066,12 +2077,16 @@ test_use_home_shared (Fixture *f,
     NULL
   };
   g_autoptr(FlatpakBwrap) env_bwrap = NULL;
-  g_autoptr(FlatpakExports) exports = fixture_create_exports (f);
-  g_autoptr(FlatpakExports) env_exports = fixture_create_exports (f);
+  FlatpakExports *exports;
+  FlatpakExports *env_exports;
   g_autoptr(GError) local_error = NULL;
   g_autoptr(SrtEnvOverlay) container_env = _srt_env_overlay_new ();
   GLogLevelFlags was_fatal;
   gboolean ret;
+
+  fixture_create_exports (f);
+  exports = f->context->exports;
+  g_assert_nonnull (exports);
 
   fixture_populate_dir (f, f->mock_host->fd, paths, G_N_ELEMENTS (paths));
   ret = pv_wrap_use_home (PV_HOME_MODE_SHARED, "/home/user", NULL, exports,
@@ -2139,11 +2154,17 @@ test_use_home_shared (Fixture *f,
   g_clear_pointer (&f->context->original_environ, g_strfreev);
   f->context->original_environ = _srt_strdupv (mock_environ);
 
+  g_clear_pointer (&f->context->exports, flatpak_exports_free);
+  exports = NULL;
+
+  fixture_create_exports (f);
+  env_exports = f->context->exports;
+  g_assert_nonnull (env_exports);
+
   /* Don't crash on warnings here */
   was_fatal = g_log_set_always_fatal (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL);
   pv_bind_and_propagate_from_environ (f->context,
                                       PV_HOME_MODE_SHARED,
-                                      env_exports,
                                       container_env);
   g_log_set_always_fatal (was_fatal);
 
@@ -2210,16 +2231,17 @@ test_use_host_os (Fixture *f,
     "usr/local/",
     "var/tmp/",
   };
-  g_autoptr(FlatpakExports) exports = fixture_create_exports (f);
   g_autoptr(GError) local_error = NULL;
   gboolean ret;
 
+  fixture_create_exports (f);
+  g_assert_nonnull (f->context->exports);
   fixture_populate_dir (f, f->mock_host->fd, paths, G_N_ELEMENTS (paths));
-  ret = pv_wrap_use_host_os (f->mock_host->fd, exports, f->bwrap,
+  ret = pv_wrap_use_host_os (f->mock_host->fd, f->context->exports, f->bwrap,
                              _srt_dirent_strcmp, &local_error);
   g_assert_no_error (local_error);
   g_assert_true (ret);
-  flatpak_exports_append_bwrap_args (exports, f->bwrap);
+  flatpak_exports_append_bwrap_args (f->context->exports, f->bwrap);
 
   dump_bwrap (f->bwrap);
 

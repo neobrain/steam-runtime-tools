@@ -86,8 +86,7 @@ void pv_wrap_append_preload (PvWrapContext *context,
                              GPtrArray *argv,
                              PvPreloadVariableIndex which,
                              const char *preload,
-                             PvAppendPreloadFlags flags,
-                             FlatpakExports *exports);
+                             PvAppendPreloadFlags flags);
 
 gboolean pv_wrap_maybe_load_nvidia_modules (GError **error);
 
@@ -98,5 +97,4 @@ void pv_share_temp_dir (FlatpakExports *exports,
                         SrtEnvOverlay *container_env);
 void pv_bind_and_propagate_from_environ (PvWrapContext *self,
                                          PvHomeMode home_mode,
-                                         FlatpakExports *exports,
                                          SrtEnvOverlay *container_env);

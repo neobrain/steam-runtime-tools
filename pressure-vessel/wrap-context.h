@@ -93,6 +93,7 @@ struct _PvWrapContext
 {
   GObject parent_instance;
 
+  FlatpakExports *exports;
   GHashTable *paths_not_exported;
   PvRuntime *runtime;
   SrtSysroot *current_root;
@@ -142,7 +143,6 @@ gboolean pv_wrap_options_parse_environment_after_argv (PvWrapOptions *self,
                                                        GError **error);
 
 gboolean pv_wrap_context_export_if_allowed (PvWrapContext *self,
-                                            FlatpakExports *exports,
                                             FlatpakFilesystemMode export_mode,
                                             const char *path,
                                             const char *host_path,
