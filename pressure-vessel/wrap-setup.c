@@ -548,7 +548,7 @@ pv_wrap_move_into_scope (const char *steam_app_id)
 static void
 append_preload_internal (GPtrArray *argv,
                          PvPreloadVariableIndex which,
-                         const char *multiarch_tuple,
+                         gsize abi_index,
                          const char *export_path,
                          const char *original_path,
                          GStrv env,
@@ -557,7 +557,16 @@ append_preload_internal (GPtrArray *argv,
                          FlatpakExports *exports)
 {
   const char *option = pv_preload_variables[which].adverb_option;
+  const char *multiarch_tuple;
   gboolean flatpak_subsandbox = ((flags & PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX) != 0);
+
+  g_return_if_fail (abi_index == PV_UNSPECIFIED_ABI
+                    || abi_index < PV_N_SUPPORTED_ARCHITECTURES);
+
+  if (abi_index == PV_UNSPECIFIED_ABI)
+    multiarch_tuple = NULL;
+  else
+    multiarch_tuple = pv_multiarch_tuples[abi_index];
 
   if (runtime != NULL
       && (g_str_has_prefix (original_path, "/usr/")
@@ -683,7 +692,7 @@ append_preload_unsupported_token (GPtrArray *argv,
 
   append_preload_internal (argv,
                            which,
-                           NULL,
+                           PV_UNSPECIFIED_ABI,
                            export_path,
                            preload,
                            env,
@@ -785,7 +794,7 @@ append_preload_per_architecture (GPtrArray *argv,
                    multiarch_tuple, preload, path);
           append_preload_internal (argv,
                                    which,
-                                   multiarch_tuple,
+                                   i,
                                    path,
                                    path,
                                    env,
@@ -842,7 +851,7 @@ append_preload_basename (GPtrArray *argv,
                pv_preload_variables[which].variable);
       append_preload_internal (argv,
                                which,
-                               NULL,
+                               PV_UNSPECIFIED_ABI,
                                NULL,
                                preload,
                                env,
@@ -970,7 +979,7 @@ pv_wrap_append_preload (GPtrArray *argv,
             g_warn_if_fail ((loadable_flags & SRT_LOADABLE_FLAGS_DYNAMIC_TOKENS) == 0);
             append_preload_internal (argv,
                                      which,
-                                     NULL,
+                                     PV_UNSPECIFIED_ABI,
                                      preload,
                                      preload,
                                      env,
