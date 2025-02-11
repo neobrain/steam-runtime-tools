@@ -1870,8 +1870,9 @@ class Gui:
             environ['STEAM_COMPAT_RUNTIME_SDL3'] = value
 
         if self.debug_check.get_active():
-            environ['STEAM_LINUX_RUNTIME_VERBOSE'] = '1'
+            environ['DEBUG_INVOCATION'] = '1'
             environ['G_MESSAGES_DEBUG'] = 'all'
+            environ['STEAM_LINUX_RUNTIME_VERBOSE'] = '1'
 
         shell = self.shell_combo.get_active_id()
         terminal = self.terminal_combo.get_active_id()
