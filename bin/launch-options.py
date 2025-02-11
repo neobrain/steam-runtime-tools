@@ -626,6 +626,29 @@ class Gui:
 
         row += 1
 
+        label = Gtk.Label.new('SDL 2')
+        self.grid.attach(label, 0, row, 1, 1)
+
+        self.sdl2_dynapi_combo = Gtk.ComboBoxText.new()
+        self.sdl2_dynapi_combo.append(None, "Don't override")
+        self.sdl2_dynapi_combo.append('1', 'Use runtime copy')
+        self.sdl2_dynapi_combo.append('sdl2-compat', 'Use sdl2-compat')
+        self.sdl2_dynapi_combo.set_active(0)
+        self.grid.attach(self.sdl2_dynapi_combo, 1, row, 2, 1)
+
+        row += 1
+
+        label = Gtk.Label.new('SDL 3')
+        self.grid.attach(label, 0, row, 1, 1)
+
+        self.sdl3_dynapi_combo = Gtk.ComboBoxText.new()
+        self.sdl3_dynapi_combo.append(None, "Don't override")
+        self.sdl3_dynapi_combo.append('1', 'Use runtime copy')
+        self.sdl3_dynapi_combo.set_active(0)
+        self.grid.attach(self.sdl3_dynapi_combo, 1, row, 2, 1)
+
+        row += 1
+
         label = Gtk.Label.new('Graphics stack')
         self.grid.attach(label, 0, row, 1, 1)
 
@@ -1260,10 +1283,14 @@ class Gui:
 
         if self._changing_container_runtime:
             self._changing_container_runtime = False
+            # These widgets are features of pressure-vessel, and are
+            # applicable if and only if we are going to use it.
             widgets = [
                 self.graphics_provider_combo,
                 self.layered_runtime_combo,
                 self.remove_game_overlay_combo,
+                self.sdl2_dynapi_combo,
+                self.sdl3_dynapi_combo,
                 self.share_home_combo,
                 self.share_pid_combo,
                 self.vulkan_layers_combo,
@@ -1829,6 +1856,18 @@ class Gui:
         if value is not None:
             environ['SDL_VIDEODRIVER'] = value
             environ['SDL_VIDEO_DRIVER'] = value
+
+        value = self.sdl2_dynapi_combo.get_active_id()
+
+        if value is not None:
+            environ.pop('SDL_DYNAMIC_API', None)
+            environ['STEAM_COMPAT_RUNTIME_SDL2'] = value
+
+        value = self.sdl3_dynapi_combo.get_active_id()
+
+        if value is not None:
+            environ.pop('SDL3_DYNAMIC_API', None)
+            environ['STEAM_COMPAT_RUNTIME_SDL3'] = value
 
         if self.debug_check.get_active():
             environ['STEAM_LINUX_RUNTIME_VERBOSE'] = '1'
