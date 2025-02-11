@@ -1828,6 +1828,7 @@ class Gui:
 
         if value is not None:
             environ['SDL_VIDEODRIVER'] = value
+            environ['SDL_VIDEO_DRIVER'] = value
 
         if self.debug_check.get_active():
             environ['STEAM_LINUX_RUNTIME_VERBOSE'] = '1'
