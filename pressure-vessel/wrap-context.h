@@ -13,6 +13,7 @@
 
 #include "pressure-vessel/adverb-preload.h"
 #include "pressure-vessel/flatpak-exports-private.h"
+#include "pressure-vessel/runtime.h"
 
 #include "pressure-vessel/wrap-interactive.h"
 
@@ -92,9 +93,13 @@ struct _PvWrapContext
 {
   GObject parent_instance;
 
+  FlatpakExports *exports;
   GHashTable *paths_not_exported;
+  PvRuntime *runtime;
+  SrtSysroot *current_root;
   gchar **original_argv;
   gchar **original_environ;
+  gchar *current_home;
 
   PvWrapOptions options;
 
@@ -118,7 +123,9 @@ struct _PvWrapContext
 GType pv_wrap_context_get_type (void);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (PvWrapContext, g_object_unref)
 
-PvWrapContext *pv_wrap_context_new (GError **error);
+PvWrapContext *pv_wrap_context_new (SrtSysroot *current_root,
+                                    const char *current_home,
+                                    GError **error);
 
 gboolean pv_wrap_options_parse_environment (PvWrapOptions *self,
                                             GError **error);
@@ -138,7 +145,6 @@ gboolean pv_wrap_options_parse_environment_after_argv (PvWrapOptions *self,
                                                        GError **error);
 
 gboolean pv_wrap_context_export_if_allowed (PvWrapContext *self,
-                                            FlatpakExports *exports,
                                             FlatpakFilesystemMode export_mode,
                                             const char *path,
                                             const char *host_path,

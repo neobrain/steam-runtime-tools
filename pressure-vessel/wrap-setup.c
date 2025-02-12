@@ -546,15 +546,13 @@ pv_wrap_move_into_scope (const char *steam_app_id)
 }
 
 static void
-append_preload_internal (GPtrArray *argv,
+append_preload_internal (PvWrapContext *context,
+                         GPtrArray *argv,
                          PvPreloadVariableIndex which,
                          gsize abi_index,
                          const char *export_path,
                          const char *original_path,
-                         GStrv env,
-                         PvAppendPreloadFlags flags,
-                         PvRuntime *runtime,
-                         FlatpakExports *exports)
+                         PvAppendPreloadFlags flags)
 {
   g_auto(PvAdverbPreloadModule) module = PV_ADVERB_PRELOAD_MODULE_INIT;
   g_autofree gchar *arg = NULL;
@@ -563,7 +561,7 @@ append_preload_internal (GPtrArray *argv,
   module.index_in_preload_variables = which;
   module.abi_index = abi_index;
 
-  if (runtime != NULL
+  if (context->runtime != NULL
       && (g_str_has_prefix (original_path, "/usr/")
           || g_str_has_prefix (original_path, "/lib")
           || (flatpak_subsandbox && g_str_has_prefix (original_path, "/app/"))))
@@ -578,9 +576,9 @@ append_preload_internal (GPtrArray *argv,
       module.name = g_strdup (original_path);
       g_debug ("%s -> unmodified", original_path);
 
-      if (exports != NULL && export_path != NULL && export_path[0] == '/')
+      if (context->exports != NULL && export_path != NULL && export_path[0] == '/')
         {
-          const gchar *steam_path = g_environ_getenv (env, "STEAM_COMPAT_CLIENT_INSTALL_PATH");
+          const gchar *steam_path = g_environ_getenv (context->original_environ, "STEAM_COMPAT_CLIENT_INSTALL_PATH");
 
           if (steam_path != NULL
               && flatpak_has_path_prefix (export_path, steam_path))
@@ -592,7 +590,7 @@ append_preload_internal (GPtrArray *argv,
           else
             {
               g_debug ("%s needs adding to exports", export_path);
-              pv_exports_expose_or_log (exports,
+              pv_exports_expose_or_log (context->exports,
                                         FLATPAK_FILESYSTEM_MODE_READ_ONLY,
                                         export_path);
             }
@@ -620,13 +618,11 @@ append_preload_internal (GPtrArray *argv,
  * Arguments are the same as for pv_wrap_append_preload().
  */
 static void
-append_preload_unsupported_token (GPtrArray *argv,
+append_preload_unsupported_token (PvWrapContext *context,
+                                  GPtrArray *argv,
                                   PvPreloadVariableIndex which,
                                   const char *preload,
-                                  GStrv env,
-                                  PvAppendPreloadFlags flags,
-                                  PvRuntime *runtime,
-                                  FlatpakExports *exports)
+                                  PvAppendPreloadFlags flags)
 {
   g_autofree gchar *export_path = NULL;
   char *dollar;
@@ -673,15 +669,13 @@ append_preload_unsupported_token (GPtrArray *argv,
                preload);
     }
 
-  append_preload_internal (argv,
+  append_preload_internal (context,
+                           argv,
                            which,
                            PV_UNSPECIFIED_ABI,
                            export_path,
                            preload,
-                           env,
-                           flags,
-                           runtime,
-                           exports);
+                           flags);
 }
 
 /*
@@ -695,13 +689,11 @@ append_preload_unsupported_token (GPtrArray *argv,
  * Arguments are the same as for pv_wrap_append_preload().
  */
 static void
-append_preload_per_architecture (GPtrArray *argv,
+append_preload_per_architecture (PvWrapContext *context,
+                                 GPtrArray *argv,
                                  PvPreloadVariableIndex which,
                                  const char *preload,
-                                 GStrv env,
-                                 PvAppendPreloadFlags flags,
-                                 PvRuntime *runtime,
-                                 FlatpakExports *exports)
+                                 PvAppendPreloadFlags flags)
 {
   g_autoptr(SrtSystemInfo) system_info = srt_system_info_new (NULL);
   gsize n_supported_architectures = PV_N_SUPPORTED_ARCHITECTURES;
@@ -775,15 +767,13 @@ append_preload_per_architecture (GPtrArray *argv,
         {
           g_debug ("Found %s version of %s at %s",
                    multiarch_tuple, preload, path);
-          append_preload_internal (argv,
+          append_preload_internal (context,
+                                   argv,
                                    which,
                                    i,
                                    path,
                                    path,
-                                   env,
-                                   flags,
-                                   runtime,
-                                   exports);
+                                   flags);
         }
       else
         {
@@ -794,18 +784,16 @@ append_preload_per_architecture (GPtrArray *argv,
 }
 
 static void
-append_preload_basename (GPtrArray *argv,
+append_preload_basename (PvWrapContext *context,
+                         GPtrArray *argv,
                          PvPreloadVariableIndex which,
                          const char *preload,
-                         GStrv env,
-                         PvAppendPreloadFlags flags,
-                         PvRuntime *runtime,
-                         FlatpakExports *exports)
+                         PvAppendPreloadFlags flags)
 {
   gboolean runtime_has_library = FALSE;
 
-  if (runtime != NULL)
-    runtime_has_library = pv_runtime_has_library (runtime, preload);
+  if (context->runtime != NULL)
+    runtime_has_library = pv_runtime_has_library (context->runtime, preload);
 
   if (flags & PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS)
     {
@@ -832,15 +820,13 @@ append_preload_basename (GPtrArray *argv,
                "passing %s through as-is",
                preload,
                pv_preload_variables[which].variable);
-      append_preload_internal (argv,
+      append_preload_internal (context,
+                               argv,
                                which,
                                PV_UNSPECIFIED_ABI,
                                NULL,
                                preload,
-                               env,
-                               flags,
-                               runtime,
-                               NULL);
+                               flags);
     }
   else
     {
@@ -851,50 +837,42 @@ append_preload_basename (GPtrArray *argv,
       g_debug ("Did not find \"%s\" in runtime or graphics stack provider, "
                "splitting architectures",
                preload);
-      append_preload_per_architecture (argv,
+      append_preload_per_architecture (context,
+                                       argv,
                                        which,
                                        preload,
-                                       env,
-                                       flags,
-                                       runtime,
-                                       exports);
+                                       flags);
     }
 }
 
 /**
  * pv_wrap_append_preload:
+ * @context: Context we are running in
  * @argv: (element-type filename): Array of command-line options to populate
  * @which: Either `LD_AUDIT` or `LD_PRELOAD`
  * @preload: (type filename): Path of preloadable module in current
  *  namespace, possibly including special ld.so tokens such as `$LIB`,
  *  or basename of a preloadable module to be found in the standard
  *  library search path
- * @env: (array zero-terminated=1) (element-type filename): Environment
- *  variables to be used instead of `environ`
  * @flags: Flags to adjust behaviour
- * @runtime: (nullable): Runtime to be used in container
- * @exports: (nullable): Used to configure extra paths that need to be
- *  exported into the container
  *
  * Adjust @preload to be valid for the container and append it
  * to @argv.
  */
 void
-pv_wrap_append_preload (GPtrArray *argv,
+pv_wrap_append_preload (PvWrapContext *context,
+                        GPtrArray *argv,
                         PvPreloadVariableIndex which,
                         const char *preload,
-                        GStrv env,
-                        PvAppendPreloadFlags flags,
-                        PvRuntime *runtime,
-                        FlatpakExports *exports)
+                        PvAppendPreloadFlags flags)
 {
   SrtLoadableKind kind;
   SrtLoadableFlags loadable_flags;
   const char *variable;
 
+  g_return_if_fail (PV_IS_WRAP_CONTEXT (context));
   g_return_if_fail (argv != NULL);
   g_return_if_fail (preload != NULL);
-  g_return_if_fail (runtime == NULL || PV_IS_RUNTIME (runtime));
   g_return_if_fail (which >= 0);
   g_return_if_fail (which < G_N_ELEMENTS (pv_preload_variables));
 
@@ -907,7 +885,7 @@ pv_wrap_append_preload (GPtrArray *argv,
       return;
     }
 
-  if ((flags & PV_APPEND_PRELOAD_FLAGS_REMOVE_GAME_OVERLAY)
+  if (context->options.remove_game_overlay
       && g_str_has_suffix (preload, "/gameoverlayrenderer.so"))
     {
       g_info ("Disabling Steam Overlay: %s", preload);
@@ -921,13 +899,11 @@ pv_wrap_append_preload (GPtrArray *argv,
       case SRT_LOADABLE_KIND_BASENAME:
         /* Basenames can't have dynamic string tokens. */
         g_warn_if_fail ((loadable_flags & SRT_LOADABLE_FLAGS_DYNAMIC_TOKENS) == 0);
-        append_preload_basename (argv,
+        append_preload_basename (context,
+                                 argv,
                                  which,
                                  preload,
-                                 env,
-                                 flags,
-                                 runtime,
-                                 exports);
+                                 flags);
         break;
 
       case SRT_LOADABLE_KIND_PATH:
@@ -935,40 +911,34 @@ pv_wrap_append_preload (GPtrArray *argv,
         if (loadable_flags & (SRT_LOADABLE_FLAGS_ORIGIN
                               | SRT_LOADABLE_FLAGS_UNKNOWN_TOKENS))
           {
-            append_preload_unsupported_token (argv,
+            append_preload_unsupported_token (context,
+                                              argv,
                                               which,
                                               preload,
-                                              env,
-                                              flags,
-                                              runtime,
-                                              exports);
+                                              flags);
           }
         else if (loadable_flags & SRT_LOADABLE_FLAGS_ABI_DEPENDENT)
           {
             g_debug ("Found $LIB or $PLATFORM in \"%s\", splitting architectures",
                      preload);
-            append_preload_per_architecture (argv,
+            append_preload_per_architecture (context,
+                                             argv,
                                              which,
                                              preload,
-                                             env,
-                                             flags,
-                                             runtime,
-                                             exports);
+                                             flags);
           }
         else
           {
             /* All dynamic tokens should be handled above, so we can
              * assume that preload is a concrete filename */
             g_warn_if_fail ((loadable_flags & SRT_LOADABLE_FLAGS_DYNAMIC_TOKENS) == 0);
-            append_preload_internal (argv,
+            append_preload_internal (context,
+                                     argv,
                                      which,
                                      PV_UNSPECIFIED_ABI,
                                      preload,
                                      preload,
-                                     env,
-                                     flags,
-                                     runtime,
-                                     exports);
+                                     flags);
           }
         break;
 
@@ -1161,9 +1131,7 @@ static const EnvMount known_required_env[] =
 
 static void
 bind_and_propagate_from_environ (PvWrapContext *self,
-                                 SrtSysroot *sysroot,
                                  PvHomeMode home_mode,
-                                 FlatpakExports *exports,
                                  SrtEnvOverlay *container_env,
                                  const char *variable,
                                  EnvMountFlags flags,
@@ -1171,14 +1139,18 @@ bind_and_propagate_from_environ (PvWrapContext *self,
 {
   g_auto(GStrv) values = NULL;
   FlatpakFilesystemMode mode = FLATPAK_FILESYSTEM_MODE_READ_WRITE;
+  SrtSysroot *sysroot;
   const char *value;
   const char *before;
   const char *after;
   gboolean changed = FALSE;
   gsize i;
 
-  g_return_if_fail (exports != NULL);
+  g_return_if_fail (PV_IS_WRAP_CONTEXT (self));
+  g_return_if_fail (self->exports != NULL);
   g_return_if_fail (variable != NULL);
+  sysroot = self->current_root;
+  g_return_if_fail (sysroot != NULL);
 
   if (home_mode != PV_HOME_MODE_SHARED
       && (flags & ENV_MOUNT_FLAGS_IF_HOME_SHARED))
@@ -1232,7 +1204,6 @@ bind_and_propagate_from_environ (PvWrapContext *self,
       value_host = pv_current_namespace_path_to_host_path (canon);
 
       if (!pv_wrap_context_export_if_allowed (self,
-                                              exports,
                                               mode,
                                               canon,
                                               value_host,
@@ -1260,15 +1231,9 @@ bind_and_propagate_from_environ (PvWrapContext *self,
     }
 }
 
-/*
- * @exports: (nullable): List of exported directories, or %NULL if running
- *  a Flatpak subsandbox
- */
 void
 pv_bind_and_propagate_from_environ (PvWrapContext *self,
-                                    SrtSysroot *sysroot,
                                     PvHomeMode home_mode,
-                                    FlatpakExports *exports,
                                     SrtEnvOverlay *container_env)
 {
   gsize i;
@@ -1281,13 +1246,12 @@ pv_bind_and_propagate_from_environ (PvWrapContext *self,
     {
       const char *name = known_required_env[i].name;
 
-      if (exports != NULL)
+      if (self->exports != NULL)
         {
           /* If we're using bubblewrap directly, we can and must make
            * sure that all required directories are bind-mounted */
-          bind_and_propagate_from_environ (self, sysroot, home_mode,
-                                           exports, container_env,
-                                           name,
+          bind_and_propagate_from_environ (self, home_mode,
+                                           container_env, name,
                                            known_required_env[i].flags,
                                            known_required_env[i].export_flags);
         }

@@ -83,7 +83,6 @@ typedef struct
   gchar *tmpdir;
   gchar *mock_runtime;
   gchar *var;
-  GStrv env;
   int tmpdir_fd;
   int mock_runtime_fd;
   int var_fd;
@@ -172,24 +171,25 @@ fixture_populate_dir (Fixture *f,
     }
 }
 
-static FlatpakExports *
+static void
 fixture_create_exports (Fixture *f)
 {
-  g_autoptr(FlatpakExports) exports = flatpak_exports_new ();
   glnx_autofd int fd = open_or_die (f->mock_host->path, O_RDONLY | O_DIRECTORY, 0755);
 
-  flatpak_exports_take_host_fd (exports, g_steal_fd (&fd));
-  return g_steal_pointer (&exports);
+  g_return_if_fail (f->context->exports == NULL);
+  f->context->exports = flatpak_exports_new ();
+  flatpak_exports_take_host_fd (f->context->exports, g_steal_fd (&fd));
 }
 
-static PvRuntime *
+static void
 fixture_create_runtime (Fixture *f,
                         PvRuntimeFlags flags)
 {
   g_autoptr(GError) local_error = NULL;
   g_autoptr(PvGraphicsProvider) graphics_provider = NULL;
-  g_autoptr(PvRuntime) runtime = NULL;
   const char *gfx_in_container;
+
+  g_assert_null (f->context->runtime);
 
   if (flags & PV_RUNTIME_FLAGS_FLATPAK_SUBSANDBOX)
     gfx_in_container = "/run/parent";
@@ -201,20 +201,19 @@ fixture_create_runtime (Fixture *f,
   g_assert_no_error (local_error);
   g_assert_nonnull (graphics_provider);
 
-  runtime = pv_runtime_new (f->mock_runtime,
-                            f->var,
-                            NULL,
-                            graphics_provider,
-                            NULL,
-                            _srt_peek_environ_nonnull (),
-                            (flags
-                             | PV_RUNTIME_FLAGS_VERBOSE
-                             | PV_RUNTIME_FLAGS_SINGLE_THREAD),
-                            PV_WORKAROUND_FLAGS_NONE,
-                            &local_error);
+  f->context->runtime = pv_runtime_new (f->mock_runtime,
+                                        f->var,
+                                        NULL,
+                                        graphics_provider,
+                                        NULL,
+                                        _srt_peek_environ_nonnull (),
+                                        (flags
+                                         | PV_RUNTIME_FLAGS_VERBOSE
+                                         | PV_RUNTIME_FLAGS_SINGLE_THREAD),
+                                        PV_WORKAROUND_FLAGS_NONE,
+                                        &local_error);
   g_assert_no_error (local_error);
-  g_assert_nonnull (runtime);
-  return g_steal_pointer (&runtime);
+  g_assert_nonnull (f->context->runtime);
 }
 
 static void
@@ -243,10 +242,16 @@ setup (Fixture *f,
   glnx_opendirat (AT_FDCWD, f->var, TRUE, &f->var_fd, &local_error);
   g_assert_no_error (local_error);
 
-  f->context = pv_wrap_context_new (&local_error);
+  f->context = pv_wrap_context_new (f->mock_host, "/home/me", &local_error);
   g_assert_no_error (local_error);
   f->bwrap = flatpak_bwrap_new (flatpak_bwrap_empty_env);
-  f->env = g_get_environ ();
+
+  /* Some tests need to know where Steam is installed;
+   * pretend that we have it installed in /steam */
+  f->context->original_environ = g_environ_setenv (f->context->original_environ,
+                                                   "STEAM_COMPAT_CLIENT_INSTALL_PATH",
+                                                   "/steam",
+                                                   TRUE);
 }
 
 static void
@@ -285,9 +290,6 @@ setup_ld_preload (Fixture *f,
       fixture_populate_dir (f, f->mock_host->fd, touch_i386, G_N_ELEMENTS (touch_i386));
 #endif
     }
-
-  f->env = g_environ_setenv (f->env, "STEAM_COMPAT_CLIENT_INSTALL_PATH",
-                             "/steam", TRUE);
 }
 
 static void
@@ -311,7 +313,6 @@ teardown (Fixture *f,
   g_clear_pointer (&f->mock_runtime, g_free);
   g_clear_pointer (&f->tmpdir, g_free);
   g_clear_pointer (&f->var, g_free);
-  g_clear_pointer (&f->env, g_strfreev);
   g_clear_pointer (&f->bwrap, flatpak_bwrap_free);
 
   tests_check_fd_leaks_leave (f->old_fds);
@@ -376,15 +377,15 @@ test_bind_into_container (Fixture *f,
                           gconstpointer context)
 {
   const Config *config = context;
-  g_autoptr(PvRuntime) runtime = NULL;
   g_autoptr(GError) error = NULL;
   gboolean ok;
 
-  runtime = fixture_create_runtime (f, config->runtime_flags);
+  fixture_create_runtime (f, config->runtime_flags);
+  g_assert_nonnull (f->context->runtime);
 
   /* Successful cases */
 
-  ok = pv_runtime_bind_into_container (runtime, f->bwrap,
+  ok = pv_runtime_bind_into_container (f->context->runtime, f->bwrap,
                                        "/etc/machine-id", NULL, 0,
                                        "/etc/machine-id",
                                        PV_RUNTIME_EMULATION_ROOTS_BOTH,
@@ -392,7 +393,7 @@ test_bind_into_container (Fixture *f,
   g_assert_no_error (error);
   g_assert_true (ok);
 
-  ok = pv_runtime_bind_into_container (runtime, f->bwrap,
+  ok = pv_runtime_bind_into_container (f->context->runtime, f->bwrap,
                                        "/etc/arm-file", NULL, 0,
                                        "/etc/arm-file",
                                        PV_RUNTIME_EMULATION_ROOTS_REAL_ONLY,
@@ -400,7 +401,7 @@ test_bind_into_container (Fixture *f,
   g_assert_no_error (error);
   g_assert_true (ok);
 
-  ok = pv_runtime_bind_into_container (runtime, f->bwrap,
+  ok = pv_runtime_bind_into_container (f->context->runtime, f->bwrap,
                                        "/fex/etc/x86-file", NULL, 0,
                                        "/etc/x86-file",
                                        PV_RUNTIME_EMULATION_ROOTS_INTERPRETER_ONLY,
@@ -410,7 +411,7 @@ test_bind_into_container (Fixture *f,
 
   /* Error cases */
 
-  ok = pv_runtime_bind_into_container (runtime, f->bwrap,
+  ok = pv_runtime_bind_into_container (f->context->runtime, f->bwrap,
                                        "/nope", NULL, 0,
                                        "/nope",
                                        PV_RUNTIME_EMULATION_ROOTS_REAL_ONLY,
@@ -420,7 +421,7 @@ test_bind_into_container (Fixture *f,
   g_test_message ("Editing /nope not allowed, as expected: %s", error->message);
   g_clear_error (&error);
 
-  ok = pv_runtime_bind_into_container (runtime, f->bwrap,
+  ok = pv_runtime_bind_into_container (f->context->runtime, f->bwrap,
                                        "/usr/foo", NULL, 0,
                                        "/usr/foo",
                                        PV_RUNTIME_EMULATION_ROOTS_BOTH,
@@ -617,18 +618,20 @@ test_export_root_dirs (Fixture *f,
     "usr/local/",
     "var/tmp/",
   };
-  g_autoptr(FlatpakExports) exports = fixture_create_exports (f);
   g_autoptr(GError) local_error = NULL;
   gboolean ret;
 
+  fixture_create_exports (f);
+  g_assert_nonnull (f->context->exports);
   fixture_populate_dir (f, f->mock_host->fd, paths, G_N_ELEMENTS (paths));
-  ret = pv_export_root_dirs_like_filesystem_host (f->mock_host->fd, exports,
+  ret = pv_export_root_dirs_like_filesystem_host (f->mock_host->fd,
+                                                  f->context->exports,
                                                   FLATPAK_FILESYSTEM_MODE_READ_WRITE,
                                                   _srt_dirent_strcmp,
                                                   &local_error);
   g_assert_no_error (local_error);
   g_assert_true (ret);
-  flatpak_exports_append_bwrap_args (exports, f->bwrap);
+  flatpak_exports_append_bwrap_args (f->context->exports, f->bwrap);
 
   dump_bwrap (f->bwrap);
 
@@ -1021,12 +1024,12 @@ test_make_symlink_in_container (Fixture *f,
 {
   const Config *config = context;
   g_autoptr(GError) error = NULL;
-  g_autoptr(PvRuntime) runtime = NULL;
   gboolean ok;
   SrtSysroot *mutable_sysroot;
 
-  runtime = fixture_create_runtime (f, config->runtime_flags);
-  mutable_sysroot = pv_runtime_get_mutable_sysroot (runtime);
+  fixture_create_runtime (f, config->runtime_flags);
+  g_assert_nonnull (f->context->runtime);
+  mutable_sysroot = pv_runtime_get_mutable_sysroot (f->context->runtime);
 
   if (config->runtime_flags & PV_RUNTIME_FLAGS_COPY_RUNTIME)
     g_assert_nonnull (mutable_sysroot);
@@ -1035,7 +1038,7 @@ test_make_symlink_in_container (Fixture *f,
 
   /* Successful cases */
 
-  ok = pv_runtime_make_symlink_in_container (runtime, f->bwrap,
+  ok = pv_runtime_make_symlink_in_container (f->context->runtime, f->bwrap,
                                              "../usr/lib/os-release",
                                              "/etc/os-release",
                                              PV_RUNTIME_EMULATION_ROOTS_BOTH,
@@ -1043,7 +1046,7 @@ test_make_symlink_in_container (Fixture *f,
   g_assert_no_error (error);
   g_assert_true (ok);
 
-  ok = pv_runtime_make_symlink_in_container (runtime, f->bwrap,
+  ok = pv_runtime_make_symlink_in_container (f->context->runtime, f->bwrap,
                                              "/run/host/foo",
                                              "/var/foo",
                                              PV_RUNTIME_EMULATION_ROOTS_REAL_ONLY,
@@ -1051,7 +1054,7 @@ test_make_symlink_in_container (Fixture *f,
   g_assert_no_error (error);
   g_assert_true (ok);
 
-  ok = pv_runtime_make_symlink_in_container (runtime, f->bwrap,
+  ok = pv_runtime_make_symlink_in_container (f->context->runtime, f->bwrap,
                                              "/run/x86/bar",
                                              "/var/bar",
                                              PV_RUNTIME_EMULATION_ROOTS_INTERPRETER_ONLY,
@@ -1061,7 +1064,7 @@ test_make_symlink_in_container (Fixture *f,
 
   /* Conditionally OK, if there is an on-disk directory we can edit */
 
-  ok = pv_runtime_make_symlink_in_container (runtime, f->bwrap,
+  ok = pv_runtime_make_symlink_in_container (f->context->runtime, f->bwrap,
                                              "/run/host/foo",
                                              "/usr/foo",
                                              PV_RUNTIME_EMULATION_ROOTS_REAL_ONLY,
@@ -1090,7 +1093,7 @@ test_make_symlink_in_container (Fixture *f,
 
     }
 
-  ok = pv_runtime_make_symlink_in_container (runtime, f->bwrap,
+  ok = pv_runtime_make_symlink_in_container (f->context->runtime, f->bwrap,
                                              "/run/x86/bar",
                                              "/usr/bar",
                                              PV_RUNTIME_EMULATION_ROOTS_INTERPRETER_ONLY,
@@ -1110,7 +1113,7 @@ test_make_symlink_in_container (Fixture *f,
       g_assert_true (ok);
     }
 
-  ok = pv_runtime_make_symlink_in_container (runtime, f->bwrap,
+  ok = pv_runtime_make_symlink_in_container (f->context->runtime, f->bwrap,
                                              "/run/baz",
                                              "/usr/baz",
                                              PV_RUNTIME_EMULATION_ROOTS_BOTH,
@@ -1140,7 +1143,7 @@ test_make_symlink_in_container (Fixture *f,
 
   /* Error cases */
 
-  ok = pv_runtime_make_symlink_in_container (runtime, f->bwrap,
+  ok = pv_runtime_make_symlink_in_container (f->context->runtime, f->bwrap,
                                              "/nope",
                                              "/nope",
                                              PV_RUNTIME_EMULATION_ROOTS_REAL_ONLY,
@@ -1554,9 +1557,7 @@ test_passwd (Fixture *f,
 static void
 populate_ld_preload (Fixture *f,
                      GPtrArray *argv,
-                     PvAppendPreloadFlags flags,
-                     PvRuntime *runtime,
-                     FlatpakExports *exports)
+                     PvAppendPreloadFlags flags)
 {
   static const struct
   {
@@ -1589,6 +1590,11 @@ populate_ld_preload (Fixture *f,
   };
   gsize i;
 
+  if (flags & PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX)
+    g_assert_null (f->context->exports);
+  else
+    g_assert_nonnull (f->context->exports);
+
   for (i = 0; i < G_N_ELEMENTS (preloads); i++)
     {
       GLogLevelFlags old_fatal_mask = G_LOG_FATAL_MASK;
@@ -1611,13 +1617,11 @@ populate_ld_preload (Fixture *f,
                                  preloads[i].warning);
         }
 
-      pv_wrap_append_preload (argv,
+      pv_wrap_append_preload (f->context,
+                              argv,
                               PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
                               preloads[i].string,
-                              f->env,
-                              flags | PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS,
-                              runtime,
-                              exports);
+                              flags | PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS);
 
       /* If we modified the fatal mask, put back the old value. */
       if (preloads[i].warning != NULL)
@@ -1694,10 +1698,9 @@ test_remap_ld_preload (Fixture *f,
                        gconstpointer context)
 {
   const Config *config = context;
-  g_autoptr(FlatpakExports) exports = fixture_create_exports (f);
+  FlatpakExports *exports;
   g_autoptr(GPtrArray) argv = g_ptr_array_new_with_free_func (g_free);
   g_autoptr(GPtrArray) filtered = filter_expected_paths (config);
-  g_autoptr(PvRuntime) runtime = fixture_create_runtime (f, PV_RUNTIME_FLAGS_NONE);
   gsize i;
   gboolean expect_i386 = FALSE;
 
@@ -1706,7 +1709,13 @@ test_remap_ld_preload (Fixture *f,
     expect_i386 = TRUE;
 #endif
 
-  populate_ld_preload (f, argv, config->preload_flags, runtime, exports);
+  fixture_create_exports (f);
+  exports = f->context->exports;
+  g_assert_nonnull (exports);
+
+  fixture_create_runtime (f, PV_RUNTIME_FLAGS_NONE);
+  g_assert_nonnull (f->context->runtime);
+  populate_ld_preload (f, argv, config->preload_flags);
 
   g_assert_cmpuint (argv->len, ==, filtered->len);
 
@@ -1786,13 +1795,13 @@ test_remap_ld_preload_flatpak (Fixture *f,
   const Config *config = context;
   g_autoptr(GPtrArray) argv = g_ptr_array_new_with_free_func (g_free);
   g_autoptr(GPtrArray) filtered = filter_expected_paths (config);
-  g_autoptr(PvRuntime) runtime = fixture_create_runtime (f, PV_RUNTIME_FLAGS_FLATPAK_SUBSANDBOX);
   gsize i;
 
+  fixture_create_runtime (f, PV_RUNTIME_FLAGS_FLATPAK_SUBSANDBOX);
+  g_assert_nonnull (f->context->runtime);
   populate_ld_preload (f, argv,
                        (config->preload_flags
-                        | PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX),
-                       runtime, NULL);
+                        | PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX));
 
   g_assert_cmpuint (argv->len, ==, filtered->len);
 
@@ -1818,8 +1827,7 @@ test_remap_ld_preload_flatpak (Fixture *f,
 
 /*
  * In addition to testing the rare case where there's no runtime,
- * this one also exercises PV_APPEND_PRELOAD_FLAGS_REMOVE_GAME_OVERLAY,
- * which is the implementation of --remove-game-overlay.
+ * this one also exercises --remove-game-overlay.
  */
 static void
 test_remap_ld_preload_no_runtime (Fixture *f,
@@ -1828,19 +1836,23 @@ test_remap_ld_preload_no_runtime (Fixture *f,
   const Config *config = context;
   g_autoptr(GPtrArray) argv = g_ptr_array_new_with_free_func (g_free);
   g_autoptr(GPtrArray) filtered = filter_expected_paths (config);
-  g_autoptr(FlatpakExports) exports = fixture_create_exports (f);
+  FlatpakExports *exports;
   gsize i, j;
   gboolean expect_i386 = FALSE;
+
+  f->context->options.remove_game_overlay = TRUE;
 
 #if defined(__i386__) || defined(__x86_64__)
   if (!(config->preload_flags & PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE))
     expect_i386 = TRUE;
 #endif
 
-  populate_ld_preload (f, argv,
-                       (config->preload_flags
-                        | PV_APPEND_PRELOAD_FLAGS_REMOVE_GAME_OVERLAY),
-                       NULL, exports);
+  fixture_create_exports (f);
+  exports = f->context->exports;
+  g_assert_nonnull (exports);
+
+  g_assert_null (f->context->runtime);
+  populate_ld_preload (f, argv, config->preload_flags);
 
   g_assert_cmpuint (argv->len, ==, filtered->len - 1);
 
@@ -1853,7 +1865,7 @@ test_remap_ld_preload_no_runtime (Fixture *f,
       argument += strlen("--ld-preload=");
 
       /* /steam/lib/gameoverlayrenderer.so is missing because we used the
-       * REMOVE_GAME_OVERLAY flag */
+       * equivalent of --remove-game-overlay */
       if (g_str_has_suffix (expected, "/gameoverlayrenderer.so"))
         {
           /* We expect to skip only one element */
@@ -1920,10 +1932,10 @@ test_remap_ld_preload_flatpak_no_runtime (Fixture *f,
   g_autoptr(GPtrArray) filtered = filter_expected_paths (config);
   gsize i;
 
+  g_assert_null (f->context->runtime);
   populate_ld_preload (f, argv,
                        (config->preload_flags
-                        | PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX),
-                       NULL, NULL);
+                        | PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX));
 
   g_assert_cmpuint (argv->len, ==, filtered->len);
 
@@ -2065,12 +2077,16 @@ test_use_home_shared (Fixture *f,
     NULL
   };
   g_autoptr(FlatpakBwrap) env_bwrap = NULL;
-  g_autoptr(FlatpakExports) exports = fixture_create_exports (f);
-  g_autoptr(FlatpakExports) env_exports = fixture_create_exports (f);
+  FlatpakExports *exports;
+  FlatpakExports *env_exports;
   g_autoptr(GError) local_error = NULL;
   g_autoptr(SrtEnvOverlay) container_env = _srt_env_overlay_new ();
   GLogLevelFlags was_fatal;
   gboolean ret;
+
+  fixture_create_exports (f);
+  exports = f->context->exports;
+  g_assert_nonnull (exports);
 
   fixture_populate_dir (f, f->mock_host->fd, paths, G_N_ELEMENTS (paths));
   ret = pv_wrap_use_home (PV_HOME_MODE_SHARED, "/home/user", NULL, exports,
@@ -2138,12 +2154,17 @@ test_use_home_shared (Fixture *f,
   g_clear_pointer (&f->context->original_environ, g_strfreev);
   f->context->original_environ = _srt_strdupv (mock_environ);
 
+  g_clear_pointer (&f->context->exports, flatpak_exports_free);
+  exports = NULL;
+
+  fixture_create_exports (f);
+  env_exports = f->context->exports;
+  g_assert_nonnull (env_exports);
+
   /* Don't crash on warnings here */
   was_fatal = g_log_set_always_fatal (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL);
   pv_bind_and_propagate_from_environ (f->context,
-                                      f->mock_host,
                                       PV_HOME_MODE_SHARED,
-                                      env_exports,
                                       container_env);
   g_log_set_always_fatal (was_fatal);
 
@@ -2210,16 +2231,17 @@ test_use_host_os (Fixture *f,
     "usr/local/",
     "var/tmp/",
   };
-  g_autoptr(FlatpakExports) exports = fixture_create_exports (f);
   g_autoptr(GError) local_error = NULL;
   gboolean ret;
 
+  fixture_create_exports (f);
+  g_assert_nonnull (f->context->exports);
   fixture_populate_dir (f, f->mock_host->fd, paths, G_N_ELEMENTS (paths));
-  ret = pv_wrap_use_host_os (f->mock_host->fd, exports, f->bwrap,
+  ret = pv_wrap_use_host_os (f->mock_host->fd, f->context->exports, f->bwrap,
                              _srt_dirent_strcmp, &local_error);
   g_assert_no_error (local_error);
   g_assert_true (ret);
-  flatpak_exports_append_bwrap_args (exports, f->bwrap);
+  flatpak_exports_append_bwrap_args (f->context->exports, f->bwrap);
 
   dump_bwrap (f->bwrap);
 

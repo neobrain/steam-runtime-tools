@@ -98,8 +98,12 @@ pv_wrap_options_clear (PvWrapOptions *self)
 
 enum {
   PROP_0,
+  PROP_CURRENT_HOME,
+  PROP_CURRENT_ROOT,
   N_PROPERTIES
 };
+
+static GParamSpec *properties[N_PROPERTIES] = { NULL };
 
 struct _PvWrapContextClass
 {
@@ -121,15 +125,89 @@ pv_wrap_context_init (PvWrapContext *self)
 }
 
 static void
+pv_wrap_context_get_property (GObject *object,
+                              guint prop_id,
+                              GValue *value,
+                              GParamSpec *pspec)
+{
+  PvWrapContext *self = PV_WRAP_CONTEXT (object);
+
+  switch (prop_id)
+    {
+      case PROP_CURRENT_HOME:
+        g_value_set_string (value, self->current_home);
+        break;
+
+      case PROP_CURRENT_ROOT:
+        g_value_set_object (value, self->current_root);
+        break;
+
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+pv_wrap_context_set_property (GObject *object,
+                              guint prop_id,
+                              const GValue *value,
+                              GParamSpec *pspec)
+{
+  PvWrapContext *self = PV_WRAP_CONTEXT (object);
+
+  switch (prop_id)
+    {
+      case PROP_CURRENT_HOME:
+        /* Construct-only */
+        g_return_if_fail (self->current_home == NULL);
+        self->current_home = g_value_dup_string (value);
+        break;
+
+      case PROP_CURRENT_ROOT:
+        /* Construct-only */
+        g_return_if_fail (self->current_root == NULL);
+        self->current_root = g_value_dup_object (value);
+        break;
+
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+pv_wrap_context_constructed (GObject *object)
+{
+  PvWrapContext *self = PV_WRAP_CONTEXT (object);
+
+  G_OBJECT_CLASS (pv_wrap_context_parent_class)->constructed (object);
+
+  if (self->current_home == NULL)
+    self->current_home = g_strdup (g_get_home_dir ());
+}
+
+static void
+pv_wrap_context_dispose (GObject *object)
+{
+  PvWrapContext *self = PV_WRAP_CONTEXT (object);
+
+  g_clear_object (&self->current_root);
+  g_clear_object (&self->runtime);
+
+  G_OBJECT_CLASS (pv_wrap_context_parent_class)->dispose (object);
+}
+
+static void
 pv_wrap_context_finalize (GObject *object)
 {
   PvWrapContext *self = PV_WRAP_CONTEXT (object);
 
   pv_wrap_options_clear (&self->options);
 
+  g_clear_pointer (&self->exports, flatpak_exports_free);
   g_clear_pointer (&self->paths_not_exported, g_hash_table_unref);
   g_strfreev (self->original_argv);
   g_strfreev (self->original_environ);
+  g_free (self->current_home);
 
   G_OBJECT_CLASS (pv_wrap_context_parent_class)->finalize (object);
 }
@@ -139,13 +217,40 @@ pv_wrap_context_class_init (PvWrapContextClass *cls)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (cls);
 
+  object_class->get_property = pv_wrap_context_get_property;
+  object_class->set_property = pv_wrap_context_set_property;
+  object_class->constructed = pv_wrap_context_constructed;
+  object_class->dispose = pv_wrap_context_dispose;
   object_class->finalize = pv_wrap_context_finalize;
+
+  properties[PROP_CURRENT_HOME] =
+    g_param_spec_string ("current-home", "Current $HOME",
+                         ("Path to real or mock home directory "
+                          "within current-root"),
+                         NULL,
+                         (G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
+                          G_PARAM_STATIC_STRINGS));
+
+  properties[PROP_CURRENT_ROOT] =
+    g_param_spec_object ("current-root", "Current root",
+                         ("Real or mock root directory for the current "
+                          "filesystem namespace"),
+                         SRT_TYPE_SYSROOT,
+                         (G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
+                          G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_properties (object_class, N_PROPERTIES, properties);
 }
 
 PvWrapContext *
-pv_wrap_context_new (GError **error)
+pv_wrap_context_new (SrtSysroot *current_root,
+                     const char *current_home,
+                     GError **error)
 {
+  /* Can't actually fail right now */
   return g_object_new (PV_TYPE_WRAP_CONTEXT,
+                       "current-home", current_home,
+                       "current-root", current_root,
                        NULL);
 }
 
@@ -1033,7 +1138,6 @@ export_not_allowed (PvWrapContext *self,
 /*
  * pv_wrap_context_export_if_allowed:
  * @self: The context
- * @exports: List of exported paths
  * @export_mode: Mode with which to add @path
  * @path: The path we propose to export, as an absolute path within the
  *  current execution environment
@@ -1052,7 +1156,6 @@ export_not_allowed (PvWrapContext *self,
  */
 gboolean
 pv_wrap_context_export_if_allowed (PvWrapContext *self,
-                                   FlatpakExports *exports,
                                    FlatpakFilesystemMode export_mode,
                                    const char *path,
                                    const char *host_path,
@@ -1065,7 +1168,7 @@ pv_wrap_context_export_if_allowed (PvWrapContext *self,
   size_t i;
 
   g_return_val_if_fail (PV_IS_WRAP_CONTEXT (self), FALSE);
-  g_return_val_if_fail (exports != NULL, FALSE);
+  g_return_val_if_fail (self->exports != NULL, FALSE);
   g_return_val_if_fail (export_mode > FLATPAK_FILESYSTEM_MODE_NONE, FALSE);
   g_return_val_if_fail (export_mode <= FLATPAK_FILESYSTEM_MODE_LAST, FALSE);
   g_return_val_if_fail (g_path_is_absolute (path), FALSE);
@@ -1106,7 +1209,7 @@ pv_wrap_context_export_if_allowed (PvWrapContext *self,
 
   /* This generally shouldn't fail in practice, because we already checked
    * against reserved_paths[] above */
-  pv_exports_expose_or_log (exports, export_mode, path);
+  pv_exports_expose_or_log (self->exports, export_mode, path);
 
   return TRUE;
 }
