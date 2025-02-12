@@ -141,6 +141,11 @@ fixture_populate_dir (Fixture *f,
 
   for (i = 0; i < n_paths; i++)
     {
+      const char *path = paths[i];
+
+      /* All paths we create should be created relative to the mock root */
+      g_assert (path[0] != '/');
+
       if (strchr (paths[i], '>'))
         {
           g_auto(GStrv) pieces = g_strsplit (paths[i], ">", 2);
