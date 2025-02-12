@@ -56,6 +56,14 @@ pv_adverb_preload_module_clear (gpointer p)
 
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (PvAdverbPreloadModule, pv_adverb_preload_module_clear)
 
+gchar *pv_adverb_preload_module_to_adverb_cli (PvAdverbPreloadModule *self);
+
+gboolean pv_adverb_preload_module_parse_adverb_cli (PvAdverbPreloadModule *self,
+                                                    const char *option,
+                                                    PvPreloadVariableIndex which,
+                                                    const char *value,
+                                                    GError **error);
+
 gboolean pv_adverb_set_up_preload_modules (FlatpakBwrap *wrapped_command,
                                            PvPerArchDirs *lib_temp_dirs,
                                            const PvAdverbPreloadModule *preload_modules,

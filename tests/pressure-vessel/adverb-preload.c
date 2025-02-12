@@ -310,6 +310,147 @@ test_biarch (Fixture *f,
 #endif
 }
 
+typedef struct
+{
+  const char *option;
+  PvAdverbPreloadModule expected;
+} CommandLineTest;
+
+static void
+test_cli (Fixture *f,
+          gconstpointer context)
+{
+  static const CommandLineTest tests[] =
+  {
+    {
+      .option = "",
+      .expected = {
+        .name = (char *) "",
+        .abi_index = PV_UNSPECIFIED_ABI,
+      },
+    },
+    {
+      .option = "libpreload.so",
+      .expected = {
+        .name = (char *) "libpreload.so",
+        .abi_index = PV_UNSPECIFIED_ABI,
+      },
+    },
+#if defined(__x86_64__) || defined(__i386__)
+    {
+      .option = "/lib64/libpreload.so:abi=" SRT_ABI_X86_64,
+      .expected = {
+        .name = (char *) "/lib64/libpreload.so",
+        .abi_index = 0,
+      },
+    },
+    {
+      .option = "/lib32/libpreload.so:abi=" SRT_ABI_I386,
+      .expected = {
+        .name = (char *) "/lib32/libpreload.so",
+        .abi_index = 1,
+      },
+    },
+#endif
+#if defined(_SRT_MULTIARCH)
+    {
+      .option = "/tmp/libabi.so:abi=" _SRT_MULTIARCH,
+      .expected = {
+        .name = (char *) "/tmp/libabi.so",
+#if defined(__i386__)
+        /* On i386, we treat x86_64 as the primary architecture */
+        .abi_index = 1,
+#else
+        .abi_index = 0,
+#endif
+      },
+    },
+#endif
+    {
+      .option = "/tmp/libabi.so:nonsense",
+      .expected = {
+        .name = NULL,
+      },
+    },
+  };
+  gsize i;
+
+  for (i = 0; i < G_N_ELEMENTS (tests); i++)
+    {
+      const CommandLineTest *test = &tests[i];
+      /* There's no real difference between our handling of LD_AUDIT
+       * and LD_PRELOAD, so we alternate between testing them both */
+      const PvPreloadVariableIndex which = i % 2;
+      const char *option = pv_preload_variables[which].adverb_option;
+      g_autoptr(GError) local_error = NULL;
+      g_auto(PvAdverbPreloadModule) actual = PV_ADVERB_PRELOAD_MODULE_INIT;
+      gboolean ret;
+
+      ret = pv_adverb_preload_module_parse_adverb_cli (&actual,
+                                                       option,
+                                                       which,
+                                                       test->option,
+                                                       &local_error);
+
+      if (ret)
+        {
+          const char *abi = "(unspecified)";
+
+          if (actual.abi_index != PV_UNSPECIFIED_ABI)
+            {
+              g_assert_cmpuint (actual.abi_index, >=, 0);
+              g_assert_cmpuint (actual.abi_index, <, PV_N_SUPPORTED_ARCHITECTURES);
+              abi = pv_multiarch_details[actual.abi_index].tuple;
+            }
+
+          g_test_message ("\"%s\" -> \"%s\", abi=%s",
+                          test->option, actual.name, abi);
+        }
+      else
+        {
+          g_test_message ("\"%s\" -> error \"%s\"",
+                          test->option, local_error->message);
+        }
+
+      if (test->expected.name == NULL)
+        {
+          g_assert_false (ret);
+          g_assert_null (actual.name);
+          g_assert_nonnull (local_error);
+        }
+      else
+        {
+          g_autofree gchar *serialized = NULL;
+          g_auto(PvAdverbPreloadModule) reparsed = PV_ADVERB_PRELOAD_MODULE_INIT;
+          gchar *equals;
+
+          g_assert_no_error (local_error);
+          g_assert_true (ret);
+          g_assert_cmpstr (actual.name, ==, test->expected.name);
+          g_assert_cmpuint (actual.abi_index, ==, test->expected.abi_index);
+          g_assert_cmpuint (actual.index_in_preload_variables, ==, which);
+
+          /* Check that it round-trips */
+          serialized = pv_adverb_preload_module_to_adverb_cli (&actual);
+          g_assert_true (g_str_has_prefix (serialized, option));
+          equals = serialized + strlen (option);
+          g_assert_cmpint (*equals, ==, '=');
+          *equals = '\0';
+
+          ret = pv_adverb_preload_module_parse_adverb_cli (&reparsed,
+                                                           option,
+                                                           which,
+                                                           equals + 1,
+                                                           &local_error);
+          g_assert_no_error (local_error);
+          g_assert_true (ret);
+          g_assert_cmpstr (reparsed.name, ==, test->expected.name);
+          g_assert_cmpuint (reparsed.abi_index, ==, test->expected.abi_index);
+          g_assert_cmpuint (reparsed.index_in_preload_variables, ==, which);
+        }
+    }
+}
+
 /*
  * There is a special case for gameoverlayrenderer.so:
  * pv-adverb --ld-preload=/.../ubuntu12_32/gameoverlayrenderer.so is
@@ -705,6 +846,10 @@ main (int argc,
   add_test ("/biarch", test_biarch);
   add_test ("/gameoverlayrenderer", test_gameoverlayrenderer);
   add_test ("/repetition", test_repetition);
+
+  /* This one isn't affected by whether we have the PvPerArchDirs or not */
+  g_test_add ("/cli", Fixture, NULL,
+              setup, test_cli, teardown);
 
   return g_test_run ();
 }
