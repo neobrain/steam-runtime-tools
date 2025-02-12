@@ -264,6 +264,83 @@ setup (Fixture *f,
                                                    TRUE);
 }
 
+/*
+ * PreloadTest:
+ * @input: One of the colon-separated items in LD_PRELOAD
+ * @warning: (nullable): If not null, expect the item to be ignored
+ *  with this warning
+ */
+typedef struct
+{
+  const char *input;
+  const char *warning;
+} PreloadTest;
+
+static const PreloadTest ld_preload_tests[] =
+{
+  {
+    .input = "",
+    .warning = "Ignoring invalid loadable module \"\"",
+  },
+  {
+    .input = "",
+    .warning = "Ignoring invalid loadable module \"\"",
+  },
+  {
+    .input = "/app/lib/libpreloadA.so",
+  },
+  {
+    .input = "/platform/plat-$PLATFORM/libpreloadP.so",
+  },
+  {
+    .input = "/opt/${LIB}/libpreloadL.so",
+  },
+  {
+    .input = "/lib/libpreload-rootfs.so",
+  },
+  {
+    .input = "/usr/lib/libpreloadU.so",
+  },
+  {
+    .input = "/home/me/libpreloadH.so",
+  },
+  {
+    .input = "/steam/lib/gameoverlayrenderer.so",
+  },
+  {
+    .input = "/overlay/libs/${ORIGIN}/../lib/libpreloadO.so",
+  },
+  {
+    .input = "/future/libs-$FUTURE/libpreloadF.so",
+  },
+  {
+    .input = "/in-root-plat-${PLATFORM}-only-32-bit.so",
+  },
+  {
+    .input = "/in-root-${FUTURE}.so",
+  },
+  {
+    .input = "./${RELATIVE}.so",
+  },
+  {
+    .input = "./relative.so",
+  },
+  {
+    .input = "libfakeroot.so",
+  },
+  {
+    .input = "libpthread.so.0",
+  },
+  {
+    .input = "/usr/local/lib/libgtk3-nocsd.so.0",
+    .warning = "Disabling gtk3-nocsd LD_PRELOAD: it is known to cause crashes.",
+  },
+  {
+    .input = "",
+    .warning = "Ignoring invalid loadable module \"\"",
+  },
+};
+
 static void
 setup_ld_preload (Fixture *f,
                   gconstpointer context)
@@ -1570,35 +1647,6 @@ populate_ld_preload (Fixture *f,
                      GPtrArray *argv,
                      PvAppendPreloadFlags flags)
 {
-  static const struct
-  {
-    const char *string;
-    const char *warning;
-  } preloads[] =
-  {
-    { "", .warning = "Ignoring invalid loadable module \"\"" },
-    { "", .warning = "Ignoring invalid loadable module \"\"" },
-    { "/app/lib/libpreloadA.so" },
-    { "/platform/plat-$PLATFORM/libpreloadP.so" },
-    { "/opt/${LIB}/libpreloadL.so" },
-    { "/lib/libpreload-rootfs.so" },
-    { "/usr/lib/libpreloadU.so" },
-    { "/home/me/libpreloadH.so" },
-    { "/steam/lib/gameoverlayrenderer.so" },
-    { "/overlay/libs/${ORIGIN}/../lib/libpreloadO.so" },
-    { "/future/libs-$FUTURE/libpreloadF.so" },
-    { "/in-root-plat-${PLATFORM}-only-32-bit.so" },
-    { "/in-root-${FUTURE}.so" },
-    { "./${RELATIVE}.so" },
-    { "./relative.so" },
-    { "libfakeroot.so" },
-    { "libpthread.so.0" },
-    {
-      "/usr/local/lib/libgtk3-nocsd.so.0",
-      .warning = "Disabling gtk3-nocsd LD_PRELOAD: it is known to cause crashes.",
-    },
-    { "", .warning = "Ignoring invalid loadable module \"\"" },
-  };
   gsize i;
 
   if (flags & PV_APPEND_PRELOAD_FLAGS_FLATPAK_SUBSANDBOX)
@@ -1606,15 +1654,16 @@ populate_ld_preload (Fixture *f,
   else
     g_assert_nonnull (f->context->exports);
 
-  for (i = 0; i < G_N_ELEMENTS (preloads); i++)
+  for (i = 0; i < G_N_ELEMENTS (ld_preload_tests); i++)
     {
+      const PreloadTest *test = &ld_preload_tests[i];
       GLogLevelFlags old_fatal_mask = G_LOG_FATAL_MASK;
 
       /* We expect a warning for libgtk3-nocsd.so.0, but the test framework
        * makes warnings and critical warnings fatal, in addition to the
        * usual fatal errors. Temporarily relax that to just critical
        * warnings and fatal errors. */
-      if (preloads[i].warning != NULL)
+      if (test->warning != NULL)
         {
           old_fatal_mask = g_log_set_always_fatal (G_LOG_FATAL_MASK | G_LOG_LEVEL_CRITICAL);
           /* Note that this assumes pressure-vessel doesn't define
@@ -1625,17 +1674,17 @@ populate_ld_preload (Fixture *f,
            * to be trapped. */
           g_test_expect_message ("pressure-vessel",
                                  G_LOG_LEVEL_WARNING,
-                                 preloads[i].warning);
+                                 test->warning);
         }
 
       pv_wrap_append_preload (f->context,
                               argv,
                               PV_PRELOAD_VARIABLE_INDEX_LD_PRELOAD,
-                              preloads[i].string,
+                              test->input,
                               flags | PV_APPEND_PRELOAD_FLAGS_IN_UNIT_TESTS);
 
       /* If we modified the fatal mask, put back the old value. */
-      if (preloads[i].warning != NULL)
+      if (test->warning != NULL)
         {
           g_test_assert_expected_messages ();
           g_log_set_always_fatal (old_fatal_mask);
