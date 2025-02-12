@@ -20,7 +20,7 @@ steam-runtime-tools (0.20250212.0) UNRELEASED; urgency=medium
     - Add convenience files to cross-compile for arm64, as an example
       of a non-x86 architecture
 
- -- Simon McVittie <smcv@collabora.com>  Wed, 12 Feb 2025 14:51:31 +0000
+ -- Simon McVittie <smcv@collabora.com>  Wed, 12 Feb 2025 15:07:27 +0000
 
 steam-runtime-tools (0.20250122.0) steamrt; urgency=medium
 
