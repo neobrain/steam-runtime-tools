@@ -146,30 +146,30 @@ fixture_populate_dir (Fixture *f,
       /* All paths we create should be created relative to the mock root */
       g_assert (path[0] != '/');
 
-      if (strchr (paths[i], '>'))
+      if (strchr (path, '>'))
         {
-          g_auto(GStrv) pieces = g_strsplit (paths[i], ">", 2);
+          g_auto(GStrv) pieces = g_strsplit (path, ">", 2);
 
           g_test_message ("Creating symlink %s -> %s", pieces[0], pieces[1]);
           g_assert_no_errno (TEMP_FAILURE_RETRY (symlinkat (pieces[1], root_fd, pieces[0])));
         }
-      else if (g_str_has_suffix (paths[i], "/"))
+      else if (g_str_has_suffix (path, "/"))
         {
-          g_test_message ("Creating directory %s", paths[i]);
+          g_test_message ("Creating directory %s", path);
 
-          glnx_shutil_mkdir_p_at (root_fd, paths[i], 0755, NULL, &local_error);
+          glnx_shutil_mkdir_p_at (root_fd, path, 0755, NULL, &local_error);
           g_assert_no_error (local_error);
         }
       else
         {
-          g_autofree char *dir = g_path_get_dirname (paths[i]);
+          g_autofree char *dir = g_path_get_dirname (path);
 
           g_test_message ("Creating directory %s", dir);
           glnx_shutil_mkdir_p_at (root_fd, dir, 0755, NULL, &local_error);
           g_assert_no_error (local_error);
 
-          g_test_message ("Creating file %s", paths[i]);
-          glnx_file_replace_contents_at (root_fd, paths[i],
+          g_test_message ("Creating file %s", path);
+          glnx_file_replace_contents_at (root_fd, path,
                                          (const guint8 *) "", 0, 0, NULL,
                                          &local_error);
           g_assert_no_error (local_error);
