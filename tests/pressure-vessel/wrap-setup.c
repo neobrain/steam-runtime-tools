@@ -269,11 +269,18 @@ setup (Fixture *f,
  * @input: One of the colon-separated items in LD_PRELOAD
  * @warning: (nullable): If not null, expect the item to be ignored
  *  with this warning
+ * @touch: (nullable): If not null, create this regular file associated
+ *  with the item in the mock sysroot.
+ *  "=" may be used as a shorthand for repeating @input.
+ * @touch_i386: (nullable): If not null, create this regular file in the
+ *  mock sysroot, but only if the i386 architecture is supported.
  */
 typedef struct
 {
   const char *input;
   const char *warning;
+  const char *touch;
+  const char *touch_i386;
 } PreloadTest;
 
 static const PreloadTest ld_preload_tests[] =
@@ -288,33 +295,45 @@ static const PreloadTest ld_preload_tests[] =
   },
   {
     .input = "/app/lib/libpreloadA.so",
+    .touch = "=",
   },
   {
     .input = "/platform/plat-$PLATFORM/libpreloadP.so",
+    .touch = "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so",
+    .touch_i386 = "/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so",
   },
   {
     .input = "/opt/${LIB}/libpreloadL.so",
+    .touch = "/opt/" PRIMARY_LIB "/libpreloadL.so",
+    .touch_i386 = "/opt/" MOCK_LIB_32 "/libpreloadL.so",
   },
   {
     .input = "/lib/libpreload-rootfs.so",
+    .touch = "=",
   },
   {
     .input = "/usr/lib/libpreloadU.so",
+    .touch = "=",
   },
   {
     .input = "/home/me/libpreloadH.so",
+    .touch = "=",
   },
   {
     .input = "/steam/lib/gameoverlayrenderer.so",
+    .touch = "=",
   },
   {
     .input = "/overlay/libs/${ORIGIN}/../lib/libpreloadO.so",
+    .touch = "=",
   },
   {
     .input = "/future/libs-$FUTURE/libpreloadF.so",
+    .touch = "/future/libs-post2038/.exists",
   },
   {
     .input = "/in-root-plat-${PLATFORM}-only-32-bit.so",
+    .touch_i386 = "/in-root-plat-" MOCK_PLATFORM_32 "-only-32-bit.so",
   },
   {
     .input = "/in-root-${FUTURE}.so",
@@ -333,6 +352,7 @@ static const PreloadTest ld_preload_tests[] =
   },
   {
     .input = "/usr/local/lib/libgtk3-nocsd.so.0",
+    .touch = "=",
     .warning = "Disabling gtk3-nocsd LD_PRELOAD: it is known to cause crashes.",
   },
   {
@@ -346,35 +366,37 @@ setup_ld_preload (Fixture *f,
                   gconstpointer context)
 {
   const Config *config = context;
-  static const char * const touch[] =
-  {
-    "app/lib/libpreloadA.so",
-    "future/libs-post2038/.exists",
-    "home/me/libpreloadH.so",
-    "lib/libpreload-rootfs.so",
-    "overlay/libs/usr/lib/libpreloadO.so",
-    "steam/lib/gameoverlayrenderer.so",
-    "usr/lib/libpreloadU.so",
-    "usr/local/lib/libgtk3-nocsd.so.0",
-    "opt/" PRIMARY_LIB "/libpreloadL.so",
-    "platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so",
-  };
+  g_autoptr(GPtrArray) touch = g_ptr_array_new ();
 #if defined(__i386__) || defined(__x86_64__)
-  static const char * const touch_i386[] =
-  {
-    "opt/" MOCK_LIB_32 "/libpreloadL.so",
-    "platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so",
-    "in-root-plat-" MOCK_PLATFORM_32 "-only-32-bit.so",
-  };
+  g_autoptr(GPtrArray) touch_i386 = g_ptr_array_new ();
 #endif
+  gsize i;
+
+  for (i = 0; i < G_N_ELEMENTS (ld_preload_tests); i++)
+    {
+      const PreloadTest *test = &ld_preload_tests[i];
+
+      if (g_strcmp0 (test->touch, "=") == 0)
+        g_ptr_array_add (touch, (char *) test->input);
+      else if (test->touch != NULL)
+        g_ptr_array_add (touch, (char *) test->touch);
+
+#if defined(__i386__) || defined(__x86_64__)
+      if (test->touch_i386 != NULL)
+        g_ptr_array_add (touch_i386, (char *) test->touch_i386);
+#endif
+    }
 
   setup (f, context);
-  fixture_populate_dir (f, f->mock_host->fd, touch, G_N_ELEMENTS (touch));
+  fixture_populate_dir (f, f->mock_host->fd,
+                        (const char * const *) touch->pdata, touch->len);
 
   if (!(config->preload_flags & PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE))
     {
 #if defined(__i386__) || defined(__x86_64__)
-      fixture_populate_dir (f, f->mock_host->fd, touch_i386, G_N_ELEMENTS (touch_i386));
+      fixture_populate_dir (f, f->mock_host->fd,
+                            (const char * const *) touch_i386->pdata,
+                            touch_i386->len);
 #endif
     }
 }
