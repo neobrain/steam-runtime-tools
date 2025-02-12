@@ -144,7 +144,8 @@ fixture_populate_dir (Fixture *f,
       const char *path = paths[i];
 
       /* All paths we create should be created relative to the mock root */
-      g_assert (path[0] != '/');
+      while (path[0] == '/')
+        path++;
 
       if (strchr (path, '>'))
         {
