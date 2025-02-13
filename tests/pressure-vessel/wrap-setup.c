@@ -428,6 +428,8 @@ static const PreloadTest ld_preload_tests[] =
      * this one */
     .expected_exports = {
       { "/home", EXPORT_NONE },
+      /* We don't want to export $HOME (and overrule --unshare-home) just
+       * because it happens to have a LD_PRELOAD module in it */
       { "/home/me", EXPORT_NONE },
       { "=", EXPORT_VISIBLE },
     },
