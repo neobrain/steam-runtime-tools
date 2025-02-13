@@ -259,6 +259,10 @@ setup (Fixture *f,
   g_assert_no_error (local_error);
   f->bwrap = flatpak_bwrap_new (flatpak_bwrap_empty_env);
 
+  f->context->original_environ = g_environ_setenv (f->context->original_environ,
+                                                   "HOME",
+                                                   "/home/me",
+                                                   TRUE);
   /* Some tests need to know where Steam is installed;
    * pretend that we have it installed in /steam */
   f->context->original_environ = g_environ_setenv (f->context->original_environ,
@@ -461,6 +465,7 @@ teardown (Fixture *f,
 
   g_clear_object (&f->context);
   g_clear_object (&f->mock_host);
+  g_clear_pointer (&f->home, g_free);
   g_clear_pointer (&f->mock_runtime, g_free);
   g_clear_pointer (&f->home, g_free);
   g_clear_pointer (&f->tmpdir, g_free);
