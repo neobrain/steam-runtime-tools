@@ -446,6 +446,22 @@ static const PreloadTest ld_preload_tests[] =
     },
   },
   {
+    .input = "/home/me/lib64/mangohud/libNotMangoHud.so",
+    .touch = "=",
+    .expected = { "=" },
+    .expected_exports = {
+      { "/home", EXPORT_NONE },
+      { "/home/me", EXPORT_NONE },
+      { "/home/me/lib64", EXPORT_NONE },
+      /* Ideally we would export this parent, so that if libNotMangoHud.so
+       * loads ${ORIGIN}/libImplementation.so, it can see the exported
+       * /home/me/lib64/mangohud/libImplementation.so.
+       * (This mirrors how MangoHud actually works.) */
+      { "/home/me/lib64/mangohud", EXPORT_VISIBLE | EXPORT_TODO },
+      { "=", EXPORT_VISIBLE },
+    },
+  },
+  {
     .input = "/steam/lib/gameoverlayrenderer.so",
     .touch = "=",
     .expected = { "=" },
