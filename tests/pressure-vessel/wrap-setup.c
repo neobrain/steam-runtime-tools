@@ -274,6 +274,12 @@ setup (Fixture *f,
  *  "=" may be used as a shorthand for repeating @input.
  * @touch_i386: (nullable): If not null, create this regular file in the
  *  mock sysroot, but only if the i386 architecture is supported.
+ * @expected: The arguments we expect to see passed to
+ *  `pv-adverb --ld-preload` as a result, with no /run/host/ prefix.
+ *  "=" may be used as a shorthand for repeating @input.
+ *  If prefixed with "i386:", then we expect the rest of the value as an
+ *  argument if and only if the i386 architecture is supported.
+ *  %NULL items are ignored.
  */
 typedef struct
 {
@@ -281,6 +287,8 @@ typedef struct
   const char *warning;
   const char *touch;
   const char *touch_i386;
+  /* Array lengths are arbitrary, expand as required */
+  const char *expected[2];
 } PreloadTest;
 
 static const PreloadTest ld_preload_tests[] =
@@ -296,59 +304,90 @@ static const PreloadTest ld_preload_tests[] =
   {
     .input = "/app/lib/libpreloadA.so",
     .touch = "=",
+    .expected = { "=" },
   },
   {
     .input = "/platform/plat-$PLATFORM/libpreloadP.so",
     .touch = "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so",
     .touch_i386 = "/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so",
+    .expected = {
+      "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so:abi=" PRIMARY_ABI,
+      "i386:/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so:abi=" SRT_ABI_I386,
+    },
   },
   {
     .input = "/opt/${LIB}/libpreloadL.so",
     .touch = "/opt/" PRIMARY_LIB "/libpreloadL.so",
     .touch_i386 = "/opt/" MOCK_LIB_32 "/libpreloadL.so",
+    .expected = {
+      "/opt/" PRIMARY_LIB "/libpreloadL.so:abi=" PRIMARY_ABI,
+      "i386:/opt/" MOCK_LIB_32 "/libpreloadL.so:abi=" SRT_ABI_I386,
+    },
   },
   {
     .input = "/lib/libpreload-rootfs.so",
     .touch = "=",
+    .expected = { "=" },
   },
   {
     .input = "/usr/lib/libpreloadU.so",
     .touch = "=",
+    .expected = { "=" },
   },
   {
     .input = "/home/me/libpreloadH.so",
     .touch = "=",
+    .expected = { "=" },
   },
   {
     .input = "/steam/lib/gameoverlayrenderer.so",
     .touch = "=",
+    .expected = { "=" },
   },
   {
     .input = "/overlay/libs/${ORIGIN}/../lib/libpreloadO.so",
     .touch = "=",
+    .expected = { "=" },
   },
   {
     .input = "/future/libs-$FUTURE/libpreloadF.so",
     .touch = "/future/libs-post2038/.exists",
+    .expected = { "=" },
   },
   {
     .input = "/in-root-plat-${PLATFORM}-only-32-bit.so",
     .touch_i386 = "/in-root-plat-" MOCK_PLATFORM_32 "-only-32-bit.so",
+    .expected = {
+      "i386:/in-root-plat-i686-only-32-bit.so:abi=" SRT_ABI_I386,
+    },
   },
   {
     .input = "/in-root-${FUTURE}.so",
+    .expected = { "=" },
   },
   {
     .input = "./${RELATIVE}.so",
+    .expected = { "=" },
   },
   {
     .input = "./relative.so",
+    .expected = { "=" },
   },
   {
+    /* Our mock implementation of pv_runtime_has_library() behaves as though
+     * libfakeroot is not in the runtime or graphics stack provider, only
+     * the current namespace */
     .input = "libfakeroot.so",
+    .expected = {
+      "/path/to/" PRIMARY_LIB "/libfakeroot.so:abi=" PRIMARY_ABI,
+      "i386:/path/to/" MOCK_LIB_32 "/libfakeroot.so:abi=" SRT_ABI_I386,
+    },
   },
   {
+    /* Our mock implementation of pv_runtime_has_library() behaves as though
+     * libpthread.so.0 *is* in the runtime, as we would expect */
     .input = "libpthread.so.0",
+    .expected = { "=" },
   },
   {
     .input = "/usr/local/lib/libgtk3-nocsd.so.0",
@@ -1720,55 +1759,37 @@ populate_ld_preload (Fixture *f,
   g_test_message ("argv->len: %" G_GSIZE_FORMAT, i);
 }
 
-static const char * const expected_preload_paths[] =
-{
-  "/app/lib/libpreloadA.so",
-  "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so:abi=" PRIMARY_ABI,
-  "i386:/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so:abi=" SRT_ABI_I386,
-  "/opt/" PRIMARY_LIB "/libpreloadL.so:abi=" PRIMARY_ABI,
-  "i386:/opt/" MOCK_LIB_32 "/libpreloadL.so:abi=" SRT_ABI_I386,
-  "/lib/libpreload-rootfs.so",
-  "/usr/lib/libpreloadU.so",
-  "/home/me/libpreloadH.so",
-  "/steam/lib/gameoverlayrenderer.so",
-  "/overlay/libs/${ORIGIN}/../lib/libpreloadO.so",
-  "/future/libs-$FUTURE/libpreloadF.so",
-  "i386:/in-root-plat-i686-only-32-bit.so:abi=" SRT_ABI_I386,
-  "/in-root-${FUTURE}.so",
-  "./${RELATIVE}.so",
-  "./relative.so",
-  /* Our mock implementation of pv_runtime_has_library() behaves as though
-   * libfakeroot is not in the runtime or graphics stack provider, only
-   * the current namespace */
-  "/path/to/" PRIMARY_LIB "/libfakeroot.so:abi=" PRIMARY_ABI,
-  "i386:/path/to/" MOCK_LIB_32 "/libfakeroot.so:abi=" SRT_ABI_I386,
-  /* Our mock implementation of pv_runtime_has_library() behaves as though
-   * libpthread.so.0 *is* in the runtime, as we would expect */
-  "libpthread.so.0",
-};
-
 static GPtrArray *
 filter_expected_paths (const Config *config)
 {
   g_autoptr(GPtrArray) filtered = g_ptr_array_new_with_free_func (NULL);
-  gsize i;
+  gsize i, j;
 
   /* Some of the expected paths are only expected to appear on i386.
    * Filter the list accordingly. */
-  for (i = 0; i < G_N_ELEMENTS (expected_preload_paths); i++)
+  for (i = 0; i < G_N_ELEMENTS (ld_preload_tests); i++)
     {
-      const char *path = expected_preload_paths[i];
+      for (j = 0; j < G_N_ELEMENTS (ld_preload_tests[i].expected); j++)
+        {
+          const char *path = ld_preload_tests[i].expected[j];
 
-      if (g_str_has_prefix (path, "i386:"))
-        {
+          if (path == NULL)
+            continue;
+
+          if (g_str_equal (path, "="))
+            path = ld_preload_tests[i].input;
+
+          if (g_str_has_prefix (path, "i386:"))
+            {
 #if defined(__i386__) || defined(__x86_64__)
-          if (!(config->preload_flags & PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE))
-            g_ptr_array_add (filtered, (char *) (path + strlen ("i386:")));
+              if (!(config->preload_flags & PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE))
+                g_ptr_array_add (filtered, (char *) (path + strlen ("i386:")));
 #endif
-        }
-      else
-        {
-          g_ptr_array_add (filtered, (char *) path);
+            }
+          else
+            {
+              g_ptr_array_add (filtered, (char *) path);
+            }
         }
     }
 
