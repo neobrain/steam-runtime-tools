@@ -371,8 +371,15 @@ static const PreloadTest ld_preload_tests[] =
     /* We don't always export /platform, so we have to explicitly export this */
     .expected_exports = {
       { "/platform", EXPORT_NONE },
+      /* Ideally this would be EXPORT_VISIBLE so that dependencies via ${ORIGIN}
+       * can work (see steamrt/tasks#595), but we don't yet */
+      { "/platform/plat-" PRIMARY_PLATFORM, EXPORT_TODO | EXPORT_VISIBLE },
       { "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so", EXPORT_VISIBLE },
       /* Same for i386, if supported */
+      {
+        "/platform/plat-" MOCK_PLATFORM_32,
+        EXPORT_TODO | EXPORT_VISIBLE | EXPORT_IF_I386,
+      },
       {
         "/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so",
         EXPORT_VISIBLE | EXPORT_IF_I386,
@@ -394,8 +401,12 @@ static const PreloadTest ld_preload_tests[] =
        * unit test we're pretending that ${LIB} is Debian-style multiarch,
        * so /opt/lib/x86_64-linux-gnu/ or similar would be sufficient */
       { "/opt/lib", EXPORT_NONE },
+      /* Ideally this would be EXPORT_VISIBLE so that dependencies via ${ORIGIN}
+       * can work (see steamrt/tasks#595), but we don't yet */
+      { "/opt/" PRIMARY_LIB, EXPORT_VISIBLE | EXPORT_TODO },
       { "/opt/" PRIMARY_LIB "/libpreloadL.so", EXPORT_VISIBLE },
       /* Same for i386, if supported */
+      { "/opt/" MOCK_LIB_32, EXPORT_VISIBLE | EXPORT_TODO | EXPORT_IF_I386 },
       { "/opt/" MOCK_LIB_32 "/libpreloadL.so", EXPORT_VISIBLE | EXPORT_IF_I386 },
     },
   },
