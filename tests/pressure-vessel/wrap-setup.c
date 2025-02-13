@@ -272,6 +272,42 @@ setup (Fixture *f,
 }
 
 /*
+ * ExpectedPreloadExportsFlags:
+ * @EXPORT_TODO: The specified behaviour is not enforced, and whatever other
+ *  flags are set/unset describe the behaviour we would ideally have
+ * @EXPORT_VISIBLE: The path is visible
+ * @EXPORT_IF_I386: Behave as if @EXPORT_NONE if the i386 architecture
+ *  is unsupported
+ * @EXPORT_IF_STEAM_OVERLAY: Behave as if @EXPORT_NONE if the Steam overlay
+ *  is disabled
+ * @EXPORT_NONE: None of the above
+ *
+ * Flags describing how an #ExpectedPreloadExports is or is not exported
+ */
+typedef enum
+{
+  EXPORT_TODO = (1 << 0),
+  EXPORT_VISIBLE = (1 << 1),
+  EXPORT_IF_I386 = (1 << 2),
+  EXPORT_IF_STEAM_OVERLAY = (1 << 3),
+  EXPORT_NONE = 0
+} ExpectedPreloadExportsFlags;
+
+/*
+ * ExpectedPreloadExports:
+ * @path: An absolute path, or "=" as shorthand for repeating
+ *  the @input from #PreloadTest
+ * @flags: The desired behaviour
+ *
+ * The expected disposition of a path in the #FlatpakExports
+ */
+typedef struct
+{
+  const char *path;
+  ExpectedPreloadExportsFlags flags;
+} ExpectedPreloadExports;
+
+/*
  * PreloadTest:
  * @input: One of the colon-separated items in LD_PRELOAD
  * @warning: (nullable): If not null, expect the item to be ignored
@@ -287,6 +323,10 @@ setup (Fixture *f,
  *  If prefixed with "i386:", then we expect the rest of the value as an
  *  argument if and only if the i386 architecture is supported.
  *  %NULL items are ignored.
+ * @expected_exports: An array of #FlatpakExports entries somehow related
+ *  to this module. Each one indicates a path that is, or is not, required
+ *  to be exported if a #FlatpakExports is used.
+ *  Items with a %NULL path are ignored.
  */
 typedef struct
 {
@@ -296,6 +336,7 @@ typedef struct
   const char *touch_i386;
   /* Array lengths are arbitrary, expand as required */
   const char *expected[2];
+  const ExpectedPreloadExports expected_exports[6];
 } PreloadTest;
 
 static const PreloadTest ld_preload_tests[] =
@@ -312,6 +353,12 @@ static const PreloadTest ld_preload_tests[] =
     .input = "/app/lib/libpreloadA.so",
     .touch = "=",
     .expected = { "=" },
+    /* FlatpakExports never exports /app or anything below it. */
+    .expected_exports = {
+      { "/app", EXPORT_NONE },
+      { "/app/lib", EXPORT_NONE },
+      { "=", EXPORT_NONE },
+    },
   },
   {
     .input = "/platform/plat-$PLATFORM/libpreloadP.so",
@@ -320,6 +367,16 @@ static const PreloadTest ld_preload_tests[] =
     .expected = {
       "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so:abi=" PRIMARY_ABI,
       "i386:/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so:abi=" SRT_ABI_I386,
+    },
+    /* We don't always export /platform, so we have to explicitly export this */
+    .expected_exports = {
+      { "/platform", EXPORT_NONE },
+      { "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so", EXPORT_VISIBLE },
+      /* Same for i386, if supported */
+      {
+        "/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so",
+        EXPORT_VISIBLE | EXPORT_IF_I386,
+      },
     },
   },
   {
@@ -330,36 +387,80 @@ static const PreloadTest ld_preload_tests[] =
       "/opt/" PRIMARY_LIB "/libpreloadL.so:abi=" PRIMARY_ABI,
       "i386:/opt/" MOCK_LIB_32 "/libpreloadL.so:abi=" SRT_ABI_I386,
     },
+    /* We don't always export /opt, so we have to explicitly export this */
+    .expected_exports = {
+      { "/opt", EXPORT_NONE },
+      /* This doesn't need to be exported because for the purposes of this
+       * unit test we're pretending that ${LIB} is Debian-style multiarch,
+       * so /opt/lib/x86_64-linux-gnu/ or similar would be sufficient */
+      { "/opt/lib", EXPORT_NONE },
+      { "/opt/" PRIMARY_LIB "/libpreloadL.so", EXPORT_VISIBLE },
+      /* Same for i386, if supported */
+      { "/opt/" MOCK_LIB_32 "/libpreloadL.so", EXPORT_VISIBLE | EXPORT_IF_I386 },
+    },
   },
   {
     .input = "/lib/libpreload-rootfs.so",
     .touch = "=",
     .expected = { "=" },
+    /* FlatpakExports never exports /lib as /lib */
+    .expected_exports = {
+      { "/lib", EXPORT_NONE },
+      { "=", EXPORT_NONE },
+    },
   },
   {
     .input = "/usr/lib/libpreloadU.so",
     .touch = "=",
     .expected = { "=" },
+    /* FlatpakExports never exports /usr as /usr */
+    .expected_exports = {
+      { "/usr", EXPORT_NONE },
+      { "/usr/lib", EXPORT_NONE },
+      { "=", EXPORT_NONE },
+    },
   },
   {
     .input = "/home/me/libpreloadH.so",
     .touch = "=",
     .expected = { "=" },
+    /* We don't always export /home etc. so we have to explicitly export
+     * this one */
+    .expected_exports = {
+      { "/home", EXPORT_NONE },
+      { "/home/me", EXPORT_NONE },
+      { "=", EXPORT_VISIBLE },
+    },
   },
   {
     .input = "/steam/lib/gameoverlayrenderer.so",
     .touch = "=",
     .expected = { "=" },
+    /* We assume STEAM_COMPAT_CLIENT_INSTALL_PATH is exported separately */
+    .expected_exports = {
+      { "/steam", EXPORT_NONE },
+      { "/steam/lib", EXPORT_NONE },
+      { "=", EXPORT_NONE },
+    },
   },
   {
     .input = "/overlay/libs/${ORIGIN}/../lib/libpreloadO.so",
     .touch = "=",
     .expected = { "=" },
+    /* We don't know what ${ORIGIN} will expand to, so we have to cut off at
+     * /overlay/libs */
+    .expected_exports = {
+      { "/overlay", EXPORT_NONE },
+      { "/overlay/libs", EXPORT_VISIBLE },
+    },
   },
   {
     .input = "/future/libs-$FUTURE/libpreloadF.so",
     .touch = "/future/libs-post2038/.exists",
     .expected = { "=" },
+    /* We don't know what ${FUTURE} will expand to, so we have to cut off at
+     * /future */
+    .expected_exports = { { "/future", EXPORT_VISIBLE } },
   },
   {
     .input = "/in-root-plat-${PLATFORM}-only-32-bit.so",
@@ -406,6 +507,70 @@ static const PreloadTest ld_preload_tests[] =
     .warning = "Ignoring invalid loadable module \"\"",
   },
 };
+
+static void
+assert_exports_match_expectations (Fixture *f,
+                                   const PreloadTest *tests,
+                                   gsize n_tests)
+{
+  FlatpakExports *exports = f->context->exports;
+  gsize i;
+  gboolean expect_i386 = FALSE;
+
+#if defined(__i386__) || defined(__x86_64__)
+  if (!(f->config->preload_flags & PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE))
+    expect_i386 = TRUE;
+#endif
+
+  g_assert_nonnull (exports);
+
+  for (i = 0; i < n_tests; i++)
+    {
+      const PreloadTest *test = &tests[i];
+      gsize j;
+
+      for (j = 0; j < G_N_ELEMENTS (test->expected_exports); j++)
+        {
+          const ExpectedPreloadExports *expected = &test->expected_exports[j];
+          const char *path = expected->path;
+          ExpectedPreloadExportsFlags flags = expected->flags;
+          gboolean should_be_visible, is_visible;
+
+          if (path == NULL)
+            continue;
+
+          if (g_str_equal (path, "="))
+            path = test->input;
+
+          is_visible = flatpak_exports_path_is_visible (exports, path);
+          should_be_visible = ((flags & EXPORT_VISIBLE) != 0);
+
+          if ((flags & EXPORT_IF_I386) && !expect_i386)
+            should_be_visible = FALSE;
+
+          g_test_message ("%s export status: expected %s, got %s%s",
+                          path,
+                          should_be_visible ? "visible" : "hidden",
+                          is_visible ? "visible" : "hidden",
+                          (is_visible == should_be_visible) ? "" : " (!)");
+
+          if (is_visible != should_be_visible)
+            {
+              g_autofree gchar *message = NULL;
+
+              message = g_strdup_printf ("%s should%s be exported, but is%s",
+                                         path,
+                                         should_be_visible ? "" : " not",
+                                         is_visible ? "" : " not");
+
+              if (flags & EXPORT_TODO)
+                g_test_incomplete (message);
+              else
+                g_test_fail_printf ("%s", message);
+            }
+        }
+    }
+}
 
 static void
 setup_ld_preload (Fixture *f,
@@ -1813,12 +1978,6 @@ test_remap_ld_preload (Fixture *f,
   g_autoptr(GPtrArray) argv = g_ptr_array_new_with_free_func (g_free);
   g_autoptr(GPtrArray) filtered = filter_expected_paths (config);
   gsize i;
-  gboolean expect_i386 = FALSE;
-
-#if defined(__i386__) || defined(__x86_64__)
-  if (!(config->preload_flags & PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE))
-    expect_i386 = TRUE;
-#endif
 
   fixture_create_exports (f);
   exports = f->context->exports;
@@ -1848,51 +2007,8 @@ test_remap_ld_preload (Fixture *f,
       g_assert_cmpstr (argument, ==, expected);
     }
 
-  /* FlatpakExports never exports /app */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/app"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/app/lib"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/app/lib/libpreloadA.so"));
-
-  /* We don't always export /home etc. so we have to explicitly export
-   * this one */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/home"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/home/me"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/home/me/libpreloadH.so"));
-
-  /* We don't always export /opt and /platform, so we have to explicitly export
-   * these. */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/opt"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/opt/lib"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/platform"));
-
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/opt/" PRIMARY_LIB "/libpreloadL.so"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so"));
-
-  g_assert_cmpint (flatpak_exports_path_is_visible (exports, "/opt/" MOCK_LIB_32 "/libpreloadL.so"), ==, expect_i386);
-  g_assert_cmpint (flatpak_exports_path_is_visible (exports, "/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so"), ==, expect_i386);
-
-  /* FlatpakExports never exports /lib as /lib */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/lib"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/lib/libpreload-rootfs.so"));
-
-  /* FlatpakExports never exports /usr as /usr */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/usr"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/usr/lib"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/usr/lib/libpreloadU.so"));
-
-  /* We assume STEAM_COMPAT_CLIENT_INSTALL_PATH is dealt with separately */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/steam"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/steam/lib"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/steam/lib/gameoverlayrenderer.so"));
-
-  /* We don't know what ${ORIGIN} will expand to, so we have to cut off at
-   * /overlay/libs */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/overlay"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/overlay/libs"));
-
-  /* We don't know what ${FUTURE} will expand to, so we have to cut off at
-   * /future */
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/future"));
+  assert_exports_match_expectations (f, ld_preload_tests,
+                                     G_N_ELEMENTS (ld_preload_tests));
 }
 
 static void
@@ -1945,14 +2061,8 @@ test_remap_ld_preload_no_runtime (Fixture *f,
   g_autoptr(GPtrArray) filtered = filter_expected_paths (config);
   FlatpakExports *exports;
   gsize i, j;
-  gboolean expect_i386 = FALSE;
 
   f->context->options.remove_game_overlay = TRUE;
-
-#if defined(__i386__) || defined(__x86_64__)
-  if (!(config->preload_flags & PV_APPEND_PRELOAD_FLAGS_ONE_ARCHITECTURE))
-    expect_i386 = TRUE;
-#endif
 
   fixture_create_exports (f);
   exports = f->context->exports;
@@ -1984,46 +2094,8 @@ test_remap_ld_preload_no_runtime (Fixture *f,
       g_assert_cmpstr (argument, ==, expected);
     }
 
-  /* FlatpakExports never exports /app */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/app"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/app/lib"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/app/lib/libpreloadA.so"));
-
-  /* We don't always export /home etc. so we have to explicitly export
-   * this one */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/home"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/home/me"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/home/me/libpreloadH.so"));
-
-  /* We don't always export /opt and /platform, so we have to explicitly export
-   * these. */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/opt"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/opt/lib"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/platform"));
-
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/opt/" PRIMARY_LIB "/libpreloadL.so"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/platform/plat-" PRIMARY_PLATFORM "/libpreloadP.so"));
-
-  g_assert_cmpint (flatpak_exports_path_is_visible (exports, "/opt/" MOCK_LIB_32 "/libpreloadL.so"), ==, expect_i386);
-  g_assert_cmpint (flatpak_exports_path_is_visible (exports, "/platform/plat-" MOCK_PLATFORM_32 "/libpreloadP.so"), ==, expect_i386);
-
-  /* FlatpakExports never exports /lib as /lib */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/lib"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/lib/libpreload-rootfs.so"));
-
-  /* FlatpakExports never exports /usr as /usr */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/usr"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/usr/lib"));
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/usr/lib/libpreloadU.so"));
-
-  /* We don't know what ${ORIGIN} will expand to, so we have to cut off at
-   * /overlay/libs */
-  g_assert_false (flatpak_exports_path_is_visible (exports, "/overlay"));
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/overlay/libs"));
-
-  /* We don't know what ${FUTURE} will expand to, so we have to cut off at
-   * /future */
-  g_assert_true (flatpak_exports_path_is_visible (exports, "/future"));
+  assert_exports_match_expectations (f, ld_preload_tests,
+                                     G_N_ELEMENTS (ld_preload_tests));
 }
 
 static void
