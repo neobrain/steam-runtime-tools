@@ -76,6 +76,13 @@
 
 typedef struct
 {
+  PvRuntimeFlags runtime_flags;
+  PvAppendPreloadFlags preload_flags;
+} Config;
+
+typedef struct
+{
+  const Config *config;
   TestsOpenFdSet old_fds;
   PvWrapContext *context;
   SrtSysroot *mock_host;
@@ -88,12 +95,6 @@ typedef struct
   int mock_runtime_fd;
   int var_fd;
 } Fixture;
-
-typedef struct
-{
-  PvRuntimeFlags runtime_flags;
-  PvAppendPreloadFlags preload_flags;
-} Config;
 
 static const Config default_config = {};
 static const Config copy_config =
@@ -229,6 +230,8 @@ setup (Fixture *f,
 {
   g_autoptr(GError) local_error = NULL;
   g_autofree gchar *mock_host = NULL;
+
+  f->config = context;
 
   f->old_fds = tests_check_fd_leaks_enter ();
   f->tmpdir = g_dir_make_tmp ("pressure-vessel-tests.XXXXXX", &local_error);
