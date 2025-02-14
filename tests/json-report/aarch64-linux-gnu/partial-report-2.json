@@ -65,6 +65,5 @@
     "x11-messages": [
       "Failed to connect to X server"
     ]
-  },
-
+  }
 }
