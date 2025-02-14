@@ -193,6 +193,46 @@ build:devel:
             - _build/scout-layered/SteamLinuxRuntime.tar.xz
         when: always
 
+build:aarch64:
+    stage: build
+    tags:
+        - docker
+        - linux
+        - aarch64
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:testing-slim
+    before_script:
+        - *common_before_script
+        - |
+            ./ci/prepare-deb.sh \
+            $BUILD_DEPENDENCIES \
+            mypy \
+            pigz \
+            pycodestyle \
+            pyflakes3 \
+            python3-vdf \
+            reuse \
+            shellcheck \
+            ${NULL+}
+    script:
+        - |
+            set -eux
+
+            mkdir -p _build
+            meson \
+                -Dlibcurl_compat=true \
+                -Dpressure_vessel=true \
+                -Dman=enabled \
+                --werror \
+                _build/aarch64
+            ninja -C _build/aarch64
+            ninja -C _build/aarch64 install
+            G_MESSAGES_DEBUG=all meson test -C _build/aarch64
+
+    artifacts:
+        paths:
+            - _build/aarch64/meson-logs/*.txt
+        when: always
+
 build:clang:
     stage: build
     image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:testing-slim
