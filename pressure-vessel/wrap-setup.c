@@ -545,6 +545,63 @@ pv_wrap_move_into_scope (const char *steam_app_id)
     g_debug ("Cannot move into a systemd scope: %s", local_error->message);
 }
 
+/*
+ * export_path_for_preload:
+ * @context: Context we are running in
+ * @path: Absolute path to a LD_PRELOAD or LD_AUDIT module
+ *
+ * Return the path that we would need to add to `context->exports`
+ * to make this module available to the container, or %NULL if no path
+ * should be added.
+ *
+ * Returns: (transfer full) (nullable): Path to export, or %NULL
+ */
+static gchar *
+export_path_for_preload (PvWrapContext *context,
+                         const char *path)
+{
+  g_autofree gchar *parent = NULL;
+  glnx_autofd int parent_fd = -1;
+  FlatpakExports *exports = context->exports;
+
+  if (exports == NULL)
+    return NULL;
+
+  /* Normally we export the directory containing the LD_PRELOAD module,
+   * and not the module itself. For example, if we're going to load
+   * /home/me/.local/lib64/mangohud/libMangoHud_shim.so,
+   * we want to share /home/me/.local/lib64/mangohud with the
+   * container, so that libMangoHud_shim.so can dlopen
+   * libMangoHud_opengl.so in the same directory, as expected.
+   * This is a compromise between exporting too much (which we
+   * could easily do if we walked further up the directory tree,
+   * for example undoing the effect of --unshare-home)
+   * and exporting too little (just libMangoHud_shim.so, which
+   * doesn't do anything useful on its own). */
+  parent = g_path_get_dirname (path);
+  parent_fd = _srt_sysroot_open (context->current_root,
+                                 parent,
+                                 SRT_RESOLVE_FLAGS_MUST_BE_DIRECTORY,
+                                 NULL,
+                                 NULL);
+
+  /* Special case: we don't want to export all of $HOME if we are doing
+   * --unshare-home, so override that to only exporting the minimum
+   *  that we can: the module itself. */
+  if (context->current_home_fd >= 0
+      && parent_fd >= 0
+      && _srt_fstatat_is_same_file (context->current_home_fd, "",
+                                    parent_fd, ""))
+    {
+      g_debug ("Not exporting parent of \"%s\" because it is $HOME",
+               path);
+      return g_strdup (path);
+    }
+
+  g_debug ("Exporting parent of \"%s\" -> \"%s\"", path, parent);
+  return g_steal_pointer (&parent);
+}
+
 static void
 append_preload_internal (PvWrapContext *context,
                          GPtrArray *argv,
@@ -765,13 +822,15 @@ append_preload_per_architecture (PvWrapContext *context,
 
       if (path != NULL)
         {
+          g_autofree gchar *export_path = export_path_for_preload (context, path);
+
           g_debug ("Found %s version of %s at %s",
                    multiarch_tuple, preload, path);
           append_preload_internal (context,
                                    argv,
                                    which,
                                    i,
-                                   path,
+                                   export_path,
                                    path,
                                    flags);
         }
@@ -824,7 +883,7 @@ append_preload_basename (PvWrapContext *context,
                                argv,
                                which,
                                PV_UNSPECIFIED_ABI,
-                               NULL,
+                               NULL,  /* don't export anything */
                                preload,
                                flags);
     }
@@ -929,6 +988,8 @@ pv_wrap_append_preload (PvWrapContext *context,
           }
         else
           {
+            g_autofree gchar *export_path = export_path_for_preload (context, preload);
+
             /* All dynamic tokens should be handled above, so we can
              * assume that preload is a concrete filename */
             g_warn_if_fail ((loadable_flags & SRT_LOADABLE_FLAGS_DYNAMIC_TOKENS) == 0);
@@ -936,7 +997,7 @@ pv_wrap_append_preload (PvWrapContext *context,
                                      argv,
                                      which,
                                      PV_UNSPECIFIED_ABI,
-                                     preload,
+                                     export_path,
                                      preload,
                                      flags);
           }
