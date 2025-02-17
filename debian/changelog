@@ -1,26 +1,40 @@
-steam-runtime-tools (0.20250212.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250217.0) UNRELEASED; urgency=medium
 
+  [ Simon McVittie ]
   * libsteam-runtime-tools:
     - Refactoring (steamrt/tasks#595)
     - Improve test coverage (steamrt/tasks#595)
-  * s-r-launch-options:
-    - Set SDL_VIDEO_DRIVER (SDL 3) as well as SDL_VIDEODRIVER (SDL 2)
-    - Allow control over SDL dynamic API overrides (steamrt/tasks#579)
-    - Set DEBUG_INVOCATION=1 if extra debug is requested
   * pressure-vessel:
-    - pressure-vessel: Add STEAM_COMPAT_RUNTIME_SDL2=sdl2-compat,
-      which selects a non-default sdl2-compat if present in the runtime,
-      rather than classic SDL 2.
+    - Export parent dir of LD_PRELOAD modules, unless it's $HOME.
+      This should make local installations from source of MangoHud and
+      similar modules more reliable (steamrt/tasks#595)
+    - Add STEAM_COMPAT_RUNTIME_SDL2=sdl2-compat, which selects a
+      non-default sdl2-compat if present in the runtime, rather than
+      classic SDL 2.
       This will not be practically useful until we have a release of
       soldier and/or sniper that includes a copy of sdl2-compat.
       (steamrt/tasks#579, steamrt/tasks#573)
     - Refactoring (steamrt/tasks#595)
-    - Improve test coverage (steamrt/tasks#595)
+  * s-r-launch-options:
+    - Set SDL_VIDEO_DRIVER (SDL 3) as well as SDL_VIDEODRIVER (SDL 2)
+    - Allow control over SDL dynamic API overrides (steamrt/tasks#579)
+    - Set DEBUG_INVOCATION=1 if extra debug is requested
   * Build system:
-    - Add convenience files to cross-compile for arm64, as an example
+    - Add convenience files to cross-compile for aarch64, as an example
       of a non-x86 architecture
+  * Tests:
+    - Add a build pass for aarch64 to the CI
+    - Fix a JSON syntax error in aarch64 test data
+    - Refactoring (steamrt/tasks#595)
+    - Improve coverage (steamrt/tasks#595)
+    - Fix a wrong assertion which only worked as a result of compensating
+      errors (steamrt/tasks#595)
 
- -- Simon McVittie <smcv@collabora.com>  Wed, 12 Feb 2025 15:07:27 +0000
+  [ Ryan Gonzalez ]
+  * libsteam-runtime-tools:
+    - Refactoring (steamrt/tasks#608)
+
+ -- Simon McVittie <smcv@collabora.com>  Mon, 17 Feb 2025 12:12:23 +0000
 
 steam-runtime-tools (0.20250122.0) steamrt; urgency=medium
 
