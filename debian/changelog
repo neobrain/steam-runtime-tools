@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250217.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250217.0) steamrt; urgency=medium
 
   [ Simon McVittie ]
   * libsteam-runtime-tools:
@@ -34,7 +34,7 @@ steam-runtime-tools (0.20250217.0) UNRELEASED; urgency=medium
   * libsteam-runtime-tools:
     - Refactoring (steamrt/tasks#608)
 
- -- Simon McVittie <smcv@collabora.com>  Mon, 17 Feb 2025 12:12:23 +0000
+ -- Simon McVittie <smcv@collabora.com>  Mon, 17 Feb 2025 13:37:13 +0000
 
 steam-runtime-tools (0.20250122.0) steamrt; urgency=medium
 
