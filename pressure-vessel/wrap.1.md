@@ -150,9 +150,9 @@ This is the default. `--no-gc-runtimes` disables this behaviour.
 
 </dt><dd>
 
-Passed to **pressure-vessel-adverb**(1).
+Passed to **pv-adverb**(1).
 The default is `--generate-locales`, overriding the default
-behaviour of **pressure-vessel-adverb**(1).
+behaviour of **pv-adverb**(1).
 
 </dd>
 <dt>
@@ -492,7 +492,7 @@ Start an **xterm**(1) inside the container.
 
 </dt><dd>
 
-Passed to **pressure-vessel-adverb**(1).
+Passed to **pv-adverb**(1).
 
 </dd>
 <dt>

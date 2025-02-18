@@ -1885,7 +1885,7 @@ class Gui:
         terminal = self.terminal_combo.get_active_id()
 
         # If we're not using a container runtime, we can try to borrow the
-        # pressure-vessel-adverb from any random copy of pressure-vessel
+        # pv-adverb from any random copy of pressure-vessel
         # to get its "run in an xterm" code
         if (
             (shell is not None or terminal is not None)

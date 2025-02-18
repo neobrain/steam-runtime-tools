@@ -82,7 +82,7 @@ foreach test_info : compiled_tests
   # environment results in the json-glib dependency not being found.
   # None of our tests actually need both, so only link to one (or neither).
   if test_info.get('adverb', false)
-    pv_dep = pressure_vessel_adverb_lib_dep
+    pv_dep = pv_adverb_lib_dep
   elif test_info.get('wrap', false)
     pv_dep = pressure_vessel_wrap_lib_dep
   else

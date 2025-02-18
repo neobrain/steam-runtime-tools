@@ -52,6 +52,12 @@
 #include "utils.h"
 
 /*
+ * Location of helper executables from a relocatable copy of
+ * pressure-vessel, relative to the $PRESSURE_VESSEL_PREFIX
+ */
+#define PKGLIBEXECDIR "libexec/steam-runtime-tools-" _SRT_API_MAJOR
+
+/*
  * Parent of the location where the $PRESSURE_VESSEL_PREFIX gets mounted
  * when using the mutable_sysroot code path
  */
@@ -65,7 +71,7 @@
  * Path to pv-adverb as it is mounted inside the container when using
  * the mutable_sysroot code path
  */
-#define PV_ADVERB_IN_MUTABLE_SYSROOT PV_FROM_HOST_IN_MUTABLE_SYSROOT "/bin/pressure-vessel-adverb"
+#define PV_ADVERB_IN_MUTABLE_SYSROOT PV_FROM_HOST_IN_MUTABLE_SYSROOT "/" PKGLIBEXECDIR "/pv-adverb"
 
 /*
  * Location where the $PRESSURE_VESSEL_PREFIX gets mounted when not
@@ -76,7 +82,7 @@
  * Path to pv-adverb as it is mounted inside the container when not
  * using the mutable_sysroot code path
  */
-#define PV_ADVERB_WITHOUT_MUTABLE_SYSROOT PV_FROM_HOST_WITHOUT_MUTABLE_SYSROOT "/bin/pressure-vessel-adverb"
+#define PV_ADVERB_WITHOUT_MUTABLE_SYSROOT PV_FROM_HOST_WITHOUT_MUTABLE_SYSROOT "/" PKGLIBEXECDIR "/pv-adverb"
 
 typedef struct
 {
@@ -8316,7 +8322,7 @@ pv_runtime_set_search_paths (PvRuntime *self,
   _srt_env_overlay_set (container_env, "PATH", "/usr/bin:/bin");
 
   /* We need to set LD_LIBRARY_PATH here so that we can run
-   * pressure-vessel-adverb, even if it is going to regenerate
+   * pv-adverb, even if it is going to regenerate
    * the ld.so.cache for better robustness before launching the
    * actual game */
   _srt_env_overlay_set (container_env, "LD_LIBRARY_PATH", ld_library_path);

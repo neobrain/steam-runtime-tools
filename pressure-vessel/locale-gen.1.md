@@ -1,5 +1,5 @@
 ---
-title: pressure-vessel-locale-gen
+title: pv-locale-gen
 section: 1
 ...
 
@@ -10,11 +10,11 @@ SPDX-License-Identifier: MIT
 
 # NAME
 
-pressure-vessel-locale-gen - generate additional locales
+pv-locale-gen - generate additional locales
 
 # SYNOPSIS
 
-**pressure-vessel-locale-gen**
+**pv-locale-gen**
 [**--output-directory** *DIR*]
 [*LOCALE*…]
 
@@ -63,7 +63,7 @@ Be more verbose.
 </dt><dd>
 
 One or more additional POSIX locale names, such as **en_US.UTF-8** or
-**it_IT@euro**. By default, **pressure-vessel-locale-gen**
+**it_IT@euro**. By default, **pv-locale-gen**
 generates all the locales required by the standard locale environment
 variables such as **LC_ALL**, plus the value of *$HOST_LC_ALL* if
 set, plus the American English locale **en_US.UTF-8** (which is
@@ -111,7 +111,7 @@ Anything else
 # EXAMPLE
 
     $ mkdir locales
-    $ pressure-vessel-locale-gen --output-directory=locales
+    $ pv-locale-gen --output-directory=locales
     $ if [ $? = 0 ]; then \
       ./bin/some-game; \
     else \

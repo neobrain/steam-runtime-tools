@@ -67,7 +67,7 @@ class TestAdverb(BaseTest):
                 os.path.join(
                     self.top_builddir,
                     'pressure-vessel',
-                    'pressure-vessel-adverb'
+                    'pv-adverb',
                 ),
             ]
             self.helper = self.command_prefix + [

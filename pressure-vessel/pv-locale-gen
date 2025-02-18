@@ -198,7 +198,7 @@ generate_locale () {
         fi
     fi
 
-    if ! LOCPATH="${opt_output_dir}" pressure-vessel-try-setlocale "$locale"; then
+    if ! LOCPATH="${opt_output_dir}" pv-try-setlocale "$locale"; then
         log "Warning: $locale was generated but does not appear to work!"
     fi
 }
@@ -296,7 +296,7 @@ for var in \
         continue
     fi
 
-    if ! pressure-vessel-try-setlocale "$locale"; then
+    if ! pv-try-setlocale "$locale"; then
         verbose "Missing locale $locale (found in \$$var)"
         one_missing=yes
         break
@@ -309,7 +309,7 @@ if [ -z "$one_missing" ]; then
             continue
         fi
 
-        if ! pressure-vessel-try-setlocale "$locale"; then
+        if ! pv-try-setlocale "$locale"; then
             verbose "Missing locale $locale"
             one_missing=yes
             break

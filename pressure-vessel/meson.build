@@ -45,7 +45,6 @@ pv_warning_cflags = [
 ]
 
 scripts = [
-  'pressure-vessel-locale-gen',
   'pressure-vessel-unruntime',
 ]
 
@@ -53,6 +52,17 @@ foreach script : scripts
   install_data(
     script,
     install_dir : pv_bindir,
+  )
+endforeach
+
+libexec_scripts = [
+  'pv-locale-gen',
+]
+
+foreach script : libexec_scripts
+  install_data(
+    script,
+    install_dir : pkglibexecdir,
   )
 endforeach
 
@@ -105,8 +115,8 @@ pressure_vessel_utils_dep = declare_dependency(
   sources : [enums[1]],
 )
 
-pressure_vessel_adverb_lib = static_library(
-  'pressure-vessel-adverb-lib',
+pv_adverb_lib = static_library(
+  'pv-adverb-lib',
   sources : [
     'adverb-sdl.c',
     'adverb-sdl.h',
@@ -124,20 +134,20 @@ pressure_vessel_adverb_lib = static_library(
   ],
   include_directories : pv_include_dirs,
 )
-pressure_vessel_adverb_lib_dep = declare_dependency(
+pv_adverb_lib_dep = declare_dependency(
   dependencies : libsteamrt_generated_headers_dep,
-  link_with : pressure_vessel_adverb_lib,
+  link_with : pv_adverb_lib,
 )
 
 pv_bin += executable(
-  'pressure-vessel-adverb',
+  'pv-adverb',
   sources : [
     'adverb.c',
   ],
   c_args : pv_c_args,
   dependencies : [
     libsteamrt_generated_headers_dep,
-    pressure_vessel_adverb_lib_dep,
+    pv_adverb_lib_dep,
     threads,
     gio_unix,
     libglnx_dep,
@@ -145,9 +155,9 @@ pv_bin += executable(
   ],
   include_directories : pv_include_dirs,
   install : true,
-  install_dir : pv_bindir,
-  build_rpath : pv_rpath,
-  install_rpath : pv_rpath,
+  install_dir : pkglibexecdir,
+  build_rpath : pkglibexec_rpath,
+  install_rpath : pkglibexec_rpath,
 )
 
 pressure_vessel_wrap_lib = static_library(
@@ -243,22 +253,22 @@ pv_bin += executable(
 )
 
 pv_bin += executable(
-  'pressure-vessel-try-setlocale',
+  'pv-try-setlocale',
   sources : [
     'try-setlocale.c',
   ],
   c_args : pv_c_args,
   include_directories : pv_include_dirs,
   install : true,
-  install_dir : pv_bindir,
+  install_dir : pkglibexecdir,
 )
 
 if build_man_pages
   foreach tool : [
-    'adverb',
-    'locale-gen',
+    'pv-adverb',
+    'pv-locale-gen',
+    'pv-try-setlocale',
     'pv-verify',
-    'try-setlocale',
     'unruntime',
     'wrap',
   ]

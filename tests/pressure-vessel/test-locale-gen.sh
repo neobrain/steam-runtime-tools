@@ -85,8 +85,8 @@ if [ -n "${SRT_TEST_UNINSTALLED-}" ]; then
     PATH="${G_TEST_BUILDDIR}/../../pressure-vessel:${G_TEST_SRCDIR}/../../pressure-vessel:${PATH}"
 fi
 
-locale_gen="pressure-vessel-locale-gen"
-try_setlocale="pressure-vessel-try-setlocale"
+locale_gen="pv-locale-gen"
+try_setlocale="pv-try-setlocale"
 
 mkdir "$tmpdir/1"
 mkdir "$tmpdir/cwd"

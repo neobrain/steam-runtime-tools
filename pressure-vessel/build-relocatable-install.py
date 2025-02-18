@@ -77,13 +77,10 @@ DIFFERENT_COPYRIGHT_FILES = [
     'util-linux',
 ]
 SCRIPTS = [
-    'pressure-vessel-locale-gen',
     'pressure-vessel-unruntime',
     'steam-runtime-launch-options',
 ]
 EXECUTABLES = [
-    'pressure-vessel-adverb',
-    'pressure-vessel-try-setlocale',
     'pressure-vessel-wrap',
     'pv-verify',
     'steam-runtime-launch-client',
@@ -93,6 +90,9 @@ EXECUTABLES = [
 ]
 LIBEXEC_EXECUTABLES = [
     'launch-options.py',
+    'pv-adverb',
+    'pv-locale-gen',
+    'pv-try-setlocale',
     'srt-bwrap',
 ]
 
