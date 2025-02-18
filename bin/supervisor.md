@@ -269,7 +269,7 @@ If non-negative, terminate background processes after the *COMMAND*
 exits. This implies **--subreaper**.
 Non-integer decimal values are allowed.
 When this option is enabled, after *COMMAND* exits,
-**pressure-vessel-adverb** will wait for up to the time specified
+**steam-runtime-supervisor** will wait for up to the time specified
 by **--terminate-idle-timeout**, then send **SIGTERM** to any
 remaining child processes and wait for them to exit gracefully.
 If child processes continue to run after a further time specified
