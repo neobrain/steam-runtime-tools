@@ -50,6 +50,7 @@ test_architecture_get_by_tuple (Fixture *f,
   g_assert_cmpstr (x86_64_arch->multiarch_tuple, ==, SRT_ABI_X86_64);
   g_assert_cmpstr (x86_64_arch->interoperable_runtime_linker, ==,
                    "/lib64/ld-linux-x86-64.so.2");
+  g_assert_cmpstr (x86_64_arch->openxr_1_architecture, ==, "x86_64");
   g_assert_cmpint (x86_64_arch->machine_type, ==, SRT_MACHINE_TYPE_X86_64);
   g_assert_cmpint (x86_64_arch->elf_class, ==, ELFCLASS64);
   g_assert_cmpint (x86_64_arch->elf_encoding, ==, ELFDATA2LSB);
@@ -60,6 +61,7 @@ test_architecture_get_by_tuple (Fixture *f,
   g_assert_cmpstr (i386_arch->multiarch_tuple, ==, SRT_ABI_I386);
   g_assert_cmpstr (i386_arch->interoperable_runtime_linker, ==,
                    "/lib/ld-linux.so.2");
+  g_assert_cmpstr (i386_arch->openxr_1_architecture, ==, "i686");
   g_assert_cmpint (i386_arch->machine_type, ==, SRT_MACHINE_TYPE_386);
   g_assert_cmpint (i386_arch->elf_class, ==, ELFCLASS32);
   g_assert_cmpint (i386_arch->elf_encoding, ==, ELFDATA2LSB);
@@ -70,6 +72,7 @@ test_architecture_get_by_tuple (Fixture *f,
   g_assert_cmpstr (arch->multiarch_tuple, ==, SRT_ABI_AARCH64);
   g_assert_cmpstr (arch->interoperable_runtime_linker, ==,
                    "/lib/ld-linux-aarch64.so.1");
+  g_assert_cmpstr (arch->openxr_1_architecture, ==, "aarch64");
   g_assert_cmpint (arch->machine_type, ==, SRT_MACHINE_TYPE_AARCH64);
   g_assert_cmpint (arch->elf_class, ==, ELFCLASS64);
   g_assert_cmpint (arch->elf_encoding, ==, ELFDATA2LSB);
