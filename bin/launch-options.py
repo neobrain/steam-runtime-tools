@@ -197,8 +197,15 @@ class PressureVessel(Component):
             version = ''
 
         self.adverb = os.path.join(
-            self.path, 'bin', 'pressure-vessel-adverb',
+            self.path,
+            'libexec', 'steam-runtime-tools-0', 'pv-adverb',
         )
+
+        if not os.path.exists(self.adverb):
+            self.adverb = os.path.join(
+                self.path, 'bin', 'pressure-vessel-adverb',
+            )
+
         self.description = '{}\n({})'.format(version or '(unknown)', path)
         self.unruntime = os.path.join(
             self.path, 'bin', 'pressure-vessel-unruntime',
