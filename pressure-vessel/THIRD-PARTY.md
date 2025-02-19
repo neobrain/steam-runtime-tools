@@ -37,10 +37,7 @@ same place as pressure-vessel, or from
 Binary releases of pressure-vessel include the following third-party
 programs and libraries:
 
-- libblkid.so.1, libmount.so.1 from util-linux: [LGPL-2.1-or-later][].
-  See libblkid1.txt, libmount1.txt.
-
-- libffi.so.6 from libffi: [MIT][]. See libffi.txt.
+- libffi.so.* from libffi: [MIT][]. See libffi.txt.
 
 - libgio-2.0.so.0, libglib-2.0.so.0, libgobject-2.0.so.0,
   libgmodule-2.0.so.0 from GLib: [LGPL-2.1-or-later][].
@@ -52,14 +49,7 @@ programs and libraries:
 - libelf.so.1 from Red Hat elfutils: [GPL-2.0-or-later][] with linking
   exception. See elfutils.txt.
 
-- libuuid.so.1 from util-linux: [BSD-3-Clause][]. See util-linux.txt.
-
 - libXau.so.6 from Xorg: [MIT][]. See libxau.txt.
-
-- libselinux.so.1 from SELinux: public-domain with [GPL-2.0-only][]
-  parts. See libselinux.txt.
-
-- libpcre.so.3 from PCRE: [BSD-3-Clause][]. See pcre3.txt.
 
 - libz.so.1 from zlib: [Zlib][] license. See zlib.txt.
 
@@ -67,6 +57,19 @@ programs and libraries:
   json-glib.txt.
 
 - libwaffle-1.so.0 from waffle: [BSD-2-Clause][]. See waffle.txt.
+
+Depending on build configuration, some builds also include:
+
+- libblkid.so.1, libmount.so.1 from util-linux: [LGPL-2.1-or-later][].
+  See libblkid1.txt, libmount1.txt.
+
+- libpcre.so.3 or libpcre2-8.so.0 from PCRE: [BSD-3-Clause][].
+  See pcre3.txt or pcre2.txt.
+
+- libselinux.so.1 from SELinux: public-domain with [GPL-2.0-only][] parts.
+  See libselinux.txt.
+
+- libuuid.so.1 from util-linux: [BSD-3-Clause][]. See util-linux.txt.
 
 Complete source code can be obtained from the same place as
 pressure-vessel, or from <https://repo.steampowered.com/steamrt/>
