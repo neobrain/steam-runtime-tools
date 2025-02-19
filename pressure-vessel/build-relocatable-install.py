@@ -422,7 +422,6 @@ def main():
                     'soname:libcap.so.2',
                     'soname:libgio-2.0.so.0',
                     'soname:libjson-glib-1.0.so.0',
-                    'soname:libpcre.so.3',
                     'soname:libselinux.so.1',
                 ])
 
