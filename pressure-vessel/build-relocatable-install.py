@@ -71,24 +71,6 @@ X86_ARCHS = [
         multiarch='i386-linux-gnu',
     ),
 ]
-# package to install from => source package for copyright information
-DEPENDENCIES = {
-    'libelf1': 'elfutils',
-    'libwaffle-1-0': 'waffle',
-    'zlib1g': 'zlib',
-}
-# same as DEPENDENCIES
-PRIMARY_ARCH_DEPENDENCIES = {
-    'libblkid1': 'util-linux',
-    'libcap2': 'libcap2',
-    'libffi6': 'libffi',
-    'libglib2.0-0': 'glib2.0',
-    'libjson-glib-1.0-0': 'json-glib',
-    'libmount1': 'util-linux',
-    'libpcre3': 'pcre3',
-    'libselinux1': 'libselinux',
-    'libxau6': 'libxau',
-}
 # Packages where different binary packages can have different copyright
 # files
 DIFFERENT_COPYRIGHT_FILES = [
@@ -145,6 +127,50 @@ def v_check_call(command, **kwargs):
 def v_check_output(command, **kwargs):
     print('# {}'.format(command))
     return subprocess.check_output(command, **kwargs)
+
+
+def package_owning_file(real):
+    # type: (str) -> typing.Tuple[str, str]
+    # Return the (binary,source) package that owns real path `real`.
+    assert real.startswith('/'), real
+
+    try:
+        output = v_check_output(
+            ['dpkg-query', '-S', real],
+            universal_newlines=True,
+        ).rstrip('\n')
+    except subprocess.CalledProcessError:
+        if real.startswith('/usr/'):
+            real = real[5:]
+        else:
+            real = '/usr' + real
+
+        output = v_check_output(
+            ['dpkg-query', '-S', real],
+            universal_newlines=True,
+        ).rstrip('\n')
+
+    # If the file has been diverted with dpkg-divert, there would be 2 lines
+    assert '\n' not in output, output
+
+    binary = output.split(':')[0]
+
+    # There should not be a comma unless two packages share ownership
+    assert ',' not in binary, binary
+
+    # There might be more than one architecture's instance of the package,
+    # but they should all (be at the same version and) have come from
+    # the same source package
+    sources = set(
+        v_check_output([
+            'dpkg-query',
+            '-W',
+            '-f', '${source:Package}\n',
+            binary,
+        ], universal_newlines=True).splitlines(),
+    )
+    assert len(sources) == 1, sources
+    return binary, sources.pop()
 
 
 def main():
@@ -386,6 +412,9 @@ def main():
             'dpkg', '--print-architecture',
         ]).decode('utf-8').strip()
 
+        # Set of (binary package, source package) pairs
+        get_source = set()      # type: typing.Set[typing.Tuple[str, str]]
+
         for arch in architectures:
             os.makedirs(
                 os.path.join(tmpdir, 'build-relocatable', arch.name, 'lib'),
@@ -443,18 +472,18 @@ def main():
                     )
                 )
 
+                real = os.path.realpath(so)
+                package, source = package_owning_file(real)
+                get_source.add((package, source))
+
         source_to_download = set()      # type: typing.Set[str]
         installed_binaries = set()      # type: typing.Set[str]
 
-        get_source = (
-            list(DEPENDENCIES.items())
-            + list(PRIMARY_ARCH_DEPENDENCIES.items())
-        )
-        get_source.append(
+        get_source.add(
             ('pressure-vessel-relocatable', 'steam-runtime-tools'),
         )
 
-        for package, source in get_source:
+        for package, source in sorted(get_source):
             if os.path.exists('/usr/share/doc/{}/copyright'.format(package)):
                 installed_binaries.add(package)
 
