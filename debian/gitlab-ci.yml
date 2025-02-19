@@ -315,6 +315,7 @@ build:clang:
     stage: relocatable-install
     before_script:
         - ./ci/prepare-deb.sh $BUILD_DEPENDENCIES
+        - ./ci/make-deb-src-available.sh
     script:
         - ci/relocatable-install.sh
 
