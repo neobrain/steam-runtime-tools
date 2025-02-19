@@ -1,3 +1,16 @@
+steam-runtime-tools (0.20250219.0) UNRELEASED; urgency=medium
+
+  [ Ryan Gonzalez ]
+  * libsteam-runtime-tools:
+    - Add OpenXR architecture name mapping for known architectures
+      (steamrt/tasks#608)
+
+  [ Simon McVittie ]
+  * Tests:
+    - Test pressure-vessel on modern Debian releases
+
+ -- Simon McVittie <smcv@collabora.com>  Wed, 19 Feb 2025 13:07:28 +0000
+
 steam-runtime-tools (0.20250217.0) steamrt; urgency=medium
 
   [ Simon McVittie ]
