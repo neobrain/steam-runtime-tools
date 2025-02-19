@@ -327,7 +327,27 @@ relocatable-install:i386:
     image: "${SCOUT_DOCKER_REGISTRY}/${SCOUT_I386_DOCKER_IMAGE}"
     artifacts:
         paths:
+            # We don't need to save the source code, it'll be the same as
+            # for the amd64+i386 relocatable install
             - _build/i386/pressure-vessel-i386.tar.gz
+        when: on_success
+
+relocatable-install:arm64:
+    extends: .relocatable_install
+    tags:
+        - docker
+        - linux
+        - aarch64
+    needs:
+        - package:source
+        - package:bullseye:arm64
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+    artifacts:
+        paths:
+            - _build/arm64/pressure-vessel-arm64.tar.gz
+            # Some of the source code will differ from the version
+            # built in scout
+            - _build/arm64/pressure-vessel-arm64+src.tar.gz
         when: on_success
 
 relocatable-install:
