@@ -411,6 +411,18 @@ test:debian-10:
     extends: .test_deb
     image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:buster-slim
 
+test:debian-11:
+    extends: .test_deb
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+
+test:debian-12:
+    extends: .test_deb
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bookworm-slim
+
+test:debian-13:
+    extends: .test_deb
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:trixie-slim
+
 test:ubuntu-18.04:
     extends: .test_deb
     image: ubuntu:18.04
