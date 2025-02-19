@@ -129,6 +129,14 @@ def v_check_output(command, **kwargs):
     return subprocess.check_output(command, **kwargs)
 
 
+def is_script(name):
+    # type: (str) -> bool
+    # Return True if `name` is the path to a script, False if it might be
+    # an ELF executable.
+    with open(name, 'rb') as reader:
+        return (reader.read(2) == b'#!')
+
+
 def package_owning_file(real):
     # type: (str) -> typing.Tuple[str, str]
     # Return the (binary,source) package that owns real path `real`.
@@ -421,7 +429,49 @@ def main():
                 exist_ok=True,
             )
 
+            expressions = []    # type: typing.List[str]
+
+            for exe in (
+                # We intentionally don't take the dependencies of all the
+                # check-* executables, because some of those are basic
+                # libraries like libX11 and libGL which we would prefer to
+                # get from the host system.
+                arch.multiarch + '-capsule-capture-libs',
+                arch.multiarch + '-detect-lib',
+                arch.multiarch + '-detect-platform',
+                arch.multiarch + '-inspect-library',
+                arch.multiarch + '-inspect-library-libelf',
+            ):
+                expressions.append(
+                    'only-dependencies:path:' + os.path.abspath(
+                        os.path.join(inst_pkglibexecdir, exe),
+                    )
+                )
+
+            if arch.name == primary_architecture:
+                for exe in EXECUTABLES:
+                    path = os.path.join(installation, 'bin', exe)
+
+                    if is_script(path):
+                        continue
+
+                    expressions.append(
+                        'only-dependencies:path:' + os.path.abspath(path)
+                    )
+
+                for exe in LIBEXEC_EXECUTABLES:
+                    path = os.path.join(inst_pkglibexecdir, exe)
+
+                    if is_script(path):
+                        continue
+
+                    expressions.append(
+                        'only-dependencies:path:' + os.path.abspath(path)
+                    )
+
             v_check_call([
+                'env',
+                'CAPSULE_DEBUG=tool',
                 '{}/{}-capsule-capture-libs'.format(
                     inst_pkglibexecdir,
                     arch.multiarch,
@@ -431,28 +481,12 @@ def main():
                     arch.name,
                 ),
                 '--no-glibc',
-                'soname:libelf.so.1',
-                'soname:libz.so.1',
+            ] + expressions + [
+                # We take libwaffle-1.so.0 itself but not its dependencies,
+                # because its dependencies include libGL which we don't
+                # want to bundle
                 'no-dependencies:soname:libwaffle-1.so.0',
             ])
-
-            if arch.name == primary_architecture:
-                v_check_call([
-                    '{}/{}-capsule-capture-libs'.format(
-                        inst_pkglibexecdir,
-                        arch.multiarch,
-                    ),
-                    '--dest={}/build-relocatable/{}/lib'.format(
-                        tmpdir,
-                        arch.name,
-                    ),
-                    '--no-glibc',
-                    'soname:libXau.so.6',
-                    'soname:libcap.so.2',
-                    'soname:libgio-2.0.so.0',
-                    'soname:libjson-glib-1.0.so.0',
-                    'soname:libselinux.so.1',
-                ])
 
             for so in glob.glob(
                 os.path.join(
