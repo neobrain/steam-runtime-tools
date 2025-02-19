@@ -169,7 +169,6 @@ Description:
  This package contains automated tests.
 
 Package: pressure-vessel-relocatable
-Build-Profiles: <pkg.steamrt.scout>
 Section: games
 Architecture: any
 Multi-Arch: foreign
@@ -187,7 +186,6 @@ Description: Steam container launcher
  This package contains the launcher.
 
 Package: pressure-vessel-libs-amd64
-Build-Profiles: <pkg.steamrt.scout>
 Section: libs
 Architecture: amd64
 Multi-Arch: foreign
@@ -201,7 +199,6 @@ Description: Steam container launcher - cross-architecture dependencies
  This package encapsulates the amd64 cross-architecture dependencies.
 
 Package: pressure-vessel-libs-i386
-Build-Profiles: <pkg.steamrt.scout>
 Section: libs
 Architecture: i386
 Multi-Arch: foreign
