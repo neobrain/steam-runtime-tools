@@ -170,6 +170,16 @@ package:bullseye:amd64:
         BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
         STEAM_CI_DEB_BUILD: binary
 
+package:bullseye:arm64:
+    extends: .build_deb
+    tags:
+        - docker
+        - linux
+        - aarch64
+    variables:
+        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+        STEAM_CI_DEB_BUILD: any
+
 package:bullseye:i386:
     extends: .build_deb
     variables:
