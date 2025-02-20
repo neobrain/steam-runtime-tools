@@ -9,14 +9,18 @@ variables:
         glslang-tools
         gtk-doc-tools
         libcap-dev
+        libdbus-1-dev
         libdrm-dev
         libelf-dev
         libegl1-mesa-dev
+        libfontconfig-dev
         libgl1-mesa-dev
         libgles2-mesa-dev
         libglib2.0-dev
         libglib2.0-doc
         libjson-glib-dev
+        libsdl2-dev
+        libsdl2-ttf-dev
         libtheora-dev
         libva-dev
         libvdpau-dev
