@@ -218,26 +218,10 @@ add_project_link_arguments(
     # for both direct and indirect dependencies: in particular we need
     # to pick up the whole GLib family (GLib, GObject, GIO) from the same
     # location. (It also bypasses LD_LIBRARY_PATH.)
-    '-Wl,-z,--disable-new-dtags',
+    '-Wl,--disable-new-dtags',
   ),
   language : 'c',
 )
-
-libselinux_dep = dependency(
-  'libselinux',
-  version : '>= 2.1.9',
-  required : false,
-)
-libcap_dep = dependency(
-  'libcap',
-  required : false,
-)
-if not libcap_dep.found()
-  libcap_dep = c_compiler.find_library(
-    'cap',
-    required : get_option('bin'),
-  )
-endif
 
 waffle_dep = dependency(
   'waffle-1',
@@ -246,11 +230,6 @@ waffle_dep = dependency(
 
 conf_data = configuration_data()
 conf_data.set_quoted('VERSION', version)
-conf_data.set('HAVE_SELINUX', libselinux_dep.found())
-conf_data.set(
-  'HAVE_SELINUX_2_3',
-  libselinux_dep.found() and libselinux_dep.version().version_compare('>=2.3'),
-)
 conf_data.set('api_major', api_major)
 conf_data.set('abi_major', abi_major)
 

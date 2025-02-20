@@ -266,11 +266,15 @@ endif
 bubblewrap_subproject = subproject(
   'bubblewrap',
   default_options : [
+    'bash_completion=disabled',
     'build_rpath=' + pkglibexec_rpath,
     'bwrapdir=' + pkglibexecdir,
     'install_rpath=' + pkglibexec_rpath,
+    'man=disabled',
     'program_prefix=srt-',
+    'selinux=disabled',
     'tests=false',
+    'zsh_completion=disabled',
   ],
 )
 srt_bin += bubblewrap_subproject.get_variable('bwrap')
