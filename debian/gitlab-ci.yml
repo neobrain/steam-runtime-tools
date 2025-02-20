@@ -315,18 +315,8 @@ build:clang:
     stage: relocatable-install
     before_script:
         - ./ci/prepare-deb.sh $BUILD_DEPENDENCIES
-        - |
-            set -eux
-
-            # We need up-to-date packages for the relocatable install to
-            # be able to get its source code
-            apt-get -y dist-upgrade
-
-            # g++ 4.6 is too old (see also debian/rules)
-            export CC=gcc-4.8
-            export CXX=g++-4.8
-
-            mkdir -p _build/scout
+    script:
+        - ci/relocatable-install.sh
 
 relocatable-install:i386:
     extends: .relocatable_install
@@ -334,30 +324,6 @@ relocatable-install:i386:
         - package:source
         - package:scout:i386
     image: "${SCOUT_DOCKER_REGISTRY}/${SCOUT_I386_DOCKER_IMAGE}"
-    script:
-        - |
-            mkdir -p _build/cache
-            dcmd cp -al debian/tmp/artifacts/source/*.dsc _build/cache
-
-            dpkg -i \
-            debian/tmp/artifacts/build/*_i386.*deb \
-            ${NULL+}
-
-            rm -fr _build/i386/relocatable-install
-            mkdir -p _build/i386
-            python3.5 pressure-vessel/build-relocatable-install.py \
-              --cache _build/cache \
-              --output _build/i386/relocatable-install \
-              --archive "$(pwd)/_build/i386" \
-              --no-archive-versions \
-              --architecture-name i386 \
-              --architecture-multiarch i386-linux-gnu \
-              ${CI_ALLOW_MISSING_SOURCES:+--allow-missing-sources} \
-              ${NULL+}
-            PYTHONPATH=$(pwd)/tests \
-            python3.5 ./tests/pressure-vessel/relocatable-install.py \
-              --multiarch-tuple=i386-linux-gnu \
-              "$(pwd)/_build/i386/relocatable-install"
     artifacts:
         paths:
             - _build/i386/pressure-vessel-i386.tar.gz
@@ -370,44 +336,6 @@ relocatable-install:
         - package:scout:amd64
         - package:scout:i386
     image: "${SCOUT_DOCKER_REGISTRY}/${SCOUT_DOCKER_IMAGE}"
-    script:
-        - |
-            mkdir -p _build/cache
-            dcmd cp -al debian/tmp/artifacts/source/*.dsc _build/cache
-
-            apt-get -y --no-install-recommends install \
-            libglib2.0-dev:amd64 \
-            libglib2.0-dev:i386 \
-            libxau-dev:amd64 \
-            libxau-dev:i386 \
-            meson \
-            ${NULL+}
-
-            dpkg -i \
-            debian/tmp/artifacts/build/*_amd64.*deb \
-            debian/tmp/artifacts/build/libsteam-runtime-shim-libcurl4_*_i386.*deb \
-            debian/tmp/artifacts/build/libsteam-runtime-tools-0-0-dbgsym_*_i386.*deb \
-            debian/tmp/artifacts/build/libsteam-runtime-tools-0-0_*_i386.deb \
-            debian/tmp/artifacts/build/libsteam-runtime-tools-0-dev_*_i386.deb \
-            debian/tmp/artifacts/build/libsteam-runtime-tools-0-helpers-dbgsym_*_i386.*deb \
-            debian/tmp/artifacts/build/libsteam-runtime-tools-0-helpers_*_i386.deb \
-            debian/tmp/artifacts/build/libsteam-runtime-tools-0-relocatable-libs_*_i386.deb \
-            debian/tmp/artifacts/build/pressure-vessel-libs-i386_*_i386.deb \
-            ${NULL+}
-
-            rm -fr _build/pressure-vessel-*.tar.gz
-            rm -fr _build/relocatable-install
-            mkdir -p _build
-            python3.5 pressure-vessel/build-relocatable-install.py \
-              --cache _build/cache \
-              --output _build/relocatable-install \
-              --archive "$(pwd)/_build" \
-              --no-archive-versions \
-              ${CI_ALLOW_MISSING_SOURCES:+--allow-missing-sources} \
-              ${NULL+}
-            PYTHONPATH=$(pwd)/tests \
-            python3.5 ./tests/pressure-vessel/relocatable-install.py \
-              "$(pwd)/_build/relocatable-install"
     artifacts:
         paths:
             - _build/pressure-vessel-bin.tar.gz
