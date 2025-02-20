@@ -2,16 +2,8 @@
 
 set -eux
 
-dpkg --add-architecture amd64
-dpkg --add-architecture i386
-apt-get -y update
-apt-get -y install \
-    libsteam-runtime-tools-0-0:amd64 \
-    libsteam-runtime-tools-0-0:i386 \
-    libsteam-runtime-tools-0-helpers:amd64 \
-    libsteam-runtime-tools-0-helpers:i386 \
-    steam-runtime-tools-bin \
-    ${NULL+}
+primary_arch="$(dpkg --print-architecture)"
+multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH)"
 
 if command -v python3.5; then
    PYTHON=python3.5
@@ -21,12 +13,26 @@ fi
 
 "$PYTHON" pressure-vessel/build-relocatable-install.py \
     --allow-missing-sources \
+    --architecture-name="$primary_arch" \
+    --architecture-multiarch="$multiarch" \
     --output "${AUTOPKGTEST_TMP}/relocatable-install" \
     --archive "${AUTOPKGTEST_ARTIFACTS}"
 
 "$PYTHON" ./tests/pressure-vessel/relocatable-install.py \
     --multiarch-tuple="$multiarch" \
     "${AUTOPKGTEST_TMP}/relocatable-install"
+
+if [ "$primary_arch" = amd64 ] \
+    && dpkg-query -W libsteam-runtime-tools-0-helpers:i386 \
+; then
+    "$PYTHON" pressure-vessel/build-relocatable-install.py \
+        --allow-missing-sources \
+        --output "${AUTOPKGTEST_TMP}/relocatable-install-biarch" \
+        --archive "${AUTOPKGTEST_ARTIFACTS}"
+
+    "$PYTHON" ./tests/pressure-vessel/relocatable-install.py \
+        "${AUTOPKGTEST_TMP}/relocatable-install-biarch"
+fi
 
 for archive in "${AUTOPKGTEST_ARTIFACTS}"/*.tar.*; do
     echo "==== $(basename "$archive") ===="
