@@ -25,6 +25,7 @@ fi
     --archive "${AUTOPKGTEST_ARTIFACTS}"
 
 "$PYTHON" ./tests/pressure-vessel/relocatable-install.py \
+    --multiarch-tuple="$multiarch" \
     "${AUTOPKGTEST_TMP}/relocatable-install"
 
 for archive in "${AUTOPKGTEST_ARTIFACTS}"/*.tar.*; do

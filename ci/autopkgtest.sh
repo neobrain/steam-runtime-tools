@@ -48,6 +48,17 @@ esac
 # be able to get its source code
 apt-get -y dist-upgrade
 
+primary_arch="$(dpkg --print-architecture)"
+
+case "$primary_arch" in
+    (amd64|i386)
+        x86=yes
+        ;;
+    (*)
+        x86=
+        ;;
+esac
+
 # Install the packages under test. We're not too worried about
 # minimal dependencies here
 dpkg -i \
@@ -56,14 +67,14 @@ debian/tmp/artifacts/build/libsteam-runtime-tools-0-0-dbgsym_*_*.*deb \
 debian/tmp/artifacts/build/libsteam-runtime-tools-0-dev_*.deb \
 debian/tmp/artifacts/build/libsteam-runtime-tools-0-helpers_*.deb \
 debian/tmp/artifacts/build/libsteam-runtime-tools-0-helpers-dbgsym_*_*.*deb \
-debian/tmp/artifacts/build/libsteam-runtime-tools-0-tests_*_amd64.deb \
-debian/tmp/artifacts/build/pressure-vessel-relocatable_*_amd64.deb \
-debian/tmp/artifacts/build/pressure-vessel-relocatable-dbgsym_*_amd64.*deb \
-debian/tmp/artifacts/build/pressure-vessel-libs*.deb \
-debian/tmp/artifacts/build/steam-runtime-tools-bin_*_amd64.deb \
-debian/tmp/artifacts/build/steam-runtime-tools-bin-dbgsym_*_amd64.*deb \
-debian/tmp/artifacts/build/steam-runtime-tools-minimal_*_amd64.deb \
-debian/tmp/artifacts/build/steam-runtime-tools-minimal-dbgsym_*_amd64.*deb \
+debian/tmp/artifacts/build/libsteam-runtime-tools-0-tests_*_"$primary_arch".deb \
+debian/tmp/artifacts/build/pressure-vessel-relocatable_*_"$primary_arch".deb \
+debian/tmp/artifacts/build/pressure-vessel-relocatable-dbgsym_*_"$primary_arch".*deb \
+${x86:+debian/tmp/artifacts/build/pressure-vessel-libs*.deb} \
+debian/tmp/artifacts/build/steam-runtime-tools-bin_*_"$primary_arch".deb \
+debian/tmp/artifacts/build/steam-runtime-tools-bin-dbgsym_*_"$primary_arch".*deb \
+debian/tmp/artifacts/build/steam-runtime-tools-minimal_*_"$primary_arch".deb \
+debian/tmp/artifacts/build/steam-runtime-tools-minimal-dbgsym_*_"$primary_arch".*deb \
 ${NULL+}
 apt-get -y -f install
 
