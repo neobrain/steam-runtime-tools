@@ -270,6 +270,7 @@ bubblewrap_subproject = subproject(
     'bwrapdir=' + pkglibexecdir,
     'install_rpath=' + pkglibexec_rpath,
     'program_prefix=srt-',
+    'selinux=disabled',
     'tests=false',
   ],
 )
