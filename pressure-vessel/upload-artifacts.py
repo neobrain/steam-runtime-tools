@@ -236,14 +236,16 @@ class Uploader:
         sources = Path('_build', 'upload', 'sources')
         sources.mkdir()
 
-        for a in Path('debian', 'tmp', 'artifacts', 'build').iterdir():
+        for a in Path('debian', 'tmp', 'artifacts', 'source').iterdir():
             if str(a).endswith('.dsc'):
                 # Use dcmd to also link all the files that make up the
                 # source package
                 subprocess.check_call([
                     'dcmd', 'ln', str(a), str(sources),
                 ])
-            elif str(a).endswith(('.deb', '.ddeb')):
+
+        for a in Path('debian', 'tmp', 'artifacts', 'build').iterdir():
+            if str(a).endswith(('.deb', '.ddeb')):
                 os.link(str(a), str(packages / a.name))
 
                 if '_all.' not in a.name:

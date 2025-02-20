@@ -75,7 +75,7 @@ set -- "$@" --output-dir="$(pwd)/debian/tmp/artifacts/autopkgtest"
 
 set -- "$@" --no-built-binaries
 set -- "$@" debian/tmp/artifacts/build/*.deb
-set -- "$@" debian/tmp/artifacts/build/*.dsc
+set -- "$@" debian/tmp/artifacts/source/*.dsc
 
 "$@" -- null || e=$?
 

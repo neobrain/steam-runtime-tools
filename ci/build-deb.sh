@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright 2022 Collabora Ltd.
+# Copyright 2022-2025 Collabora Ltd.
 # SPDX-License-Identifier: MIT
 
 set -eux
@@ -19,23 +19,30 @@ case "$(. /usr/lib/os-release; echo "${VERSION_CODENAME-${VERSION}}")" in
         ;;
 esac
 
+mkdir -p debian/tmp/artifacts/build
+cd debian/tmp/artifacts/build
+dpkg-source -x ../source/*.dsc
+cd ./*/
+
 set --
 
-if [ -n "${CI_COMMIT_TAG-}" ]; then
-    set -- "$@" --release
-fi
-
-mkdir -p debian/tmp/artifacts/build
-set -- "$@" --download "$(pwd)/debian/tmp/artifacts/build"
-
 case "$STEAM_CI_DEB_BUILD" in
+    (all)
+        set -- -A
+        ;;
+
     (any)
-        set -- "$@" --dpkg-buildpackage-option=-B
+        set -- -B
         ;;
 
     (full)
-        set -- "$@" --source
+        ;;
+
+    (binary)
+        set -- -b
         ;;
 esac
 
-deb-build-snapshot "$@" localhost
+dpkg-buildpackage -us -uc "$@"
+cd ..
+rm -fr ./*/
