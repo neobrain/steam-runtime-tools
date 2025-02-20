@@ -218,7 +218,7 @@ add_project_link_arguments(
     # for both direct and indirect dependencies: in particular we need
     # to pick up the whole GLib family (GLib, GObject, GIO) from the same
     # location. (It also bypasses LD_LIBRARY_PATH.)
-    '-Wl,-z,--disable-new-dtags',
+    '-Wl,--disable-new-dtags',
   ),
   language : 'c',
 )
