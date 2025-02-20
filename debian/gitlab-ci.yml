@@ -164,6 +164,18 @@ package:scout:i386:
         BUILD_IMAGE: '${SCOUT_DOCKER_REGISTRY}/${SCOUT_I386_DOCKER_IMAGE}'
         STEAM_CI_DEB_BUILD: any     # debuild --build=any, aka -B
 
+package:bullseye:amd64:
+    extends: .build_deb
+    variables:
+        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+        STEAM_CI_DEB_BUILD: binary
+
+package:bullseye:i386:
+    extends: .build_deb
+    variables:
+        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+        STEAM_CI_DEB_BUILD: any
+
 package:soldier:amd64:
     extends: .build_deb
     variables:
