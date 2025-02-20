@@ -440,13 +440,30 @@ test:archlinux:
             export PYTHONPATH="$tempdir/python-debian/lib"
         - *run_test
 
-autopkgtest:
+autopkgtest:scout:amd64:
     stage: test
     image: "${SCOUT_DOCKER_REGISTRY}/${SCOUT_DOCKER_IMAGE}"
     needs:
         - package:source
         - package:scout:amd64
         - package:scout:i386
+    script:
+        - ./ci/prepare-deb.sh
+        - ./ci/autopkgtest.sh
+    artifacts:
+        paths:
+            - debian/tmp/artifacts/autopkgtest
+
+autopkgtest:bullseye:arm64:
+    stage: test
+    tags:
+        - docker
+        - linux
+        - aarch64
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+    needs:
+        - package:source
+        - package:bullseye:arm64
     script:
         - ./ci/prepare-deb.sh
         - ./ci/autopkgtest.sh
