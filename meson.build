@@ -223,11 +223,6 @@ add_project_link_arguments(
   language : 'c',
 )
 
-libselinux_dep = dependency(
-  'libselinux',
-  version : '>= 2.1.9',
-  required : false,
-)
 libcap_dep = dependency(
   'libcap',
   required : false,
@@ -246,11 +241,6 @@ waffle_dep = dependency(
 
 conf_data = configuration_data()
 conf_data.set_quoted('VERSION', version)
-conf_data.set('HAVE_SELINUX', libselinux_dep.found())
-conf_data.set(
-  'HAVE_SELINUX_2_3',
-  libselinux_dep.found() and libselinux_dep.version().version_compare('>=2.3'),
-)
 conf_data.set('api_major', api_major)
 conf_data.set('abi_major', abi_major)
 
