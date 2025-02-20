@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250219.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250220.0) UNRELEASED; urgency=medium
 
   [ Ryan Gonzalez ]
   * libsteam-runtime-tools:
@@ -6,10 +6,15 @@ steam-runtime-tools (0.20250219.0) UNRELEASED; urgency=medium
       (steamrt/tasks#608)
 
   [ Simon McVittie ]
+  * pressure-vessel:
+    - Build srt-bwrap with unnecessary options disabled
+  * Build system:
+    - Fix the linker option to select RPATH in preference to RUNPATH
+    - Remove some unnecessary dependency checks
   * Tests:
     - Test pressure-vessel on modern Debian releases
 
- -- Simon McVittie <smcv@collabora.com>  Wed, 19 Feb 2025 13:07:28 +0000
+ -- Simon McVittie <smcv@collabora.com>  Thu, 20 Feb 2025 16:42:52 +0000
 
 steam-runtime-tools (0.20250217.0) steamrt; urgency=medium
 
