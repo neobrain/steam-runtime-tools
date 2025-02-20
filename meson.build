@@ -223,17 +223,6 @@ add_project_link_arguments(
   language : 'c',
 )
 
-libcap_dep = dependency(
-  'libcap',
-  required : false,
-)
-if not libcap_dep.found()
-  libcap_dep = c_compiler.find_library(
-    'cap',
-    required : get_option('bin'),
-  )
-endif
-
 waffle_dep = dependency(
   'waffle-1',
   version : '>= 1.6',
