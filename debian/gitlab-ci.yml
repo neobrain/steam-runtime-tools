@@ -387,6 +387,7 @@ relocatable-install:
         python3 tests/pressure-vessel/containers.py
 
 .test_deb:
+    extends: .test_template
     script:
         - |
             set -eux
