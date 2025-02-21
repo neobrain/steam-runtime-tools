@@ -219,6 +219,15 @@ else
   no_leak_sanitizer = ['b_sanitize=none']
 endif
 
+# GLib explicitly requires being able to call functions through a different
+# function pointer type, which trips UBSan's -fsanitize=function:
+# https://gitlab.gnome.org/GNOME/glib/-/blob/53b0ba327ba52ebcd38ee4e7f479bf029ffcdc1f/docs/toolchain-requirements.md#calling-functions-through-differently-typed-function-pointers
+if enabled_sanitizers.contains('undefined')
+  add_project_arguments(
+    c_compiler.get_supported_arguments('-fno-sanitize=function'),
+    language : 'c')
+endif
+
 add_project_link_arguments(
   c_compiler.get_supported_link_arguments(
     '-Wl,-z,origin',
