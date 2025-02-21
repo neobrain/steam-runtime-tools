@@ -298,6 +298,13 @@ GList *_srt_load_vulkan_icds (SrtSysroot *sysroot,
                               SrtCheckFlags check_flags);
 
 G_GNUC_INTERNAL
+void _srt_load_openxr_1_runtimes (SrtSysroot *sysroot,
+                                  const char * const *envp,
+                                  GHashTable *out_active,
+                                  SrtOpenXr1Runtime **out_active_fallback,
+                                  GList **out_inactive);
+
+G_GNUC_INTERNAL
 GList *_srt_list_graphics_modules (SrtSysroot *sysroot,
                                    SrtSubprocessRunner *runner,
                                    const char *multiarch_tuple,
@@ -331,12 +338,17 @@ gchar ** _srt_graphics_get_vulkan_search_paths (SrtSysroot *sysroot,
                                                 const char *suffix);
 
 G_GNUC_INTERNAL
+gchar ** _srt_graphics_get_openxr_1_runtime_search_paths (const char * const *envp);
+
+G_GNUC_INTERNAL
 SrtVaApiVersion _srt_va_api_driver_version (int dfd,
                                             const gchar *library_path);
 
 #define _SRT_GRAPHICS_EXPLICIT_VULKAN_LAYER_SUFFIX "vulkan/explicit_layer.d"
 #define _SRT_GRAPHICS_IMPLICIT_VULKAN_LAYER_SUFFIX "vulkan/implicit_layer.d"
 #define _SRT_GRAPHICS_VULKAN_ICD_SUFFIX "vulkan/icd.d"
+
+#define _SRT_GRAPHICS_OPENXR_1_RUNTIME_SUFFIX "openxr/1"
 
 #define _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME "runtime"
 
