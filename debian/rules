@@ -70,7 +70,7 @@ override_dh_auto_configure:
 		-Dlibcurl_compat=$(is_scout) \
 		-Dman=enabled \
 		-Dmultiarch_tuple=$(DEB_HOST_MULTIARCH) \
-		-Dpressure_vessel=$(is_scout) \
+		-Dpressure_vessel=true \
 		-Dsrcdir=src \
 		-Dui=enabled \
 		-Dversion=$(DEB_VERSION) \

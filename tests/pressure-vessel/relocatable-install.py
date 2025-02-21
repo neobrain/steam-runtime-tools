@@ -90,10 +90,34 @@ HELPERS = [
 SCRIPTS = [
     'pressure-vessel-unruntime',
 ]
-LD_SO = [
-    ('x86_64-linux-gnu', '/lib64/ld-linux-x86-64.so.2'),
-    ('i386-linux-gnu', '/lib/ld-linux.so.2'),
-]
+# https://wiki.debian.org/ArchitectureSpecificsMemo
+LD_SO = {
+    'aarch64-linux-gnu': '/lib/ld-linux-aarch64.so.1',
+    'alpha-linux-gnu': '/lib/ld-linux.so.2',
+    'arc-linux-gnu': '/lib/ld-linux-arc.so.2',
+    'arm-linux-gnu': '/lib/ld-linux.so.2',
+    'arm-linux-gnueabi': '/lib/ld-linux.so.3',
+    'arm-linux-gnueabihf': '/lib/ld-linux-armhf.so.3',
+    'hppa-linux-gnu': '/lib/ld.so.1',
+    'i386-linux-gnu': '/lib/ld-linux.so.2',
+    'ia64-linux-gnu': '/lib/ld-linux-ia64.so.2',
+    'loongarch64-linux-gnu': '/lib64/ld-linux-loongarch-lp64d.so.1',
+    'm68k-linux-gnu': '/lib/ld.so.1',
+    'mips-linux-gnu': '/lib/ld.so.1',
+    'mips64el-linux-gnuabi64': '/lib64/ld.so.1',
+    'mipsel-linux-gnu': '/lib/ld.so.1',
+    'powerpc-linux-gnu': '/lib/ld.so.1',
+    'powerpc64-linux-gnu': '/lib64/ld64.so.1',
+    'powerpc64le-linux-gnu': '/lib64/ld64.so.2',
+    'riscv64-linux-gnu': '/lib/ld-linux-riscv64-lp64d.so.1',
+    's390-linux-gnu': '/lib/ld.so.1',
+    's390x-linux-gnu': '/lib/ld64.so.1',
+    'sh4-linux-gnu': '/lib/ld-linux.so.2',
+    'sparc-linux-gnu': '/lib/ld-linux.so.2',
+    'sparc64-linux-gnu': '/lib64/ld-linux.so.2',
+    'x86_64-linux-gnu': '/lib64/ld-linux-x86-64.so.2',
+    'x86_64-linux-gnux32': '/libx32/ld-linux-x32.so.2',
+}
 
 
 def isexec(path):
@@ -121,9 +145,17 @@ def check_dependencies(test, relocatable_install, path):
         if (
             line.startswith('linux-gate.so.')
             or line.startswith('linux-vdso.so.')
-            or line.startswith('/lib/ld-linux.so.2 ')
-            or line.startswith('/lib64/ld-linux-x86-64.so.2 ')
         ):
+            continue
+
+        is_ld_so = False
+
+        for ld_so in LD_SO.values():
+            if line.startswith(ld_so + ' '):
+                is_ld_so = True
+                break
+
+        if is_ld_so:
             continue
 
         if ' => ' not in line:
@@ -200,13 +232,14 @@ def main():
 
         check_dependencies(test, relocatable_install, path)
 
+    if args.multiarch_tuple is None:
+        tuples_to_test = ['x86_64-linux-gnu', 'i386-linux-gnu']
+    else:
+        tuples_to_test = [args.multiarch_tuple]
+
     for basename in HELPERS:
-        for multiarch, ld_so in LD_SO:
-            if (
-                args.multiarch_tuple is not None
-                and multiarch != args.multiarch_tuple
-            ):
-                continue
+        for multiarch in tuples_to_test:
+            ld_so = LD_SO[multiarch]
 
             exe = '{}-{}'.format(multiarch, basename)
             path = os.path.join(

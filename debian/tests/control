@@ -16,10 +16,11 @@ Depends:
 
 Tests: relocatable-install
 Depends:
+ dpkg-dev,
  libsteam-runtime-tools-0-0,
  libsteam-runtime-tools-0-helpers,
  pressure-vessel-relocatable,
  pressure-vessel-libs-amd64 [amd64],
  pressure-vessel-libs-i386 [i386],
  steam-runtime-tools-bin,
-Restrictions: allow-stderr, needs-root
+Restrictions: allow-stderr
