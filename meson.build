@@ -201,11 +201,20 @@ silence_wflinfo_warnings = c_compiler.get_supported_arguments([
   '-Wno-switch-default',
 ])
 
+enabled_sanitizers = get_option('b_sanitize').split(',')
+
 # wflinfo with libwaffle 1.8.0 appears to have a leak from
 # wegl_display_init(), which we don't particularly care about for a
 # short-lived process
-if ['undefined', 'address,undefined'].contains(get_option('b_sanitize'))
-  no_leak_sanitizer = ['b_sanitize=undefined']
+no_leak_sanitizer = []
+foreach sanitizer : enabled_sanitizers
+  if sanitizer != 'address'
+    no_leak_sanitizer += [sanitizer]
+  endif
+endforeach
+
+if no_leak_sanitizer.length() > 0
+  no_leak_sanitizer = ['b_sanitize=' + ','.join(no_leak_sanitizer)]
 else
   no_leak_sanitizer = ['b_sanitize=none']
 endif
