@@ -22,7 +22,7 @@ for shell_script in \
         ./ci/*.sh \
         ./bin/*.sh \
         ./build-aux/*.sh \
-        ./pressure-vessel/pressure-vessel-locale-gen \
+        ./pressure-vessel/pv-locale-gen \
         ./pressure-vessel/pressure-vessel-unruntime \
         ./subprojects/container-runtime/common/_v2-entry-point \
         ./subprojects/container-runtime/debian/tests/depot \

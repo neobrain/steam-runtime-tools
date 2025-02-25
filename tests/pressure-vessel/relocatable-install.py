@@ -78,10 +78,10 @@ class TapTest:
 
 
 EXES = [
-    'pressure-vessel-adverb',
     'pressure-vessel-wrap',
 ]
 PKGLIBEXEC = [
+    'pv-adverb',
     'srt-bwrap',
 ]
 HELPERS = [

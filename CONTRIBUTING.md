@@ -157,7 +157,7 @@ several things have to be pulled together:
     automates this, placing a suitable set of containers in
     `_build/containers` by default.
 
-* `steam-runtime-launcher-service` and `pressure-vessel-adverb` need to be
+* `steam-runtime-launcher-service` and `pv-adverb` need to be
     compiled in a way that will work both on the host system and inside
     the test containers. The most reliable way to provide this is to build
     them in the Steam Runtime 1 'scout' SDK.

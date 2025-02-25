@@ -243,21 +243,27 @@ class TestContainers(BaseTest):
                 )
 
             for exe in (
-                'pressure-vessel-locale-gen',
+                'pv-locale-gen',
             ):
                 cls.copy2(
                     os.path.join(cls.top_srcdir, 'pressure-vessel', exe),
-                    os.path.join(cls.pv_dir, 'bin', exe),
+                    os.path.join(
+                        cls.pv_dir,
+                        'libexec',
+                        'steam-runtime-tools-0',
+                        os.path.basename(exe),
+                    ),
                 )
 
             for exe in (
-                'pressure-vessel-adverb',
-                'pressure-vessel-try-setlocale',
+                'pv-adverb',
+                'pv-try-setlocale',
             ):
                 in_containers_dir = os.path.join(
                     cls.containers_dir,
                     'pressure-vessel',
-                    'bin',
+                    'libexec',
+                    'steam-runtime-tools-0',
                     exe,
                 )
 
@@ -273,7 +279,12 @@ class TestContainers(BaseTest):
                     )
                     cls.copy2(
                         in_containers_dir,
-                        os.path.join(cls.pv_dir, 'bin', exe),
+                        os.path.join(
+                            cls.pv_dir,
+                            'libexec',
+                            'steam-runtime-tools-0',
+                            exe,
+                        ),
                     )
                 else:
                     logger.info(
@@ -282,7 +293,12 @@ class TestContainers(BaseTest):
                     )
                     cls.copy2(
                         os.path.join(cls.top_builddir, 'pressure-vessel', exe),
-                        os.path.join(cls.pv_dir, 'bin', exe),
+                        os.path.join(
+                            cls.pv_dir,
+                            'libexec',
+                            'steam-runtime-tools-0',
+                            exe,
+                        ),
                     )
 
             for d in (
@@ -794,7 +810,7 @@ class TestContainers(BaseTest):
             os.path.isfile(
                 os.path.join(
                     tree, 'usr', 'lib', 'pressure-vessel', 'from-host',
-                    'bin', 'pressure-vessel-adverb',
+                    'libexec', 'steam-runtime-tools-0', 'pv-adverb',
                 )
             )
         )

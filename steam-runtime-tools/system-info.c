@@ -3092,7 +3092,7 @@ srt_system_info_get_locale_issues (SrtSystemInfo *self)
        * If we discover that some distros use a different default, then
        * we should enhance this check to iterate through a search path.
        *
-       * Please keep this in sync with pressure-vessel-locale-gen. */
+       * Please keep this in sync with pv-locale-gen. */
 
       if (!g_file_test ("/usr/share/i18n/SUPPORTED", G_FILE_TEST_IS_REGULAR))
         self->locales.issues |= SRT_LOCALE_ISSUES_I18N_SUPPORTED_MISSING;

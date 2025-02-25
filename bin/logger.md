@@ -41,7 +41,7 @@ If running on an older kernel that does not support open file description
 locks, then the logger holds a shared **F_SETLK** lock instead, and log
 rotation is disabled.
 These locks are compatible with those used by **bwrap**(1), **flatpak**(1),
-**steam-runtime-supervisor**(1) and **pressure-vessel-adverb**(1).
+**steam-runtime-supervisor**(1) and **pv-adverb**(1).
 It is unspecified whether they exclude the **flock**(2) locks used
 by util-linux **flock**(1) or not, so using those locks on lock
 files used by **steam-runtime-tools** should be avoided.

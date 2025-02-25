@@ -1,3 +1,4 @@
 usr/lib/pressure-vessel/relocatable
+usr/libexec/steam-runtime-tools-0/pv-*
 usr/share/man/man1/pressure-vessel-*
 usr/share/man/man1/pv-*

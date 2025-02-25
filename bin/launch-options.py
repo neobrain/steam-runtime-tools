@@ -197,8 +197,15 @@ class PressureVessel(Component):
             version = ''
 
         self.adverb = os.path.join(
-            self.path, 'bin', 'pressure-vessel-adverb',
+            self.path,
+            'libexec', 'steam-runtime-tools-0', 'pv-adverb',
         )
+
+        if not os.path.exists(self.adverb):
+            self.adverb = os.path.join(
+                self.path, 'bin', 'pressure-vessel-adverb',
+            )
+
         self.description = '{}\n({})'.format(version or '(unknown)', path)
         self.unruntime = os.path.join(
             self.path, 'bin', 'pressure-vessel-unruntime',
@@ -1878,7 +1885,7 @@ class Gui:
         terminal = self.terminal_combo.get_active_id()
 
         # If we're not using a container runtime, we can try to borrow the
-        # pressure-vessel-adverb from any random copy of pressure-vessel
+        # pv-adverb from any random copy of pressure-vessel
         # to get its "run in an xterm" code
         if (
             (shell is not None or terminal is not None)

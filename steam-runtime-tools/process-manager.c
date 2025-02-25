@@ -1072,13 +1072,13 @@ _srt_process_manager_child_setup_cb (void *user_data)
       fd_flags = fcntl (fd, F_GETFD);
 
       if (fd_flags < 0)
-        _srt_async_signal_safe_error ("pressure-vessel-adverb",
+        _srt_async_signal_safe_error (self->prgname,
                                       "Invalid fd?",
                                       LAUNCH_EX_FAILED);
 
       if ((fd_flags & FD_CLOEXEC) != 0
           && fcntl (fd, F_SETFD, fd_flags & ~FD_CLOEXEC) != 0)
-        _srt_async_signal_safe_error ("pressure-vessel-adverb",
+        _srt_async_signal_safe_error (self->prgname,
                                       "Unable to clear close-on-exec",
                                       LAUNCH_EX_FAILED);
     }
@@ -1089,7 +1089,7 @@ _srt_process_manager_child_setup_cb (void *user_data)
       int source = self->assign_fds[j].source;
 
       if (dup2 (source, target) != target)
-        _srt_async_signal_safe_error ("pressure-vessel-adverb",
+        _srt_async_signal_safe_error (self->prgname,
                                       "Unable to assign file descriptors",
                                       LAUNCH_EX_FAILED);
     }

@@ -1,5 +1,5 @@
 ---
-title: pressure-vessel-adverb
+title: pv-adverb
 section: 1
 ...
 
@@ -10,11 +10,11 @@ SPDX-License-Identifier: MIT
 
 # NAME
 
-pressure-vessel-adverb - wrap processes in various ways
+pv-adverb - wrap processes in various ways
 
 # SYNOPSIS
 
-**pressure-vessel-adverb**
+**pv-adverb**
 [**--[no-]exit-with-parent**]
 [**--assign-fd** _TARGET_**=**_SOURCE_...]
 [**--clear-env**]
@@ -45,7 +45,7 @@ pressure-vessel-adverb - wrap processes in various ways
 
 # DESCRIPTION
 
-**pressure-vessel-adverb** runs *COMMAND* as a child process, with
+**pv-adverb** runs *COMMAND* as a child process, with
 modifications to its execution environment as determined by the options.
 
 By default, it just runs *COMMAND* as a child process and reports its
@@ -73,11 +73,11 @@ from `runtime-ld.so.conf` in order.
 </dt><dd>
 
 Make file descriptor *TARGET* in the *COMMAND* a copy of file
-descriptor *SOURCE* as passed to **pressure-vessel-adverb**,
+descriptor *SOURCE* as passed to **pv-adverb**,
 similar to writing `TARGET>&SOURCE` as a shell redirection.
 For example, **--assign-fd=1=3** is the same as **1>&3**.
 The redirection is done at the last possible moment, so the output
-of **pressure-vessel-adverb** will still go to the original standard
+of **pv-adverb** will still go to the original standard
 error.
 
 </dd>
@@ -122,11 +122,11 @@ pseudo-file `/proc/PID/environ`.
 
 </dt><dd>
 
-Arrange for **pressure-vessel-adverb** to receive **SIGTERM**
+Arrange for **pv-adverb** to receive **SIGTERM**
 (which it will pass on to *COMMAND*, if possible) when its parent
 process exits. This is particularly useful when it is wrapped in
 **bwrap** by **pressure-vessel-wrap**, to arrange for the
-**pressure-vessel-adverb** command to exit when **bwrap** is killed.
+**pv-adverb** command to exit when **bwrap** is killed.
 **--no-exit-with-parent** disables this behaviour, and is the default.
 
 </dd>
@@ -138,10 +138,10 @@ process exits. This is particularly useful when it is wrapped in
 
 Receive file descriptor *FD* (specified as a small positive integer)
 from the parent process, and keep it open until
-**pressure-vessel-adverb** exits. This is most useful if *FD*
+**pv-adverb** exits. This is most useful if *FD*
 is locked with a Linux open file description lock (**F_OFD_SETLK**
 or **F_OFD_SETLKW** from **fcntl**(2)), in which case the lock will
-be held by **pressure-vessel-adverb**.
+be held by **pv-adverb**.
 
 </dd>
 <dt>
@@ -164,7 +164,7 @@ temporary directory which is passed to the *COMMAND* in the
 
 Undo the effect of a previous **--env**, **--unset-env**
 or similar, returning to the default behaviour of inheriting *VAR*
-from the execution environment of **pressure-vessel-adverb**
+from the execution environment of **pv-adverb**
 (unless **--clear-env** was used, in which case this option becomes
 effectively equivalent to **--unset-env**).
 
@@ -255,14 +255,14 @@ through file descriptors 0, 1 and 2
 
 Regenerate "ld.so.cache" in the directory *PATH*.
 
-On entry to **pressure-vessel-adverb**, *PATH* should
+On entry to **pv-adverb**, *PATH* should
 contain `runtime-ld.so.conf`, a symbolic link or copy
 of the runtime's original `/etc/ld.so.conf`. It will
 usually also contain `ld.so.conf` and `ld.so.cache`
 as symbolic links or copies of the runtime's original
 `/etc/ld.so.conf` and `/etc/ld.so.cache`.
 
-Before executing the *COMMAND*, **pressure-vessel-adverb**
+Before executing the *COMMAND*, **pv-adverb**
 will construct a new `ld.so.conf` in *PATH*, consisting of
 all **--add-ld.so-path** arguments, followed by the contents
 of `runtime-ld.so.conf`; then it will generate a new
@@ -333,7 +333,7 @@ Don't run an interactive shell. This is the default.
 </dt><dd>
 
 If the *COMMAND* starts background processes, arrange for them to
-be reparented to **pressure-vessel-adverb** instead of to **init**
+be reparented to **pv-adverb** instead of to **init**
 when their parent process exits, and do not exit until all such
 descendant processes have exited.
 A non-negative **--terminate-timeout** implies this option.
@@ -403,7 +403,7 @@ If non-negative, terminate background processes after the *COMMAND*
 exits. This implies **--subreaper**.
 Non-integer decimal values are allowed.
 When this option is enabled, after *COMMAND* exits,
-**pressure-vessel-adverb** will wait for up to the time specified
+**pv-adverb** will wait for up to the time specified
 by **--terminate-idle-timeout**, then send **SIGTERM** to any
 remaining child processes and wait for them to exit gracefully.
 If child processes continue to run after a further time specified
@@ -442,9 +442,9 @@ Be more verbose.
 
 For each **--lock-file** that appears on the command-line after
 this option until a **--no-wait** option is seen, if the file is
-already locked in an incompatible way, **pressure-vessel-adverb**
+already locked in an incompatible way, **pv-adverb**
 will wait for the current holder of the lock to release it.
-With **--no-wait**, which is the default, **pressure-vessel-adverb**
+With **--no-wait**, which is the default, **pv-adverb**
 will exit with status 75 (**EX_TEMPFAIL**) if a lock cannot be acquired.
 
 </dd>
@@ -500,12 +500,12 @@ affecting how output is recorded. See source code for details.
 The standard output from *COMMAND* is printed on standard output.
 
 The standard error from *COMMAND* is printed on standard error.
-Diagnostic messages from **pressure-vessel-adverb** may also be printed
+Diagnostic messages from **pv-adverb** may also be printed
 on standard error.
 
 # SIGNALS
 
-If **pressure-vessel-adverb** receives signals **SIGHUP**, **SIGINT**,
+If **pv-adverb** receives signals **SIGHUP**, **SIGINT**,
 **SIGQUIT**, **SIGTERM**, **SIGUSR1** or **SIGUSR2**, it immediately
 sends the same signal to *COMMAND*, hopefully causing *COMMAND* to
 exit gracefully.
@@ -555,7 +555,7 @@ When running a game in a container as a single command,
 
     bwrap \
         ... \
-    /path/to/pressure-vessel-adverb \
+    /path/to/pv-adverb \
         --exit-with-parent \
         --generate-locales \
         --lock-file=/path/to/runtime/.ref \
@@ -572,7 +572,7 @@ more like this:
 
     bwrap \
         ... \
-    /path/to/pressure-vessel-adverb \
+    /path/to/pv-adverb \
         --exit-with-parent \
         --generate-locales \
         --lock-file=/path/to/runtime/.ref \
@@ -583,7 +583,7 @@ more like this:
 
 so that when the **steam-runtime-launcher-service** is terminated by
 **steam-runtime-launch-client --terminate**, or when the **bwrap** process
-receives a fatal signal, the **pressure-vessel-adverb** process will
+receives a fatal signal, the **pv-adverb** process will
 gracefully terminate any remaining child/descendant processes before
 exiting itself.
 

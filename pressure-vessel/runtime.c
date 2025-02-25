@@ -51,6 +51,39 @@
 #include "tree-copy.h"
 #include "utils.h"
 
+/*
+ * Location of helper executables from a relocatable copy of
+ * pressure-vessel, relative to the $PRESSURE_VESSEL_PREFIX
+ */
+#define PKGLIBEXECDIR "libexec/steam-runtime-tools-" _SRT_API_MAJOR
+
+/*
+ * Parent of the location where the $PRESSURE_VESSEL_PREFIX gets mounted
+ * when using the mutable_sysroot code path
+ */
+#define PV_FROM_HOST_IN_MUTABLE_SYSROOT_PARENT "/usr/lib/pressure-vessel"
+/*
+ * Location where the $PRESSURE_VESSEL_PREFIX gets mounted when using the
+ * mutable_sysroot code path
+ */
+#define PV_FROM_HOST_IN_MUTABLE_SYSROOT PV_FROM_HOST_IN_MUTABLE_SYSROOT_PARENT "/from-host"
+/*
+ * Path to pv-adverb as it is mounted inside the container when using
+ * the mutable_sysroot code path
+ */
+#define PV_ADVERB_IN_MUTABLE_SYSROOT PV_FROM_HOST_IN_MUTABLE_SYSROOT "/" PKGLIBEXECDIR "/pv-adverb"
+
+/*
+ * Location where the $PRESSURE_VESSEL_PREFIX gets mounted when not
+ * using the mutable_sysroot code path
+ */
+#define PV_FROM_HOST_WITHOUT_MUTABLE_SYSROOT "/run/pressure-vessel/pv-from-host"
+/*
+ * Path to pv-adverb as it is mounted inside the container when not
+ * using the mutable_sysroot code path
+ */
+#define PV_ADVERB_WITHOUT_MUTABLE_SYSROOT PV_FROM_HOST_WITHOUT_MUTABLE_SYSROOT "/" PKGLIBEXECDIR "/pv-adverb"
+
 typedef struct
 {
   GCancellable *cancellable;
@@ -8084,10 +8117,10 @@ pv_runtime_bind (PvRuntime *self,
     {
       g_autofree gchar *dest = NULL;
       glnx_autofd int parent_dirfd = -1;
-      const char *symlink_target = "/usr/lib/pressure-vessel/from-host";
+      const char *symlink_target = PV_FROM_HOST_IN_MUTABLE_SYSROOT;
 
       parent_dirfd = _srt_resolve_in_sysroot (self->mutable_sysroot->fd,
-                                              "/usr/lib/pressure-vessel",
+                                              PV_FROM_HOST_IN_MUTABLE_SYSROOT_PARENT,
                                               SRT_RESOLVE_FLAGS_MKDIR_P,
                                               NULL, error);
 
@@ -8106,13 +8139,15 @@ pv_runtime_bind (PvRuntime *self,
       /* Because the symlink is in a directory that doesn't exist in the
        * $FEX_ROOTFS, its target needs to be resolvable without FEX's help. */
       if (self->flags & PV_RUNTIME_FLAGS_INTERPRETER_ROOT)
-        symlink_target = PV_RUNTIME_PATH_INTERPRETER_ROOT "/usr/lib/pressure-vessel/from-host";
+        symlink_target = PV_RUNTIME_PATH_INTERPRETER_ROOT PV_FROM_HOST_IN_MUTABLE_SYSROOT;
 
+      /* If possible, make a symlink to it in the location we would have
+       * used if we didn't have the mutable sysroot */
       if (bwrap != NULL)
         flatpak_bwrap_add_args (bwrap,
                                 "--symlink",
                                 symlink_target,
-                                "/run/pressure-vessel/pv-from-host",
+                                PV_FROM_HOST_WITHOUT_MUTABLE_SYSROOT,
                                 NULL);
 
       /* FEX-Emu's transparent rewriting of paths gets quite confused
@@ -8120,9 +8155,9 @@ pv_runtime_bind (PvRuntime *self,
        * bwrap mainprocess fail. Help it out by using a filename that
        * genuinely exists in the container's physical root filesystem. */
       if (self->flags & PV_RUNTIME_FLAGS_INTERPRETER_ROOT)
-        self->adverb_in_container = PV_RUNTIME_PATH_INTERPRETER_ROOT "/usr/lib/pressure-vessel/from-host/bin/pressure-vessel-adverb";
+        self->adverb_in_container = PV_RUNTIME_PATH_INTERPRETER_ROOT PV_ADVERB_IN_MUTABLE_SYSROOT;
       else
-        self->adverb_in_container = "/usr/lib/pressure-vessel/from-host/bin/pressure-vessel-adverb";
+        self->adverb_in_container = PV_ADVERB_IN_MUTABLE_SYSROOT;
     }
   else
     {
@@ -8139,9 +8174,9 @@ pv_runtime_bind (PvRuntime *self,
       flatpak_bwrap_add_args (bwrap,
                               "--ro-bind",
                               pressure_vessel_prefix_in_host_namespace,
-                              "/run/pressure-vessel/pv-from-host",
+                              PV_FROM_HOST_WITHOUT_MUTABLE_SYSROOT,
                               NULL);
-      self->adverb_in_container = "/run/pressure-vessel/pv-from-host/bin/pressure-vessel-adverb";
+      self->adverb_in_container = PV_ADVERB_WITHOUT_MUTABLE_SYSROOT;
     }
 
   if ((self->flags & PV_RUNTIME_FLAGS_IMPORT_VULKAN_LAYERS)
@@ -8287,7 +8322,7 @@ pv_runtime_set_search_paths (PvRuntime *self,
   _srt_env_overlay_set (container_env, "PATH", "/usr/bin:/bin");
 
   /* We need to set LD_LIBRARY_PATH here so that we can run
-   * pressure-vessel-adverb, even if it is going to regenerate
+   * pv-adverb, even if it is going to regenerate
    * the ld.so.cache for better robustness before launching the
    * actual game */
   _srt_env_overlay_set (container_env, "LD_LIBRARY_PATH", ld_library_path);

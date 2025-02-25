@@ -98,6 +98,7 @@ main (int argc,
   glnx_autofd int original_stdout = -1;
   glnx_autofd int original_stderr = -1;
   const char *graphics_provider_mount_point = NULL;
+  const char *pkglibexecdir = NULL;
   const char *steam_app_id;
   g_autoptr(GPtrArray) adverb_preload_argv = NULL;
   int result;
@@ -410,7 +411,7 @@ main (int argc,
 
   g_debug ("Found executable directory: %s", tools_dir);
 
-  prefix = _srt_find_myself (NULL, NULL, error);
+  prefix = _srt_find_myself (NULL, &pkglibexecdir, error);
 
   if (prefix == NULL)
     goto out;
@@ -1148,7 +1149,7 @@ main (int argc,
            * same path as outside and we assume no special LD_LIBRARY_PATH
            * is needed */
           g_autofree gchar *adverb_in_container =
-            g_build_filename (tools_dir, "pressure-vessel-adverb", NULL);
+            g_build_filename (pkglibexecdir, "pv-adverb", NULL);
 
           flatpak_bwrap_add_arg (adverb_argv, adverb_in_container);
         }

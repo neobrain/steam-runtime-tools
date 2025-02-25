@@ -13,7 +13,7 @@ See `steam-runtime-tools/file-lock.c` for full details.
 
 Do not use `flock(2)`, `flock(1)` or `lockf(3)` to interact with
 pressure-vessel.
-`bwrap --lock-file`, `pressure-vessel-adverb` or `steam-runtime-supervisor`
+`bwrap --lock-file`, `pv-adverb` or `steam-runtime-supervisor`
 can be used.
 
 Runtimes

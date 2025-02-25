@@ -1,4 +1,4 @@
-/* pressure-vessel-adverb — run a command with an altered execution environment,
+/* pv-adverb — run a command with an altered execution environment,
  * e.g. holding a lock.
  * The lock is basically flock(1), but using fcntl locks compatible with
  * those used by bubblewrap and Flatpak.
@@ -89,7 +89,7 @@ helper_child_setup_cb (gpointer nil)
    * needs to follow signal-safety(7) rules. */
   if (opt_exit_with_parent
       && !_srt_raise_on_parent_death (SIGTERM, NULL))
-    _srt_async_signal_safe_error ("pressure-vessel-adverb",
+    _srt_async_signal_safe_error ("pv-adverb",
                                   "Failed to set up parent-death signal",
                                   LAUNCH_EX_FAILED);
 
@@ -551,7 +551,7 @@ generate_locales (gchar **locpath_out,
   gboolean ret = FALSE;
   const char *locale_gen_argv[] =
   {
-    NULL,   /* placeholder for /path/to/pressure-vessel-locale-gen */
+    NULL,   /* placeholder for /path/to/pv-locale-gen */
     "--output-dir", NULL,
     "--verbose",
     NULL
@@ -565,7 +565,7 @@ generate_locales (gchar **locpath_out,
   if (this_dir == NULL)
     goto out;
 
-  pvlg = g_build_filename (this_dir, "pressure-vessel-locale-gen", NULL);
+  pvlg = g_build_filename (this_dir, "pv-locale-gen", NULL);
   locale_gen_argv[0] = pvlg;
 
   temp_dir = g_dir_make_tmp ("pressure-vessel-locales-XXXXXX", error);
@@ -588,7 +588,7 @@ generate_locales (gchar **locpath_out,
                         error))
     {
       if (error != NULL)
-        glnx_prefix_error (error, "Cannot run pressure-vessel-locale-gen");
+        glnx_prefix_error (error, "Cannot run pv-locale-gen");
       goto out;
     }
 
@@ -823,7 +823,7 @@ main (int argc,
   global_ld_so_conf_entries = ld_so_conf_entries;
 
   /* Set up the initial base logging */
-  if (!_srt_util_set_glib_log_handler ("pressure-vessel-adverb",
+  if (!_srt_util_set_glib_log_handler ("pv-adverb",
                                        G_LOG_DOMAIN,
                                        SRT_LOG_FLAGS_DIVERT_STDOUT,
                                        &original_stdout, &original_stderr,

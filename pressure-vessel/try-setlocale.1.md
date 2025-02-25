@@ -1,5 +1,5 @@
 ---
-title: pressure-vessel-try-setlocale
+title: pv-try-setlocale
 section: 1
 ...
 
@@ -10,11 +10,11 @@ SPDX-License-Identifier: MIT
 
 # NAME
 
-pressure-vessel-try-setlocale - check whether a locale works
+pv-try-setlocale - check whether a locale works
 
 # SYNOPSIS
 
-**pressure-vessel-try-setlocale** [*LOCALE*]
+**pv-try-setlocale** [*LOCALE*]
 
 # DESCRIPTION
 
@@ -63,12 +63,12 @@ error.
 The output quoted here is from a system with no Canadian French locale
 available, correctly configured for some other locale.
 
-    $ pressure-vessel-try-setlocale; echo "exit status $?"
+    $ pv-try-setlocale; echo "exit status $?"
     exit status 0
-    $ pressure-vessel-try-setlocale fr_CA; echo "exit status $?"
+    $ pv-try-setlocale fr_CA; echo "exit status $?"
     setlocale "fr_CA": No such file or directory
     exit status 1
-    $ pressure-vessel-try-setlocale POSIX; echo "exit status $?"
+    $ pv-try-setlocale POSIX; echo "exit status $?"
     exit status 0
 
 <!-- vim:set sw=4 sts=4 et: -->
