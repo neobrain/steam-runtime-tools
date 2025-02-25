@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250225.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250225.0) steamrt; urgency=medium
 
   [ Ryan Gonzalez ]
   * libsteam-runtime-tools:
@@ -45,7 +45,7 @@ steam-runtime-tools (0.20250225.0) UNRELEASED; urgency=medium
       us test coverage for an architecture that doesn't have the biarch
       special cases that x86 does (steamrt/tasks#669, steamrt/tasks#679)
 
- -- Simon McVittie <smcv@collabora.com>  Tue, 25 Feb 2025 12:52:45 +0000
+ -- Simon McVittie <smcv@collabora.com>  Tue, 25 Feb 2025 14:36:40 +0000
 
 steam-runtime-tools (0.20250217.0) steamrt; urgency=medium
 
