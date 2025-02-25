@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250220.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250225.0) UNRELEASED; urgency=medium
 
   [ Ryan Gonzalez ]
   * libsteam-runtime-tools:
@@ -8,13 +8,34 @@ steam-runtime-tools (0.20250220.0) UNRELEASED; urgency=medium
   [ Simon McVittie ]
   * pressure-vessel:
     - Build srt-bwrap with unnecessary options disabled
+    - Automatically discover library dependencies instead of hard-coding
+      what we expect them to be in scout. A benefit of this is that it
+      also makes the relocatable install built on scout smaller, by
+      no longer including unnecessary libraries from libselinux, pcre3
+      and util-linux (steamrt/tasks#112)
+    - Improve support for building a relocatable install on newer base
+      library stacks
   * Build system:
     - Fix the linker option to select RPATH in preference to RUNPATH
     - Remove some unnecessary dependency checks
+  * Packaging:
+    - Build pressure-vessel on any suite, removing the special case
+      for scout. Official binary builds continue to be done on scout to
+      minimize the host OS requirements, but this gives us the option
+      to raise host OS requirements to something a little more modern
+      in future.
+    - Improve ability to build on non-x86
   * Tests:
     - Test pressure-vessel on modern Debian releases
+    - Improve parallelization
+    - Build packages on Debian 11 'bullseye', giving us test coverage for
+      an environment that is less specialized than scout
+      (steamrt/tasks#669, steamrt/tasks#679)
+    - Build packages and a relocatable pressure-vessel for aarch64, giving
+      us test coverage for an architecture that doesn't have the biarch
+      special cases that x86 does (steamrt/tasks#669, steamrt/tasks#679)
 
- -- Simon McVittie <smcv@collabora.com>  Thu, 20 Feb 2025 16:42:52 +0000
+ -- Simon McVittie <smcv@collabora.com>  Tue, 25 Feb 2025 11:05:48 +0000
 
 steam-runtime-tools (0.20250217.0) steamrt; urgency=medium
 
