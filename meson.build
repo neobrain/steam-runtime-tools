@@ -201,13 +201,31 @@ silence_wflinfo_warnings = c_compiler.get_supported_arguments([
   '-Wno-switch-default',
 ])
 
+enabled_sanitizers = get_option('b_sanitize').split(',')
+
 # wflinfo with libwaffle 1.8.0 appears to have a leak from
 # wegl_display_init(), which we don't particularly care about for a
 # short-lived process
-if ['undefined', 'address,undefined'].contains(get_option('b_sanitize'))
-  no_leak_sanitizer = ['b_sanitize=undefined']
+no_leak_sanitizer = []
+foreach sanitizer : enabled_sanitizers
+  if sanitizer != 'address'
+    no_leak_sanitizer += [sanitizer]
+  endif
+endforeach
+
+if no_leak_sanitizer.length() > 0
+  no_leak_sanitizer = ['b_sanitize=' + ','.join(no_leak_sanitizer)]
 else
   no_leak_sanitizer = ['b_sanitize=none']
+endif
+
+# GLib explicitly requires being able to call functions through a different
+# function pointer type, which trips UBSan's -fsanitize=function:
+# https://gitlab.gnome.org/GNOME/glib/-/blob/53b0ba327ba52ebcd38ee4e7f479bf029ffcdc1f/docs/toolchain-requirements.md#calling-functions-through-differently-typed-function-pointers
+if enabled_sanitizers.contains('undefined')
+  add_project_arguments(
+    c_compiler.get_supported_arguments('-fno-sanitize=function'),
+    language : 'c')
 endif
 
 add_project_link_arguments(
