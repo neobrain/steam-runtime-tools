@@ -317,3 +317,85 @@ _srt_tests_skip_if_really_in_steam_runtime (void)
 
   return FALSE;
 }
+
+/**
+ * Show a diff of both strings, additionally saving their contents to a
+ * temporary directory for later inspections. Performs a diff via `$SRT_DIFF`
+ * (defaults to `diff`) with the options in `$SRT_DIFF_OPTS` (defaults to `-u`
+ * if not given *and* `$SRT_DIFF` was unset).
+ */
+void
+_srt_show_diff (const char *expected,
+                const char *actual)
+{
+  g_autoptr(GPtrArray) diff_argv = g_ptr_array_new ();
+  g_autoptr(GSubprocessLauncher) launcher =
+    g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_STDERR_MERGE);
+  g_autoptr(GSubprocess) diff = NULL;
+  g_autoptr(GError) error = NULL;
+  g_auto(GStrv) diff_opts_split = NULL;
+  g_autofree gchar *tmpdir = NULL;
+  g_autofree gchar *expected_path = NULL;
+  g_autofree gchar *actual_path = NULL;
+  glnx_autofd int stderr_dup = -1;
+  const char *artifacts = g_getenv ("AUTOPKGTEST_ARTIFACTS");
+  const char *diff_exe = g_getenv ("SRT_DIFF");
+  const char *diff_opts = g_getenv ("SRT_DIFF_OPTS");
+
+  g_assert_no_errno ((stderr_dup = dup (STDERR_FILENO)));
+  g_subprocess_launcher_take_stdout_fd (launcher, glnx_steal_fd (&stderr_dup));
+
+  if (artifacts == NULL)
+    {
+      tmpdir = g_dir_make_tmp ("srt-tests-XXXXXX", &error);
+      g_assert_no_error (error);
+      artifacts = tmpdir;
+    }
+
+  expected_path = g_build_filename (artifacts, "expected", NULL);
+  g_file_set_contents (expected_path, expected, -1, &error);
+  g_assert_no_error (error);
+
+  actual_path = g_build_filename (artifacts, "actual", NULL);
+  g_file_set_contents (actual_path, actual, -1, &error);
+  g_assert_no_error (error);
+
+  g_ptr_array_add (diff_argv, (gpointer) (diff_exe ?: "diff"));
+  /* Only add custom diff opts if given; but otherwise, if no diff tool
+     was given, default to '-u' for easier-to-read unified diffs. */
+  if (diff_opts != NULL)
+    {
+      char **p;
+      if (!g_shell_parse_argv (diff_opts, NULL, &diff_opts_split, &error))
+        {
+          if (g_error_matches (error, G_SHELL_ERROR, G_SHELL_ERROR_EMPTY_STRING))
+            g_clear_error (&error);
+          else
+            g_error ("Parsing $SRT_DIFF_OPTS: %s", error->message);
+        }
+
+      for (p = diff_opts_split; p != NULL && *p != NULL; p++)
+        g_ptr_array_add (diff_argv, *p);
+    }
+  else if (diff_exe == NULL)
+    {
+      g_ptr_array_add (diff_argv, (gpointer) "-u");
+    }
+  g_ptr_array_add (diff_argv, expected_path);
+  g_ptr_array_add (diff_argv, actual_path);
+  g_ptr_array_add (diff_argv, NULL);
+
+  /* Ignore error from calling diff, if any: we're running it
+   * for its side-effect of producing output on our stderr. */
+  diff = g_subprocess_launcher_spawnv (launcher,
+                                       (const char * const *) diff_argv->pdata,
+                                       NULL);
+  if (diff != NULL)
+    g_subprocess_wait (diff, NULL, NULL);
+
+  g_test_message ("Files for comparison: %s %s",
+                  expected_path, actual_path);
+
+  if (tmpdir != NULL)
+    _srt_rm_rf (tmpdir);
+}
