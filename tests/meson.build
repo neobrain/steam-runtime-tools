@@ -74,6 +74,7 @@ test_utils = static_library(
   sources : [
     'fake-home.c',
     'test-init.c',
+    'test-json-utils.c',
     'test-utils.c',
   ],
   c_args : [
