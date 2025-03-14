@@ -1939,7 +1939,6 @@ test_icd_openxr_json (Fixture *f,
   g_autoptr(SrtOpenXr1Runtime) rt = NULL;
   g_autoptr(SrtOpenXr1Runtime) rt_basename = NULL;
   g_autoptr(SrtOpenXr1Runtime) rt_relative = NULL;
-  g_autoptr(GList) list = NULL;
   g_autoptr(GError) error = NULL;
   g_autofree char *resolved_library_path = NULL;
   g_autofree char *prop_json_path = NULL;
@@ -1950,15 +1949,12 @@ test_icd_openxr_json (Fixture *f,
   g_test_message ("Entering %s", G_STRFUNC);
 
   sysroot = _srt_sysroot_new (f->sysroot, NULL);
-  load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
-                           sysroot,
-                           sysroot_path_runtime_link,
-                           _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME,
-                           &list);
-
-  rt = list->data;
-  g_assert_nonnull (rt);
-  g_assert_null (list->next);
+  rt = (SrtOpenXr1Runtime *)
+        load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
+                                 sysroot,
+                                 sysroot_path_runtime_link,
+                                 _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME);
+  g_assert_true (SRT_IS_OPENXR_1_RUNTIME (rt));
 
   srt_openxr_1_runtime_check_error (rt, &error);
   g_assert_no_error (error);
@@ -2030,22 +2026,18 @@ test_icd_openxr_json_functions (Fixture *f,
 
   g_autoptr(SrtSysroot) sysroot = NULL;
   g_autoptr(SrtOpenXr1Runtime) rt = NULL;
-  g_autoptr(GList) list = NULL;
   g_autoptr(GError) error = NULL;
   g_autofree char *resolved_library_path = NULL;
 
   g_test_message ("Entering %s", G_STRFUNC);
 
   sysroot = _srt_sysroot_new (f->sysroot, NULL);
-  load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
-                           sysroot,
-                           sysroot_path_runtime,
-                           _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME,
-                           &list);
-
-  rt = list->data;
-  g_assert_nonnull (rt);
-  g_assert_null (list->next);
+  rt = (SrtOpenXr1Runtime *)
+        load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
+                                 sysroot,
+                                 sysroot_path_runtime,
+                                 _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME);
+  g_assert_true (SRT_IS_OPENXR_1_RUNTIME (rt));
 
   srt_openxr_1_runtime_check_error (rt, &error);
   g_assert_no_error (error);
@@ -2093,20 +2085,16 @@ test_icd_openxr_json_errors (Fixture *f,
   for (i = 0; i < G_N_ELEMENTS (tests); i++)
     {
       g_autoptr(SrtOpenXr1Runtime) rt = NULL;
-      g_autoptr(GList) list = NULL;
       g_autoptr(SrtOpenXr1Runtime) rt_replaced = NULL;
       g_autoptr(GError) error = NULL;
       SrtLoadableIssues issues = SRT_LOADABLE_ISSUES_NONE;
 
-      load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
-                               sysroot,
-                               tests[i].sysroot_runtime_path,
-                               _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME,
-                               &list);
-
-      rt = list->data;
-      g_assert_nonnull (rt);
-      g_assert_null (list->next);
+      rt = (SrtOpenXr1Runtime *)
+            load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
+                                     sysroot,
+                                     tests[i].sysroot_runtime_path,
+                                     _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME);
+      g_assert_true (SRT_IS_OPENXR_1_RUNTIME (rt));
 
       g_assert_false (srt_openxr_1_runtime_check_error (rt, &error));
       /* Accept any error code from the expected domain. */

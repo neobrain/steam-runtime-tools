@@ -441,8 +441,8 @@ vulkan_icd_load_json_cb (SrtSysroot *sysroot,
                          const char *filename,
                          void *user_data)
 {
-  load_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filename,
-                           MANIFEST_JSON_MEMBER_NAME_ICD, user_data);
+  prepend_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filename,
+                              MANIFEST_JSON_MEMBER_NAME_ICD, user_data);
 }
 
 /*
@@ -651,8 +651,8 @@ _srt_load_vulkan_icds (SrtSysroot *sysroot,
       g_debug ("Vulkan driver search path overridden to: %s", value);
 
       for (i = 0; filenames[i] != NULL; i++)
-        load_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filenames[i],
-                                 MANIFEST_JSON_MEMBER_NAME_ICD, &ret);
+        prepend_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filenames[i],
+                                    MANIFEST_JSON_MEMBER_NAME_ICD, &ret);
 
       g_strfreev (filenames);
     }
@@ -673,8 +673,8 @@ _srt_load_vulkan_icds (SrtSysroot *sysroot,
           g_debug ("Vulkan additional driver search path: %s", add);
 
           for (i = 0; filenames[i] != NULL; i++)
-            load_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filenames[i],
-                                     MANIFEST_JSON_MEMBER_NAME_ICD, &ret);
+            prepend_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filenames[i],
+                                        MANIFEST_JSON_MEMBER_NAME_ICD, &ret);
         }
 
       g_debug ("Using normal Vulkan driver search path");
