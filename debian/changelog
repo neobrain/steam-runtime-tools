@@ -1,3 +1,12 @@
+steam-runtime-tools (0.20250317.0) UNRELEASED; urgency=medium
+
+  [ Ryan Gonzalez ]
+  * build: Disable -fsanitize=function when building with UBSan.
+    It is not compatible with GLib toolchain assumptions
+    (steamrt/tasks#677)
+
+ -- Simon McVittie <smcv@collabora.com>  Mon, 17 Mar 2025 16:57:04 +0000
+
 steam-runtime-tools (0.20250225.0) steamrt; urgency=medium
 
   [ Ryan Gonzalez ]
