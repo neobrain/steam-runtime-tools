@@ -668,8 +668,8 @@ _srt_load_egl_things (GType which,
         {
           g_auto(GStrv) dirs = g_strsplit (value, G_SEARCHPATH_SEPARATOR_S, -1);
 
-          load_json_dirs (sysroot, dirs, NULL, _srt_indirect_strcmp0,
-                          loader_cb, &ret);
+          load_json_dirs (sysroot, _srt_const_strv (dirs), NULL,
+                          _srt_indirect_strcmp0, loader_cb, &ret);
         }
       else if (which == SRT_TYPE_EGL_ICD
                && _srt_sysroot_test (sysroot, "/.flatpak-info",

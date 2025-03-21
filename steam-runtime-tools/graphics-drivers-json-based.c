@@ -820,13 +820,13 @@ load_json_dir (SrtSysroot *sysroot,
  */
 void
 load_json_dirs (SrtSysroot *sysroot,
-                GStrv search_paths,
+                const char * const *search_paths,
                 const char *suffix,
                 GCompareFunc sort,
                 void (*load_json_cb) (SrtSysroot *, const char *, void *),
                 void *user_data)
 {
-  gchar **iter;
+  const char *const *iter;
   g_autoptr(GHashTable) searched_set = NULL;
   g_autoptr(GError) error = NULL;
 

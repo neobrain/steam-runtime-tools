@@ -182,7 +182,7 @@ void load_json_dir (SrtSysroot *sysroot,
                     void (*load_json_cb) (SrtSysroot *, const char *, void *),
                     void *user_data);
 void load_json_dirs (SrtSysroot *sysroot,
-                     GStrv search_paths,
+                     const char * const *search_paths,
                      const char *suffix,
                      GCompareFunc sort,
                      void (*load_json_cb) (SrtSysroot *, const char *, void *),
