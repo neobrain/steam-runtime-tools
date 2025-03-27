@@ -171,7 +171,14 @@
           "library_soname" : "libGLX_mesa.so.0",
           "library_path" : "/usr/lib/libGLX_mesa.so.0.0.0"
         }
-      ]
+      ],
+      "openxr-1-runtime" : {
+        "json_path" : "/usr/share/openxr/1/openxr_monado.json",
+        "json_origin" : "/home/me/.config/openxr/1/active_runtime.x86_64.json",
+        "library_path" : "/usr/lib/libopenxr_monado.so",
+        "name" : "Monado",
+        "issues" : []
+      }
     }
   },
   "locale-issues" : [
@@ -258,6 +265,25 @@
         "issues" : []
       }
     ]
+  },
+  "openxr-1" : {
+    "runtimes" : {
+      "active-fallback" : {
+        "json_path" : "/usr/share/openxr/1/openxr_monado.json",
+        "json_origin" : "/etc/xdg/openxr/1/active_runtime.json",
+        "library_path" : "../../../lib/libopenxr_monado.so",
+        "dlopen" : "/usr/share/openxr/1/../../../lib/libopenxr_monado.so",
+        "name" : "Monado",
+        "issues" : []
+      },
+      "inactive" : [
+        {
+          "json_path" : "/etc/xdg/openxr/1/active_runtime.m68k.json",
+          "library_path" : "/usr/lib/libopenxr_monado.so",
+          "issues" : []
+        }
+      ]
+    }
   },
   "desktop-entries" : [
     {

@@ -158,6 +158,14 @@ struct _SrtSystemInfo
     gboolean have_vulkan_explicit;
     gboolean have_vulkan_implicit;
   } layers;
+  struct {
+    /* owned string multiarch tuple => owned SrtOpenXr1Runtime */
+    /* (non-NULL if and only if the runtimes are known) */
+    GHashTable *active;
+    SrtOpenXr1Runtime *active_fallback;
+    /* list of owned SrtOpenXr1Runtime */
+    GList *inactive;
+  } openxr_1_runtimes;
   struct
   {
     gchar **values;
@@ -499,6 +507,10 @@ forget_drivers (SrtSystemInfo *self)
 
   self->egl_ext_platform.have = FALSE;
   g_list_free_full (g_steal_pointer (&self->egl_ext_platform.list), g_object_unref);
+
+  g_clear_pointer (&self->openxr_1_runtimes.active, g_hash_table_unref);
+  g_clear_object (&self->openxr_1_runtimes.active_fallback);
+  g_list_free_full (g_steal_pointer (&self->openxr_1_runtimes.inactive), g_object_unref);
 
   self->layers.have_vulkan_explicit = FALSE;
   self->layers.have_vulkan_implicit = FALSE;
@@ -924,6 +936,15 @@ srt_system_info_new_from_json (const char *path,
 
   info->cached_driver_environment = _srt_system_info_driver_environment_from_report (json_obj);
 
+  /* Initialize this before the rest of the graphics-related info, because it
+     will be used when loading the architecture-specific objects. */
+  info->openxr_1_runtimes.active = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                          g_free, g_object_unref);
+  _srt_openxr_1_runtimes_get_from_report (json_obj,
+                                          &info->openxr_1_runtimes.active_fallback,
+                                          &info->openxr_1_runtimes.inactive);
+
+
   if (json_object_has_member (json_obj, "architectures"))
     {
       JsonObject *json_arch_obj = NULL;
@@ -936,6 +957,7 @@ srt_system_info_new_from_json (const char *path,
       for (GList *l = multiarch_tuples; l != NULL; l = l->next)
         {
           Abi *abi = NULL;
+          SrtOpenXr1Runtime *xr_rt;
 
           if (!json_object_has_member (json_sub_obj, l->data))
             continue;
@@ -968,6 +990,11 @@ srt_system_info_new_from_json (const char *path,
 
           abi->graphics_modules[SRT_GRAPHICS_GLX_MODULE].modules = _srt_glx_icd_get_from_report (json_arch_obj);
           abi->graphics_modules[SRT_GRAPHICS_GLX_MODULE].available = TRUE;
+
+          xr_rt = _srt_openxr_1_runtime_get_active_from_abi_report (json_arch_obj);
+          if (xr_rt != NULL)
+              g_hash_table_insert (info->openxr_1_runtimes.active,
+                                   g_strdup (l->data), xr_rt);
         }
     }
 
@@ -3743,6 +3770,108 @@ srt_system_info_list_glx_icds (SrtSystemInfo *self,
 {
   return _srt_system_info_list_graphics_modules (self, multiarch_tuple, flags,
                                                  SRT_GRAPHICS_GLX_MODULE);
+}
+
+static gboolean
+srt_system_info_load_openxr_1_runtimes (SrtSystemInfo *self)
+{
+  g_return_val_if_fail (SRT_IS_SYSTEM_INFO (self), FALSE);
+
+  if (self->openxr_1_runtimes.active != NULL)
+    return TRUE;
+  else if (self->from_report != NULL || self->sysroot == NULL)
+    return FALSE;
+
+  self->openxr_1_runtimes.active = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                          g_free, g_object_unref);
+  _srt_load_openxr_1_runtimes (self->sysroot,
+                               _srt_subprocess_runner_get_environ (self->runner),
+                               self->openxr_1_runtimes.active,
+                               &self->openxr_1_runtimes.active_fallback,
+                               &self->openxr_1_runtimes.inactive);
+  return TRUE;
+}
+
+/**
+ * srt_system_info_dup_openxr_1_runtime:
+ * @self: The #SrtSystemInfo object
+ * @multiarch_tuple: (type filename): A Debian-style multiarch tuple such as
+ *  %SRT_ABI_X86_64, or %NULL to not specify an architecture.
+ * @error: Used to raise an error on failure.
+ *
+ * Return the OpenXR 1 runtime that will be used for the given architecture.
+ *
+ * If @multiarch_tuple is not %NULL, then this will prefer to return,
+ * if available, the corresponding architecture-specific active
+ * runtime (e.g. `active_runtime.x86_64.json` for %SRT_ABI_X86_64).
+ *
+ * If no architecture-specific runtime exists, or if @multiarch_tuple is %NULL,
+ * then this will return the runtime that is used for architectures with no
+ * architecture-specific runtime available (`active_runtime.json`).
+ *
+ * Returns: (transfer full) (nullable): The runtime, or %NULL.
+ */
+SrtOpenXr1Runtime *
+srt_system_info_dup_openxr_1_runtime (SrtSystemInfo *self,
+                                      const char *multiarch_tuple)
+{
+  SrtOpenXr1Runtime *rt = NULL;
+
+  if (!srt_system_info_load_openxr_1_runtimes (self))
+    return NULL;
+
+  if (multiarch_tuple != NULL)
+    {
+      if (ensure_abi_unless_immutable (self, multiarch_tuple) == NULL)
+        return NULL;
+      rt = g_hash_table_lookup (self->openxr_1_runtimes.active, multiarch_tuple);
+    }
+
+  rt = rt ?: self->openxr_1_runtimes.active_fallback;
+  return rt != NULL ? g_object_ref (rt) : NULL;
+}
+
+/**
+ * srt_system_info_list_inactive_openxr_1_runtimes:
+ * @self: The #SrtSystemInfo object
+ * @active_multiarch_tuples: (nullable) (array zero-terminated=1) (element-type utf8):
+ *   A list of multiarch tuples that will be assumed as active and thus omitted.
+ *   (This should usually be the list of multiarch tuples that you have already
+ *   given to %srt_system_info_dup_openxr_1_runtime().)
+ *
+ * Return a list of inactive runtimes, containing:
+ * - Runtimes for architectures not in @active_multiarch_tuples.
+ * - Runtimes for architectures that already have another preferred runtime
+ *   available.
+ * - Runtimes that are completely inactive, due to filename.
+ *
+ * Returns: (transfer full) (element-type SrtOpenXr1Runtime): A list of
+ *  opaque #SrtOpenXr1Runtime objects. Free with
+ *  `g_list_free_full(runtimes, g_object_unref)`. */
+GList *
+srt_system_info_list_inactive_openxr_1_runtimes (SrtSystemInfo *self,
+                                                 const char *const *active_multiarch_tuples)
+{
+  GHashTableIter active_iter;
+  gpointer active_tuple, active_rt;
+  GList *ret = NULL;
+  const GList *inactive_iter;
+
+  if (!srt_system_info_load_openxr_1_runtimes (self))
+    return NULL;
+
+  g_hash_table_iter_init (&active_iter, self->openxr_1_runtimes.active);
+  while (g_hash_table_iter_next (&active_iter, &active_tuple, &active_rt))
+    {
+      if (!g_strv_contains (active_multiarch_tuples, active_tuple))
+        ret = g_list_prepend (ret, g_object_ref (active_rt));
+    }
+
+  for (inactive_iter = self->openxr_1_runtimes.inactive; inactive_iter != NULL;
+       inactive_iter = inactive_iter->next)
+    ret = g_list_prepend (ret, g_object_ref (inactive_iter->data));
+
+  return g_list_reverse (ret);
 }
 
 static void
