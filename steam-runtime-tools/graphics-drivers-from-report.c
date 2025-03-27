@@ -375,8 +375,9 @@ get_driver_loadable_from_json_report (JsonObject *json_obj,
  * @which: Used to choose which loadable to search, it can be
  *  %SRT_TYPE_EGL_ICD, %SRT_TYPE_VULKAN_ICD, %SRT_TYPE_VULKAN_LAYER or
  *  %SRT_TYPE_EGL_EXTERNAL_PLATFORM
- * @explicit: If %TRUE, load explicit layers, otherwise load implicit layers.
- *  Currently this value is used only if @which is %SRT_TYPE_VULKAN_LAYER
+ * @member: The name of the member of @json_obj that contains @sub_member.
+ * @sub_member: The name of the member of @member that contains the array of
+ *  loadables.
  *
  * Returns: A list of objects of type @which, or
  *  %NULL if none has been found.
@@ -384,43 +385,14 @@ get_driver_loadable_from_json_report (JsonObject *json_obj,
 static GList *
 get_driver_loadables_from_json_report (JsonObject *json_obj,
                                        GType which,
-                                       gboolean explicit)
+                                       const char *member,
+                                       const char *sub_member)
 {
-  const gchar *member;
-  const gchar *sub_member;
   JsonObject *json_sub_obj;
   JsonArray *array;
   GList *driver_info = NULL;
 
   g_return_val_if_fail (json_obj != NULL, NULL);
-
-  if (which == SRT_TYPE_EGL_ICD)
-    {
-      member = "egl";
-      sub_member = "icds";
-    }
-  else if (which == SRT_TYPE_EGL_EXTERNAL_PLATFORM)
-    {
-      member = "egl";
-      sub_member = "external_platforms";
-    }
-  else if (which == SRT_TYPE_VULKAN_ICD)
-    {
-      member = "vulkan";
-      sub_member = "icds";
-    }
-  else if (which == SRT_TYPE_VULKAN_LAYER)
-    {
-      member = "vulkan";
-      if (explicit)
-        sub_member = "explicit_layers";
-      else
-        sub_member = "implicit_layers";
-    }
-  else
-    {
-      g_return_val_if_reached (NULL);
-    }
 
   if (json_object_has_member (json_obj, member))
     {
@@ -469,10 +441,15 @@ out:
 GList *
 _srt_get_egl_from_json_report (GType which, JsonObject *json_obj)
 {
-  g_return_val_if_fail (which == SRT_TYPE_EGL_ICD
-                        || which == SRT_TYPE_EGL_EXTERNAL_PLATFORM,
-                        NULL);
-  return get_driver_loadables_from_json_report (json_obj, which, FALSE);
+  const char *sub_member;
+  if (which == SRT_TYPE_EGL_ICD)
+    sub_member = "icds";
+  else if (which == SRT_TYPE_EGL_EXTERNAL_PLATFORM)
+    sub_member = "external_platforms";
+  else
+    g_return_val_if_reached (NULL);
+  return get_driver_loadables_from_json_report (json_obj, which,
+                                                "egl", sub_member);
 }
 
 /*
@@ -486,7 +463,8 @@ _srt_get_egl_from_json_report (GType which, JsonObject *json_obj)
 GList *
 _srt_get_explicit_vulkan_layers_from_json_report (JsonObject *json_obj)
 {
-  return get_driver_loadables_from_json_report (json_obj, SRT_TYPE_VULKAN_LAYER, TRUE);
+  return get_driver_loadables_from_json_report (json_obj, SRT_TYPE_VULKAN_LAYER,
+                                                "vulkan", "explicit_layers");
 }
 
 /*
@@ -500,7 +478,8 @@ _srt_get_explicit_vulkan_layers_from_json_report (JsonObject *json_obj)
 GList *
 _srt_get_implicit_vulkan_layers_from_json_report (JsonObject *json_obj)
 {
-  return get_driver_loadables_from_json_report (json_obj, SRT_TYPE_VULKAN_LAYER, FALSE);
+  return get_driver_loadables_from_json_report (json_obj, SRT_TYPE_VULKAN_LAYER,
+                                                "vulkan", "implicit_layers");
 }
 
 /*
@@ -513,5 +492,6 @@ _srt_get_implicit_vulkan_layers_from_json_report (JsonObject *json_obj)
 GList *
 _srt_get_vulkan_from_json_report (JsonObject *json_obj)
 {
-  return get_driver_loadables_from_json_report (json_obj, SRT_TYPE_VULKAN_ICD, FALSE);
+  return get_driver_loadables_from_json_report (json_obj, SRT_TYPE_VULKAN_ICD,
+                                                "vulkan", "icds");
 }
