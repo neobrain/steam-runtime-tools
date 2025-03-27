@@ -404,12 +404,8 @@ flatpak_run_add_system_dbus_args (FlatpakBwrap   *app_bwrap)
   return FALSE;
 }
 
-#if 0
 gboolean
-flatpak_run_add_a11y_dbus_args (FlatpakBwrap   *app_bwrap,
-                                FlatpakBwrap   *proxy_arg_bwrap,
-                                FlatpakContext *context,
-                                FlatpakRunFlags flags)
+flatpak_run_add_a11y_dbus_args (FlatpakBwrap *app_bwrap)
 {
   static const char sandbox_socket_path[] = "/run/pressure-vessel/at-spi-bus";
   static const char sandbox_dbus_address[] = "unix:path=/run/pressure-vessel/at-spi-bus";
@@ -418,11 +414,15 @@ flatpak_run_add_a11y_dbus_args (FlatpakBwrap   *app_bwrap,
   g_autoptr(GError) local_error = NULL;
   g_autoptr(GDBusMessage) reply = NULL;
   g_autoptr(GDBusMessage) msg = NULL;
+#if 0
   g_autofree char *proxy_socket = NULL;
+#endif
   const char *value;
 
+#if 0
   if ((flags & FLATPAK_RUN_FLAG_NO_A11Y_BUS_PROXY) != 0)
     return FALSE;
+#endif
 
   session_bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
   if (session_bus == NULL)
@@ -470,6 +470,47 @@ flatpak_run_add_a11y_dbus_args (FlatpakBwrap   *app_bwrap,
         }
     }
 
+#if 1
+  /* Simplified from Flatpak: we don't restrict access or use a proxy,
+   * we just pass the socket through as-is */
+    {
+      g_autofree char *a11y_socket = NULL;
+      struct stat statbuf;
+
+      /* If AT-SPI is listening on an abstract AF_UNIX socket, then there
+       * is no socket to listen on, but that's fine because there is also
+       * no need to bind-mount anything: we don't unshare the network
+       * namespace, so the container will have access to all abstract
+       * sockets. In this case we can just return false and the right thing
+       * will happen. */
+
+      if (a11y_address != NULL)
+        a11y_socket = extract_unix_path_from_dbus_address (a11y_address);
+
+      if (a11y_socket == NULL)
+        {
+          g_autofree char *user_runtime_dir = flatpak_get_real_xdg_runtime_dir ();
+
+          /* Typical path on systemd systems */
+          a11y_socket = g_build_filename (user_runtime_dir, "at-spi", "bus", NULL);
+        }
+
+      if (a11y_socket == NULL
+          || stat (a11y_socket, &statbuf) < 0
+          || (statbuf.st_mode & S_IFMT) != S_IFSOCK
+          || statbuf.st_uid != getuid ())
+        return FALSE;
+
+      flatpak_bwrap_add_args (app_bwrap,
+                              "--ro-bind", a11y_socket, sandbox_socket_path,
+                              NULL);
+      flatpak_bwrap_set_env (app_bwrap, "AT_SPI_BUS_ADDRESS", sandbox_dbus_address, TRUE);
+      flatpak_bwrap_add_runtime_dir_member (app_bwrap, "at-spi-bus");
+    }
+
+#else
+  /* Original implementation from Flatpak */
+
   if (!a11y_address)
     return FALSE;
 
@@ -498,7 +539,7 @@ flatpak_run_add_a11y_dbus_args (FlatpakBwrap   *app_bwrap,
                           "--ro-bind", proxy_socket, sandbox_socket_path,
                           NULL);
   flatpak_bwrap_set_env (app_bwrap, "AT_SPI_BUS_ADDRESS", sandbox_dbus_address, TRUE);
+#endif
 
   return TRUE;
 }
-#endif
