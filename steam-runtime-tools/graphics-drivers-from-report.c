@@ -221,6 +221,154 @@ out:
 }
 
 /*
+ * get_driver_loadable_from_json_report:
+ * @json_obj: (not nullable): A JSON Object used to search for Icd or Layer
+ *  properties
+ * @which: Used to choose which loadable to search, it can be
+ *  %SRT_TYPE_EGL_ICD, %SRT_TYPE_VULKAN_ICD, %SRT_TYPE_VULKAN_LAYER or
+ *  %SRT_TYPE_EGL_EXTERNAL_PLATFORM
+ * @debug_member: The name of the parent containing @json_obj, for debugging
+ *  purposes
+ *
+ * Returns: An object of type @which, or %NULL if it could not be loaded.
+ */
+static GObject *
+get_driver_loadable_from_json_report (JsonObject *json_obj,
+                                      GType which,
+                                      const char *debug_member)
+{
+  const gchar *json_path = NULL;
+  const gchar *name = NULL;
+  const gchar *type = NULL;
+  const gchar *description = NULL;
+  const gchar *library_path = NULL;
+  const gchar *library_arch = NULL;
+  const gchar *api_version = NULL;
+  const gchar *implementation_version = NULL;
+  gboolean portability_driver = FALSE;
+  g_auto(GStrv) component_layers = NULL;
+  SrtLoadableIssues issues;
+  GQuark error_domain;
+  gint error_code;
+  const gchar *error_message;
+  g_autoptr(GError) error = NULL;
+
+  json_path = json_object_get_string_member_with_default (json_obj,
+                                                          "json_path",
+                                                          NULL);
+  if (json_path == NULL)
+    {
+      g_debug ("The parsed '%s' member is missing the expected 'json_path' member, skipping...",
+               debug_member);
+      return NULL;
+    }
+
+  if (which == SRT_TYPE_VULKAN_LAYER)
+    {
+      name = json_object_get_string_member_with_default (json_obj, "name", NULL);
+      type = json_object_get_string_member_with_default (json_obj, "type", NULL);
+      implementation_version = json_object_get_string_member_with_default (json_obj,
+                                                                           "implementation_version",
+                                                                           NULL);
+      description = json_object_get_string_member_with_default (json_obj,
+                                                                "description",
+                                                                NULL);
+
+      component_layers = _srt_json_object_dup_strv_member (json_obj,
+                                                           "component_layers",
+                                                           NULL);
+
+      /* Don't distinguish between absent, and present with empty value */
+      if (component_layers != NULL && component_layers[0] == NULL)
+        g_clear_pointer (&component_layers, g_free);
+    }
+
+  library_path = json_object_get_string_member_with_default (json_obj,
+                                                             "library_path",
+                                                             NULL);
+  library_arch = json_object_get_string_member_with_default (json_obj,
+                                                             "library_arch",
+                                                             NULL);
+  api_version = json_object_get_string_member_with_default (json_obj,
+                                                            "api_version",
+                                                            NULL);
+  portability_driver = json_object_get_boolean_member_with_default (json_obj,
+                                                                    "is_portability_driver",
+                                                                    FALSE);
+  issues = srt_get_flags_from_json_array (SRT_TYPE_LOADABLE_ISSUES,
+                                          json_obj,
+                                          "issues",
+                                          SRT_LOADABLE_ISSUES_UNKNOWN);
+  error_domain = g_quark_from_string (json_object_get_string_member_with_default (json_obj,
+                                                                                  "error-domain",
+                                                                                  NULL));
+  error_code = json_object_get_int_member_with_default (json_obj, "error-code", -1);
+  error_message = json_object_get_string_member_with_default (json_obj,
+                                                              "error",
+                                                              "(missing error message)");
+
+  if (which == SRT_TYPE_VULKAN_LAYER &&
+      (name != NULL &&
+       type != NULL &&
+       api_version != NULL &&
+       implementation_version != NULL &&
+       description != NULL &&
+       ( (library_path != NULL && component_layers == NULL) ||
+         (library_path == NULL && component_layers != NULL) )))
+    {
+      return (GObject *) srt_vulkan_layer_new (json_path, name, type,
+                                               library_path, library_arch,
+                                               api_version, implementation_version,
+                                               description, component_layers,
+                                               issues);
+    }
+  else if ((which == SRT_TYPE_EGL_ICD
+            || which == SRT_TYPE_OPENXR_1_RUNTIME
+            || which == SRT_TYPE_EGL_EXTERNAL_PLATFORM
+            || which == SRT_TYPE_VULKAN_ICD) &&
+           library_path != NULL)
+    {
+      if (which == SRT_TYPE_EGL_ICD)
+        return (GObject *) srt_egl_icd_new (json_path, library_path, issues);
+      else if (which == SRT_TYPE_EGL_EXTERNAL_PLATFORM)
+        return (GObject *) srt_egl_external_platform_new (json_path,
+                                                          library_path,
+                                                          issues);
+      else if (which == SRT_TYPE_VULKAN_ICD)
+        return (GObject *) srt_vulkan_icd_new (json_path,
+                                               api_version,
+                                               library_path,
+                                               library_arch,
+                                               portability_driver,
+                                               issues);
+      else
+        g_return_val_if_reached (NULL);
+    }
+  else
+    {
+      if (error_domain == 0)
+        {
+          error_domain = G_IO_ERROR;
+          error_code = G_IO_ERROR_FAILED;
+        }
+      g_set_error_literal (&error,
+                           error_domain,
+                           error_code,
+                           error_message);
+      if (which == SRT_TYPE_EGL_ICD)
+        return (GObject *) srt_egl_icd_new_error (json_path, issues, error);
+      else if (which == SRT_TYPE_EGL_EXTERNAL_PLATFORM)
+        return (GObject *) srt_egl_external_platform_new_error (json_path, issues, error);
+      else if (which == SRT_TYPE_VULKAN_ICD)
+        return (GObject *) srt_vulkan_icd_new_error (json_path, issues, error);
+      else if (which == SRT_TYPE_VULKAN_LAYER)
+        return (GObject *) srt_vulkan_layer_new_error (json_path, issues, error);
+      else
+        g_return_val_if_reached (NULL);
+    }
+}
+
+/*
  * get_driver_loadables_from_json_report:
  * @json_obj: (not nullable): A JSON Object used to search for Icd or Layer
  *  properties
@@ -298,149 +446,12 @@ get_driver_loadables_from_json_report (JsonObject *json_obj,
 
           for (guint i = 0; i < json_array_get_length (array); i++)
             {
-              const gchar *json_path = NULL;
-              const gchar *name = NULL;
-              const gchar *type = NULL;
-              const gchar *description = NULL;
-              const gchar *library_path = NULL;
-              const gchar *library_arch = NULL;
-              const gchar *api_version = NULL;
-              const gchar *implementation_version = NULL;
-              gboolean portability_driver = FALSE;
-              g_auto(GStrv) component_layers = NULL;
-              SrtVulkanLayer *layer = NULL;
-              SrtLoadableIssues issues;
-              GQuark error_domain;
-              gint error_code;
-              const gchar *error_message;
-              GError *error = NULL;
               JsonObject *json_elem_obj = json_array_get_object_element (array, i);
-              if (json_object_has_member (json_elem_obj, "json_path"))
-                {
-                  json_path = json_object_get_string_member (json_elem_obj, "json_path");
-                }
-              else
-                {
-                  g_debug ("The parsed '%s' member is missing the expected 'json_path' member, skipping...",
-                           sub_member);
-                  continue;
-                }
-
-              if (which == SRT_TYPE_VULKAN_LAYER)
-                {
-                  name = json_object_get_string_member_with_default (json_elem_obj, "name", NULL);
-                  type = json_object_get_string_member_with_default (json_elem_obj, "type", NULL);
-                  implementation_version = json_object_get_string_member_with_default (json_elem_obj,
-                                                                                       "implementation_version",
-                                                                                       NULL);
-                  description = json_object_get_string_member_with_default (json_elem_obj,
-                                                                            "description",
-                                                                            NULL);
-
-                  component_layers = _srt_json_object_dup_strv_member (json_elem_obj,
-                                                                       "component_layers",
-                                                                       NULL);
-
-                  /* Don't distinguish between absent, and present with empty value */
-                  if (component_layers != NULL && component_layers[0] == NULL)
-                    g_clear_pointer (&component_layers, g_free);
-                }
-
-              library_path = json_object_get_string_member_with_default (json_elem_obj,
-                                                                         "library_path",
-                                                                         NULL);
-              library_arch = json_object_get_string_member_with_default (json_elem_obj,
-                                                                         "library_arch",
-                                                                         NULL);
-              api_version = json_object_get_string_member_with_default (json_elem_obj,
-                                                                        "api_version",
-                                                                        NULL);
-              portability_driver = json_object_get_boolean_member_with_default (json_elem_obj,
-                                                                                "is_portability_driver",
-                                                                                FALSE);
-              issues = srt_get_flags_from_json_array (SRT_TYPE_LOADABLE_ISSUES,
-                                                      json_elem_obj,
-                                                      "issues",
-                                                      SRT_LOADABLE_ISSUES_UNKNOWN);
-              error_domain = g_quark_from_string (json_object_get_string_member_with_default (json_elem_obj,
-                                                                                              "error-domain",
-                                                                                              NULL));
-              error_code = json_object_get_int_member_with_default (json_elem_obj, "error-code", -1);
-              error_message = json_object_get_string_member_with_default (json_elem_obj,
-                                                                          "error",
-                                                                          "(missing error message)");
-
-              if (which == SRT_TYPE_VULKAN_LAYER &&
-                  (name != NULL &&
-                   type != NULL &&
-                   api_version != NULL &&
-                   implementation_version != NULL &&
-                   description != NULL &&
-                   ( (library_path != NULL && component_layers == NULL) ||
-                     (library_path == NULL && component_layers != NULL) )))
-                {
-                  layer = srt_vulkan_layer_new (json_path, name, type,
-                                                library_path, library_arch,
-                                                api_version, implementation_version,
-                                                description, component_layers,
-                                                issues);
-                  driver_info = g_list_prepend (driver_info, layer);
-                }
-              else if ((which == SRT_TYPE_EGL_ICD
-                        || which == SRT_TYPE_EGL_EXTERNAL_PLATFORM
-                        || which == SRT_TYPE_VULKAN_ICD) &&
-                       library_path != NULL)
-                {
-                  if (which == SRT_TYPE_EGL_ICD)
-                    driver_info = g_list_prepend (driver_info, srt_egl_icd_new (json_path,
-                                                                                library_path,
-                                                                                issues));
-                  else if (which == SRT_TYPE_EGL_EXTERNAL_PLATFORM)
-                    driver_info = g_list_prepend (driver_info, srt_egl_external_platform_new (json_path,
-                                                                                              library_path,
-                                                                                              issues));
-                  else if (which == SRT_TYPE_VULKAN_ICD)
-                    driver_info = g_list_prepend (driver_info, srt_vulkan_icd_new (json_path,
-                                                                                   api_version,
-                                                                                   library_path,
-                                                                                   library_arch,
-                                                                                   portability_driver,
-                                                                                   issues));
-                  else
-                    g_return_val_if_reached (NULL);
-                }
-              else
-                {
-                  if (error_domain == 0)
-                    {
-                      error_domain = G_IO_ERROR;
-                      error_code = G_IO_ERROR_FAILED;
-                    }
-                  g_set_error_literal (&error,
-                                       error_domain,
-                                       error_code,
-                                       error_message);
-                  if (which == SRT_TYPE_EGL_ICD)
-                    driver_info = g_list_prepend (driver_info, srt_egl_icd_new_error (json_path,
-                                                                                      issues,
-                                                                                      error));
-                  else if (which == SRT_TYPE_EGL_EXTERNAL_PLATFORM)
-                    driver_info = g_list_prepend (driver_info, srt_egl_external_platform_new_error (json_path,
-                                                                                                    issues,
-                                                                                                    error));
-                  else if (which == SRT_TYPE_VULKAN_ICD)
-                    driver_info = g_list_prepend (driver_info, srt_vulkan_icd_new_error (json_path,
-                                                                                         issues,
-                                                                                         error));
-                  else if (which == SRT_TYPE_VULKAN_LAYER)
-                    driver_info = g_list_prepend (driver_info, srt_vulkan_layer_new_error (json_path,
-                                                                                           issues,
-                                                                                           error));
-                  else
-                    g_return_val_if_reached (NULL);
-
-                  g_clear_error (&error);
-                }
+              GObject *obj = get_driver_loadable_from_json_report (json_elem_obj,
+                                                                   which,
+                                                                   sub_member);
+              if (obj != NULL)
+                driver_info = g_list_prepend (driver_info, obj);
             }
         }
     }
