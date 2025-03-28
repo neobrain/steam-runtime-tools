@@ -423,11 +423,11 @@ test:debian-13:
 
 test:ubuntu-18.04:
     extends: .test_deb
-    image: ubuntu:18.04
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/ubuntu:18.04
 
 test:ubuntu-20.04:
     extends: .test_deb
-    image: ubuntu:20.04
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/ubuntu:20.04
 
 test:archlinux:
     extends: .test_template
