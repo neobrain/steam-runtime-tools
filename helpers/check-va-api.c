@@ -215,14 +215,7 @@ create_surfaces (VADisplay va_display,
 
   do_vaapi_or_exit (vaQuerySurfaceAttributes (va_display, config, NULL, &num_attribs));
 
-  attrib_list = calloc (num_attribs, sizeof (*attrib_list));
-
-  if (attrib_list == NULL)
-    {
-      fprintf (stderr, "Out of memory\n");
-      goto out;
-    }
-
+  attrib_list = xcalloc (num_attribs, sizeof (*attrib_list));
   do_vaapi_or_exit (vaQuerySurfaceAttributes (va_display, config, attrib_list, &num_attribs));
 
   for (unsigned int i = 0; i < num_attribs; i++)
@@ -255,14 +248,7 @@ create_surfaces (VADisplay va_display,
 
   num_formats = vaMaxNumImageFormats (va_display);
 
-  format_list = calloc (num_formats, sizeof (*format_list));
-
-  if (format_list == NULL)
-    {
-      fprintf (stderr, "Out of memory\n");
-      goto out;
-    }
-
+  format_list = xcalloc (num_formats, sizeof (*format_list));
   do_vaapi_or_exit (vaQueryImageFormats (va_display, format_list, &num_formats));
 
   image_format.fourcc = 0;
