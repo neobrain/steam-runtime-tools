@@ -37,6 +37,8 @@
 #include <va/va.h>
 #include <va/va_x11.h>
 
+#include "steam-runtime-tools/libc-utils-internal.h"
+
 enum
 {
   OPTION_HELP = 1,
