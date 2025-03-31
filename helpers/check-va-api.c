@@ -64,6 +64,8 @@ clear_surfaces (VADisplay va_display,
     surfaces[i] = VA_INVALID_SURFACE;
 }
 
+static bool verbose = false;
+
 enum
 {
   OPTION_HELP = 1,
@@ -307,6 +309,9 @@ create_surfaces (VADisplay va_display,
   /* Wait for all operations to complete */
   do_vaapi_or_exit (vaSyncSurface (va_display, surfaces[1]));
 
+  if (verbose)
+    fprintf (stderr, "... successfully created surfaces\n");
+
   ret = true;
 
 out:
@@ -441,6 +446,9 @@ test_decode_capability (VADisplay va_display,
   /* Blocks until all pending operations ends */
   do_vaapi_or_exit (vaSyncSurface (va_display, surfaces[1]));
 
+  if (verbose)
+    fprintf (stderr, "... success\n");
+
   ret = true;
 
 out:
@@ -528,6 +536,9 @@ test_pp_capability (VADisplay va_display,
   do_vaapi_or_exit (vaEndPicture (va_display, context));
   do_vaapi_or_exit (vaSyncSurface (va_display, surfaces[1]));
 
+  if (verbose)
+    fprintf (stderr, "... success\n");
+
   ret = true;
 
 out:
@@ -553,7 +564,6 @@ main (int argc,
 #define do_vaapi_or_exit(expr) if (! _do_vaapi (#expr, expr)) goto out;
 
   bool try_all = false;
-  bool verbose = false;
   int opt;
   int surfaces_count = 2;
   int ret = 1;
