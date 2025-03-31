@@ -418,9 +418,9 @@ main (int argc,
   VADisplay va_display = NULL;
   VASurfaceAttrib attr;
   VAImage img;
-  VASurfaceID *surfaces = NULL;
+  autofree VASurfaceID *surfaces = NULL;
   VAImageFormat image_format;
-  VAProfile *profiles = NULL;
+  autofree VAProfile *profiles = NULL;
   VARectangle input_region;
   VARectangle output_region;
 
@@ -556,9 +556,6 @@ out:
     }
   if (display)
     XCloseDisplay (display);
-
-  free (profiles);
-  free (surfaces);
 
   return ret;
 }
