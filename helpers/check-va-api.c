@@ -212,10 +212,17 @@ create_surfaces (VADisplay va_display,
   int num_formats;
   autofree VAImageFormat *format_list = NULL;
   bool ret = false;
+  VAStatus status;
 
 #define do_vaapi_or_exit(expr) if (! _do_vaapi (#expr, expr)) goto out;
 
-  do_vaapi_or_exit (vaQuerySurfaceAttributes (va_display, config, NULL, &num_attribs));
+  status = vaQuerySurfaceAttributes (va_display, config, NULL, &num_attribs);
+
+  if (status != VA_STATUS_SUCCESS && status != VA_STATUS_ERROR_MAX_NUM_EXCEEDED)
+    {
+      _do_vaapi ("vaQuerySurfaceAttributes", status);
+      goto out;
+    }
 
   attrib_list = xcalloc (num_attribs, sizeof (*attrib_list));
   do_vaapi_or_exit (vaQuerySurfaceAttributes (va_display, config, attrib_list, &num_attribs));
