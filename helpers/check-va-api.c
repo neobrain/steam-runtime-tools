@@ -204,9 +204,9 @@ create_surfaces (VADisplay va_display,
   VAImage img;
   VAImageFormat image_format;
   unsigned int num_attribs;
-  VASurfaceAttrib *attrib_list = NULL;
+  autofree VASurfaceAttrib *attrib_list = NULL;
   int num_formats;
-  VAImageFormat *format_list = NULL;
+  autofree VAImageFormat *format_list = NULL;
   bool ret = false;
 
 #define do_vaapi_or_exit(expr) if (! _do_vaapi (#expr, expr)) goto out;
@@ -288,8 +288,6 @@ create_surfaces (VADisplay va_display,
   ret = true;
 
 out:
-  free (attrib_list);
-  free (format_list);
   if (img.image_id != VA_INVALID_ID)
     vaDestroyImage (va_display, img.image_id);
 
