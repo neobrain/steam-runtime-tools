@@ -505,14 +505,7 @@ main (int argc,
                "vaMaxNumProfiles failed: unexpected number of maximum profiles (%i)\n", max_profiles);
       goto out;
     }
-  profiles = calloc (max_profiles, sizeof (VAProfile));
-
-  if (profiles == NULL)
-    {
-      fprintf (stderr, "Out of memory\n");
-      goto out;
-    }
-
+  profiles = xcalloc (max_profiles, sizeof (VAProfile));
   do_vaapi_or_exit (vaQueryConfigProfiles (va_display, profiles, &num_profiles));
   if (num_profiles > max_profiles)
     {
@@ -522,14 +515,7 @@ main (int argc,
       goto out;
     }
 
-  surfaces = calloc (surfaces_count, sizeof (VASurfaceID));
-
-  if (surfaces == NULL)
-    {
-      fprintf (stderr, "Out of memory\n");
-      goto out;
-    }
-
+  surfaces = xcalloc (surfaces_count, sizeof (VASurfaceID));
   /* Test the creation of two surfaces and an image */
   do_vaapi_or_exit (vaCreateSurfaces (va_display, VA_RT_FORMAT_YUV420, width, height,
                                       surfaces, surfaces_count, &attr, 1));
