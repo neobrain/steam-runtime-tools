@@ -52,6 +52,18 @@ clear_va_display (VADisplay *displayp)
   clear_pointer (displayp, vaTerminate);
 }
 
+static void
+clear_surfaces (VADisplay va_display,
+                VASurfaceID *surfaces,
+                int surfaces_count)
+{
+  if (va_display && surfaces && surfaces[0] != VA_INVALID_SURFACE)
+    vaDestroySurfaces (va_display, surfaces, surfaces_count);
+
+  for (int i = 0; i < surfaces_count; i++)
+    surfaces[i] = VA_INVALID_SURFACE;
+}
+
 enum
 {
   OPTION_HELP = 1,
@@ -443,6 +455,8 @@ out:
   if (slice_data_buf != VA_INVALID_ID)
     vaDestroyBuffer (va_display, slice_data_buf);
 
+  clear_surfaces (va_display, surfaces, surfaces_count);
+
   return ret;
 }
 
@@ -523,6 +537,8 @@ out:
     vaDestroyBuffer (va_display, misc_buf_id);
   if (context != VA_INVALID_ID)
     vaDestroyContext (va_display, context);
+
+  clear_surfaces (va_display, surfaces, surfaces_count);
 
   return ret;
 }
@@ -645,11 +661,5 @@ main (int argc,
     ret = 0;
 
 out:
-  if (va_display)
-    {
-      if (surfaces && surfaces[0] != VA_INVALID_SURFACE)
-        vaDestroySurfaces (va_display, surfaces, surfaces_count);
-    }
-
   return ret;
 }
