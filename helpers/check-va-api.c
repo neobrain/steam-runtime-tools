@@ -200,18 +200,20 @@ create_surfaces (VADisplay va_display,
                  int surfaces_count)
 {
   uint32_t fourcc = 0;
-  VASurfaceAttrib attr;
-  VAImage img;
-  VAImageFormat image_format;
-  unsigned int num_attribs;
+  VASurfaceAttrib attr = {
+      .type = VASurfaceAttribPixelFormat,
+      .flags = VA_SURFACE_ATTRIB_SETTABLE,
+      .value = { .type = VAGenericValueTypeInteger },
+  };
+  VAImage img = { .image_id = VA_INVALID_ID };
+  VAImageFormat image_format = { .fourcc = 0 };
+  unsigned int num_attribs = 0;
   autofree VASurfaceAttrib *attrib_list = NULL;
   int num_formats;
   autofree VAImageFormat *format_list = NULL;
   bool ret = false;
 
 #define do_vaapi_or_exit(expr) if (! _do_vaapi (#expr, expr)) goto out;
-
-  img.image_id = VA_INVALID_ID;
 
   do_vaapi_or_exit (vaQuerySurfaceAttributes (va_display, config, NULL, &num_attribs));
 
@@ -251,8 +253,6 @@ create_surfaces (VADisplay va_display,
   format_list = xcalloc (num_formats, sizeof (*format_list));
   do_vaapi_or_exit (vaQueryImageFormats (va_display, format_list, &num_formats));
 
-  image_format.fourcc = 0;
-
   for (int j = 0; j < num_formats; j++)
     {
       if (format_list[j].fourcc == fourcc)
@@ -268,9 +268,6 @@ create_surfaces (VADisplay va_display,
       goto out;
     }
 
-  attr.type = VASurfaceAttribPixelFormat;
-  attr.flags = VA_SURFACE_ATTRIB_SETTABLE;
-  attr.value.type = VAGenericValueTypeInteger;
   attr.value.value.i = fourcc;
 
   /* Test the creation of two surfaces and an image */
