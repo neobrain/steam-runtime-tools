@@ -22,12 +22,22 @@ void clear_with_free (void *pp);
 void clear_with_fclose (void *pp);
 
 /*
+ * autoclear:
+ * @clear: A function that can clear a variable of the type with this attribute
+ *
+ * A type attribute marking a variable to be cleared with the given
+ * function when it goes out of scope:
+ * `autoclear(clear_with_fclose) FILE *fh = fopen (...);`.
+ */
+#define autoclear(clear) __attribute__((__cleanup__(clear)))
+
+/*
  * autofclose:
  *
  * A type attribute marking a `FILE *` variable to be closed with `fclose()`
  * when it goes out of scope: `autofclose FILE *fh = fopen (...);`.
  */
-#define autofclose __attribute__((__cleanup__(clear_with_fclose)))
+#define autofclose autoclear(clear_with_fclose)
 
 /*
  * autofree:
@@ -35,7 +45,7 @@ void clear_with_fclose (void *pp);
  * A type attribute marking a pointer variable to be freed with `free()`
  * when it goes out of scope: `autofree char *str = strdup (...);`.
  */
-#define autofree __attribute__((__cleanup__(clear_with_free)))
+#define autofree autoclear(clear_with_free)
 
 /*
  * clear_pointer:
