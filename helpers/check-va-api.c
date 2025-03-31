@@ -39,6 +39,18 @@
 
 #include "steam-runtime-tools/libc-utils-internal.h"
 
+static void
+clear_display (Display **displayp)
+{
+  clear_pointer (displayp, XCloseDisplay);
+}
+
+static void
+clear_va_display (VADisplay *displayp)
+{
+  clear_pointer (displayp, vaTerminate);
+}
+
 enum
 {
   OPTION_HELP = 1,
@@ -414,8 +426,8 @@ main (int argc,
   int minor_version;
   unsigned int width = 1280;
   unsigned int height = 720;
-  Display *display = NULL;
-  VADisplay va_display = NULL;
+  autoclear(clear_display) Display *display = NULL;
+  autoclear(clear_va_display) VADisplay va_display = NULL;
   VASurfaceAttrib attr;
   VAImage img;
   autofree VASurfaceID *surfaces = NULL;
@@ -551,11 +563,7 @@ out:
         vaDestroyImage (va_display, img.image_id);
       if (surfaces)
         vaDestroySurfaces (va_display, surfaces, surfaces_count);
-
-      vaTerminate (va_display);
     }
-  if (display)
-    XCloseDisplay (display);
 
   return ret;
 }
