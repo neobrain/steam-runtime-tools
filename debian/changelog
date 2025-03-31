@@ -6,6 +6,10 @@ steam-runtime-tools (0.20250331.0) UNRELEASED; urgency=medium
       (steamrt/tasks#677)
 
   [ Simon McVittie ]
+  * pressure-vessel:
+    - Make the AT-SPI accessibility bus available inside the sandbox,
+      allowing steamwebhelper and Steam apps/games to communicate with
+      screen readers and other assistive technologies (steamrt/tasks#699)
   * Documentation:
     - docs/can-i-use.md: Document some version numbers and features
       that we can or can't rely on
@@ -14,7 +18,7 @@ steam-runtime-tools (0.20250331.0) UNRELEASED; urgency=medium
   * Tests:
     - CI fixes
 
- -- Simon McVittie <smcv@collabora.com>  Mon, 31 Mar 2025 11:54:40 +0100
+ -- Simon McVittie <smcv@collabora.com>  Mon, 31 Mar 2025 15:01:39 +0100
 
 steam-runtime-tools (0.20250225.0) steamrt; urgency=medium
 
