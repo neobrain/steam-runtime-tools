@@ -56,6 +56,7 @@ gboolean flatpak_run_maybe_start_dbus_proxy (FlatpakBwrap *app_bwrap,
 /* Simplified interface for pressure-vessel */
 gboolean flatpak_run_add_session_dbus_args (FlatpakBwrap *app_bwrap);
 gboolean flatpak_run_add_system_dbus_args (FlatpakBwrap *app_bwrap);
+gboolean flatpak_run_add_a11y_dbus_args (FlatpakBwrap *app_bwrap);
 #endif
 
 G_END_DECLS

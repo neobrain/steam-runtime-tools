@@ -205,6 +205,7 @@ pv_wrap_share_sockets (SrtEnvOverlay *container_env,
       flatpak_run_add_session_dbus_args (sharing_bwrap);
       flatpak_run_add_system_dbus_args (sharing_bwrap);
       flatpak_run_add_socket_args_late (sharing_bwrap, shares);
+      flatpak_run_add_a11y_dbus_args (sharing_bwrap);
       pv_wrap_add_pipewire_args (sharing_bwrap, container_env);
       pv_wrap_add_discord_args (sharing_bwrap);
     }

@@ -404,12 +404,8 @@ flatpak_run_add_system_dbus_args (FlatpakBwrap   *app_bwrap)
   return FALSE;
 }
 
-#if 0
 gboolean
-flatpak_run_add_a11y_dbus_args (FlatpakBwrap   *app_bwrap,
-                                FlatpakBwrap   *proxy_arg_bwrap,
-                                FlatpakContext *context,
-                                FlatpakRunFlags flags)
+flatpak_run_add_a11y_dbus_args (FlatpakBwrap *app_bwrap)
 {
   static const char sandbox_socket_path[] = "/run/pressure-vessel/at-spi-bus";
   static const char sandbox_dbus_address[] = "unix:path=/run/pressure-vessel/at-spi-bus";
@@ -418,37 +414,102 @@ flatpak_run_add_a11y_dbus_args (FlatpakBwrap   *app_bwrap,
   g_autoptr(GError) local_error = NULL;
   g_autoptr(GDBusMessage) reply = NULL;
   g_autoptr(GDBusMessage) msg = NULL;
+#if 0
   g_autofree char *proxy_socket = NULL;
+#endif
+  const char *value;
 
+#if 0
   if ((flags & FLATPAK_RUN_FLAG_NO_A11Y_BUS_PROXY) != 0)
     return FALSE;
+#endif
 
   session_bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
   if (session_bus == NULL)
     return FALSE;
 
-  msg = g_dbus_message_new_method_call ("org.a11y.Bus", "/org/a11y/bus", "org.a11y.Bus", "GetAddress");
-  g_dbus_message_set_body (msg, g_variant_new ("()"));
-  reply =
-    g_dbus_connection_send_message_with_reply_sync (session_bus, msg,
-                                                    G_DBUS_SEND_MESSAGE_FLAGS_NONE,
-                                                    30000,
-                                                    NULL,
-                                                    NULL,
-                                                    NULL);
-  if (reply)
+  value = g_getenv ("AT_SPI_BUS_ADDRESS");
+
+  if (value != NULL && value[0] != '\0')
     {
-      if (g_dbus_message_to_gerror (reply, &local_error))
+      a11y_address = g_strdup (value);
+      g_debug ("Retrieved AT-SPI bus address \"%s\" from environment",
+               a11y_address);
+    }
+
+  /* To have an accurate emulation of AT-SPI's behaviour, ideally we would
+   * also query the AT_SPI_BUS atom on the root window if a11y_address is
+   * still NULL here, but that would require a libX11 dependency, and
+   * isn't done when running under native Wayland anyway. */
+
+  if (a11y_address == NULL)
+    {
+      msg = g_dbus_message_new_method_call ("org.a11y.Bus", "/org/a11y/bus", "org.a11y.Bus", "GetAddress");
+      g_dbus_message_set_body (msg, g_variant_new ("()"));
+      reply =
+        g_dbus_connection_send_message_with_reply_sync (session_bus, msg,
+                                                        G_DBUS_SEND_MESSAGE_FLAGS_NONE,
+                                                        30000,
+                                                        NULL,
+                                                        NULL,
+                                                        NULL);
+      if (reply)
         {
-          if (!g_error_matches (local_error, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN))
-            g_message ("Can't find a11y bus: %s", local_error->message);
-        }
-      else
-        {
-          g_variant_get (g_dbus_message_get_body (reply),
-                         "(s)", &a11y_address);
+          if (g_dbus_message_to_gerror (reply, &local_error))
+            {
+              if (!g_error_matches (local_error, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN))
+                g_message ("Can't find a11y bus: %s", local_error->message);
+            }
+          else
+            {
+              g_variant_get (g_dbus_message_get_body (reply),
+                             "(s)", &a11y_address);
+              g_debug ("Retrieved AT-SPI bus address \"%s\" from session bus",
+                       a11y_address);
+            }
         }
     }
+
+#if 1
+  /* Simplified from Flatpak: we don't restrict access or use a proxy,
+   * we just pass the socket through as-is */
+    {
+      g_autofree char *a11y_socket = NULL;
+      struct stat statbuf;
+
+      /* If AT-SPI is listening on an abstract AF_UNIX socket, then there
+       * is no socket to listen on, but that's fine because there is also
+       * no need to bind-mount anything: we don't unshare the network
+       * namespace, so the container will have access to all abstract
+       * sockets. In this case we can just return false and the right thing
+       * will happen. */
+
+      if (a11y_address != NULL)
+        a11y_socket = extract_unix_path_from_dbus_address (a11y_address);
+
+      if (a11y_socket == NULL)
+        {
+          g_autofree char *user_runtime_dir = flatpak_get_real_xdg_runtime_dir ();
+
+          /* Typical path on systemd systems */
+          a11y_socket = g_build_filename (user_runtime_dir, "at-spi", "bus", NULL);
+        }
+
+      if (a11y_socket == NULL
+          || stat (a11y_socket, &statbuf) < 0
+          || (statbuf.st_mode & S_IFMT) != S_IFSOCK
+          || statbuf.st_uid != getuid ())
+        return FALSE;
+
+      flatpak_bwrap_add_args (app_bwrap,
+                              "--ro-bind", a11y_socket, sandbox_socket_path,
+                              NULL);
+      flatpak_bwrap_set_env (app_bwrap, "AT_SPI_BUS_ADDRESS", sandbox_dbus_address, TRUE);
+      flatpak_bwrap_add_runtime_dir_member (app_bwrap, "at-spi-bus");
+    }
+
+#else
+  /* Original implementation from Flatpak */
 
   if (!a11y_address)
     return FALSE;
@@ -478,7 +539,7 @@ flatpak_run_add_a11y_dbus_args (FlatpakBwrap   *app_bwrap,
                           "--ro-bind", proxy_socket, sandbox_socket_path,
                           NULL);
   flatpak_bwrap_set_env (app_bwrap, "AT_SPI_BUS_ADDRESS", sandbox_dbus_address, TRUE);
+#endif
 
   return TRUE;
 }
-#endif
