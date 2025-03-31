@@ -67,6 +67,7 @@ clear_surfaces (VADisplay va_display,
 enum
 {
   OPTION_HELP = 1,
+  OPTION_ALL,
   OPTION_VERBOSE,
   OPTION_VERSION,
 };
@@ -74,6 +75,7 @@ enum
 struct option long_options[] =
 {
   { "help", no_argument, NULL, OPTION_HELP },
+  { "all", no_argument, NULL, OPTION_ALL },
   { "verbose", no_argument, NULL, OPTION_VERBOSE },
   { "version", no_argument, NULL, OPTION_VERSION },
   { NULL, 0, NULL, 0 }
@@ -550,6 +552,7 @@ main (int argc,
 
 #define do_vaapi_or_exit(expr) if (! _do_vaapi (#expr, expr)) goto out;
 
+  bool try_all = false;
   bool verbose = false;
   int opt;
   int surfaces_count = 2;
@@ -573,6 +576,10 @@ main (int argc,
         {
           case OPTION_HELP:
             usage (0);
+            break;
+
+          case OPTION_ALL:
+            try_all = true;
             break;
 
           case OPTION_VERBOSE:
@@ -650,14 +657,19 @@ main (int argc,
 
   /* We assume to have at least one of VAProfileH264Main, VAProfileMPEG2Simple
    * or VAProfileNone */
-  if (test_decode_capability (va_display, VAProfileH264Main, width, height,
-                              input_region, output_region, surfaces, surfaces_count))
+  if ((ret != 0 || try_all)
+      && test_decode_capability (va_display, VAProfileH264Main, width, height,
+                                 input_region, output_region, surfaces, surfaces_count))
     ret = 0;
-  else if (test_decode_capability (va_display, VAProfileMPEG2Simple, width, height,
-                                   input_region, output_region, surfaces, surfaces_count))
+
+  if ((ret != 0 || try_all)
+      && test_decode_capability (va_display, VAProfileMPEG2Simple, width, height,
+                                 input_region, output_region, surfaces, surfaces_count))
     ret = 0;
-  else if (test_pp_capability (va_display, width, height, input_region,
-                               output_region, surfaces, surfaces_count))
+
+  if ((ret != 0 || try_all)
+      && test_pp_capability (va_display, width, height, input_region,
+                             output_region, surfaces, surfaces_count))
     ret = 0;
 
 out:
