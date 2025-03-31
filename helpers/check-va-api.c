@@ -253,11 +253,11 @@ create_surfaces (VADisplay va_display,
 
   image_format.fourcc = 0;
 
-  for (unsigned int i = 0; i < num_formats; i++)
+  for (int j = 0; j < num_formats; j++)
     {
-      if (format_list[i].fourcc == fourcc)
+      if (format_list[j].fourcc == fourcc)
         {
-          image_format = format_list[i];
+          image_format = format_list[j];
           break;
         }
     }
