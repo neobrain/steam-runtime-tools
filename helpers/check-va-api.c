@@ -262,7 +262,11 @@ create_surfaces (VADisplay va_display,
         }
     }
 
-  assert (image_format.fourcc == fourcc);
+  if (image_format.fourcc != fourcc)
+    {
+      fprintf (stderr, "Unable to find an image format with fourcc 0x%08x\n", fourcc);
+      goto out;
+    }
 
   attr.type = VASurfaceAttribPixelFormat;
   attr.flags = VA_SURFACE_ATTRIB_SETTABLE;
