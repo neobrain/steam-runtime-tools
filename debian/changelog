@@ -10,6 +10,11 @@ steam-runtime-tools (0.20250331.0) UNRELEASED; urgency=medium
     - Make the AT-SPI accessibility bus available inside the sandbox,
       allowing steamwebhelper and Steam apps/games to communicate with
       screen readers and other assistive technologies (steamrt/tasks#699)
+  * Diagnostic tools:
+    - Query the supported surface formats for VA-API instead of assuming
+      I420 is supported. Thanks to David Rosca
+      (steamrt/tasks#702, steam-runtime#752)
+    - Clean up allocation and error handling in check-va-api
   * Documentation:
     - docs/can-i-use.md: Document some version numbers and features
       that we can or can't rely on
@@ -18,7 +23,7 @@ steam-runtime-tools (0.20250331.0) UNRELEASED; urgency=medium
   * Tests:
     - CI fixes
 
- -- Simon McVittie <smcv@collabora.com>  Mon, 31 Mar 2025 15:01:39 +0100
+ -- Simon McVittie <smcv@collabora.com>  Tue, 01 Apr 2025 11:24:50 +0100
 
 steam-runtime-tools (0.20250225.0) steamrt; urgency=medium
 
