@@ -1,7 +1,8 @@
 /*
  * Functional test for VA-API
  *
- * Copyright © 2020 Collabora Ltd.
+ * Copyright © 2020-2025 Collabora Ltd.
+ * Copyright © 2025 David Rosca
  *
  * SPDX-License-Identifier: MIT
  *
@@ -37,9 +38,38 @@
 #include <va/va.h>
 #include <va/va_x11.h>
 
+#include "steam-runtime-tools/libc-utils-internal.h"
+
+static void
+clear_display (Display **displayp)
+{
+  clear_pointer (displayp, XCloseDisplay);
+}
+
+static void
+clear_va_display (VADisplay *displayp)
+{
+  clear_pointer (displayp, vaTerminate);
+}
+
+static void
+clear_surfaces (VADisplay va_display,
+                VASurfaceID *surfaces,
+                int surfaces_count)
+{
+  if (va_display && surfaces && surfaces[0] != VA_INVALID_SURFACE)
+    vaDestroySurfaces (va_display, surfaces, surfaces_count);
+
+  for (int i = 0; i < surfaces_count; i++)
+    surfaces[i] = VA_INVALID_SURFACE;
+}
+
+static bool verbose = false;
+
 enum
 {
   OPTION_HELP = 1,
+  OPTION_ALL,
   OPTION_VERBOSE,
   OPTION_VERSION,
 };
@@ -47,6 +77,7 @@ enum
 struct option long_options[] =
 {
   { "help", no_argument, NULL, OPTION_HELP },
+  { "all", no_argument, NULL, OPTION_ALL },
   { "verbose", no_argument, NULL, OPTION_VERBOSE },
   { "version", no_argument, NULL, OPTION_VERSION },
   { NULL, 0, NULL, 0 }
@@ -177,6 +208,120 @@ _do_vaapi (const char *description,
 }
 
 static bool
+create_surfaces (VADisplay va_display,
+                 VAConfigID config,
+                 int width,
+                 int height,
+                 VASurfaceID *surfaces,
+                 int surfaces_count)
+{
+  uint32_t fourcc = 0;
+  VASurfaceAttrib attr = {
+      .type = VASurfaceAttribPixelFormat,
+      .flags = VA_SURFACE_ATTRIB_SETTABLE,
+      .value = { .type = VAGenericValueTypeInteger },
+  };
+  VAImage img = { .image_id = VA_INVALID_ID };
+  VAImageFormat image_format = { .fourcc = 0 };
+  unsigned int num_attribs = 0;
+  autofree VASurfaceAttrib *attrib_list = NULL;
+  int num_formats;
+  autofree VAImageFormat *format_list = NULL;
+  bool ret = false;
+  VAStatus status;
+
+#define do_vaapi_or_exit(expr) if (! _do_vaapi (#expr, expr)) goto out;
+
+  status = vaQuerySurfaceAttributes (va_display, config, NULL, &num_attribs);
+
+  if (status != VA_STATUS_SUCCESS && status != VA_STATUS_ERROR_MAX_NUM_EXCEEDED)
+    {
+      _do_vaapi ("vaQuerySurfaceAttributes", status);
+      goto out;
+    }
+
+  attrib_list = xcalloc (num_attribs, sizeof (*attrib_list));
+  do_vaapi_or_exit (vaQuerySurfaceAttributes (va_display, config, attrib_list, &num_attribs));
+
+  for (unsigned int i = 0; i < num_attribs; i++)
+    {
+      if (attrib_list[i].type == VASurfaceAttribPixelFormat)
+        {
+          /* Select 8-bit YUV 4:2:0 fourcc */
+          switch (attrib_list[i].value.value.i)
+            {
+              case VA_FOURCC_I420:
+              case VA_FOURCC_NV12:
+              case VA_FOURCC_NV21:
+              case VA_FOURCC_YV12:
+                fourcc = attrib_list[i].value.value.i;
+                break;
+
+              default:
+                break;
+            }
+          if (fourcc != 0)
+            break;
+        }
+    }
+
+  if (fourcc == 0)
+    {
+      fprintf (stderr, "No supported pixel format\n");
+      goto out;
+    }
+
+  num_formats = vaMaxNumImageFormats (va_display);
+
+  format_list = xcalloc (num_formats, sizeof (*format_list));
+  do_vaapi_or_exit (vaQueryImageFormats (va_display, format_list, &num_formats));
+
+  for (int j = 0; j < num_formats; j++)
+    {
+      if (format_list[j].fourcc == fourcc)
+        {
+          image_format = format_list[j];
+          break;
+        }
+    }
+
+  if (image_format.fourcc != fourcc)
+    {
+      fprintf (stderr, "Unable to find an image format with fourcc 0x%08x\n", fourcc);
+      goto out;
+    }
+
+  attr.value.value.i = fourcc;
+
+  /* Test the creation of two surfaces and an image */
+  do_vaapi_or_exit (vaCreateSurfaces (va_display, VA_RT_FORMAT_YUV420, width, height,
+                                      surfaces, surfaces_count, &attr, 1));
+  do_vaapi_or_exit (vaCreateImage (va_display, &image_format, width, height, &img));
+
+  /* Get an image from the first surface */
+  do_vaapi_or_exit (vaGetImage (va_display, surfaces[0], 0, 0, width, height, img.image_id));
+
+  /* Render the image back to the second surface */
+  do_vaapi_or_exit (vaPutImage (va_display, surfaces[1], img.image_id,
+                                0, 0, width, height,
+                                0, 0, width, height));
+
+  /* Wait for all operations to complete */
+  do_vaapi_or_exit (vaSyncSurface (va_display, surfaces[1]));
+
+  if (verbose)
+    fprintf (stderr, "... successfully created surfaces\n");
+
+  ret = true;
+
+out:
+  if (img.image_id != VA_INVALID_ID)
+    vaDestroyImage (va_display, img.image_id);
+
+  return ret;
+}
+
+static bool
 test_decode_capability (VADisplay va_display,
                         VAProfile profile,
                         int width,
@@ -262,6 +407,9 @@ test_decode_capability (VADisplay va_display,
   do_vaapi_or_exit (vaCreateConfig (va_display, profile, VAEntrypointVLD,
                                     NULL, 0, &config));
 
+  if (!create_surfaces (va_display, config, width, height, surfaces, surfaces_count))
+    goto out;
+
   do_vaapi_or_exit (vaCreateContext (va_display, config, width, height,
                                      VA_PROGRESSIVE, surfaces,
                                      surfaces_count, &context));
@@ -298,6 +446,9 @@ test_decode_capability (VADisplay va_display,
   /* Blocks until all pending operations ends */
   do_vaapi_or_exit (vaSyncSurface (va_display, surfaces[1]));
 
+  if (verbose)
+    fprintf (stderr, "... success\n");
+
   ret = true;
 
 out:
@@ -313,6 +464,8 @@ out:
     vaDestroyBuffer (va_display, slice_param_buf);
   if (slice_data_buf != VA_INVALID_ID)
     vaDestroyBuffer (va_display, slice_data_buf);
+
+  clear_surfaces (va_display, surfaces, surfaces_count);
 
   return ret;
 }
@@ -341,6 +494,9 @@ test_pp_capability (VADisplay va_display,
 
   do_vaapi_or_exit (vaCreateConfig (va_display, VAProfileNone, VAEntrypointVideoProc,
                                     NULL, 0, &config));
+
+  if (!create_surfaces (va_display, config, width, height, surfaces, surfaces_count))
+    goto out;
 
   do_vaapi_or_exit (vaCreateContext (va_display, config, width, height, 0,
                                      surfaces, surfaces_count, &context));
@@ -380,6 +536,9 @@ test_pp_capability (VADisplay va_display,
   do_vaapi_or_exit (vaEndPicture (va_display, context));
   do_vaapi_or_exit (vaSyncSurface (va_display, surfaces[1]));
 
+  if (verbose)
+    fprintf (stderr, "... success\n");
+
   ret = true;
 
 out:
@@ -392,6 +551,8 @@ out:
   if (context != VA_INVALID_ID)
     vaDestroyContext (va_display, context);
 
+  clear_surfaces (va_display, surfaces, surfaces_count);
+
   return ret;
 }
 
@@ -402,7 +563,7 @@ main (int argc,
 
 #define do_vaapi_or_exit(expr) if (! _do_vaapi (#expr, expr)) goto out;
 
-  bool verbose = false;
+  bool try_all = false;
   int opt;
   int surfaces_count = 2;
   int ret = 1;
@@ -412,13 +573,10 @@ main (int argc,
   int minor_version;
   unsigned int width = 1280;
   unsigned int height = 720;
-  Display *display = NULL;
-  VADisplay va_display = NULL;
-  VASurfaceAttrib attr;
-  VAImage img;
-  VASurfaceID *surfaces = NULL;
-  VAImageFormat image_format;
-  VAProfile *profiles = NULL;
+  autoclear(clear_display) Display *display = NULL;
+  autoclear(clear_va_display) VADisplay va_display = NULL;
+  autofree VASurfaceID *surfaces = NULL;
+  autofree VAProfile *profiles = NULL;
   VARectangle input_region;
   VARectangle output_region;
 
@@ -428,6 +586,10 @@ main (int argc,
         {
           case OPTION_HELP:
             usage (0);
+            break;
+
+          case OPTION_ALL:
+            try_all = true;
             break;
 
           case OPTION_VERBOSE:
@@ -450,19 +612,6 @@ main (int argc,
             break;  /* not reached */
         }
     }
-
-  img.image_id = VA_INVALID_ID;
-
-  attr.type = VASurfaceAttribPixelFormat;
-  attr.flags = VA_SURFACE_ATTRIB_SETTABLE;
-  attr.value.type = VAGenericValueTypeInteger;
-  /* Arbitrarily use the 8-bit YUV 4:2:0, assuming to be widely supported.
-   * In case the current system doesn't support it, vaCreateSurfaces will fail
-   * and this test will exit returning 1 */
-  attr.value.value.i = VA_FOURCC_I420;
-  image_format.fourcc = VA_FOURCC_I420;
-  image_format.byte_order = VA_LSB_FIRST;
-  image_format.bits_per_pixel = 32;
 
   /* Use the whole input surface */
   input_region.x = 0;
@@ -503,14 +652,7 @@ main (int argc,
                "vaMaxNumProfiles failed: unexpected number of maximum profiles (%i)\n", max_profiles);
       goto out;
     }
-  profiles = calloc (max_profiles, sizeof (VAProfile));
-
-  if (profiles == NULL)
-    {
-      fprintf (stderr, "Out of memory\n");
-      goto out;
-    }
-
+  profiles = xcalloc (max_profiles, sizeof (VAProfile));
   do_vaapi_or_exit (vaQueryConfigProfiles (va_display, profiles, &num_profiles));
   if (num_profiles > max_profiles)
     {
@@ -520,57 +662,26 @@ main (int argc,
       goto out;
     }
 
-  surfaces = calloc (surfaces_count, sizeof (VASurfaceID));
-
-  if (surfaces == NULL)
-    {
-      fprintf (stderr, "Out of memory\n");
-      goto out;
-    }
-
-  /* Test the creation of two surfaces and an image */
-  do_vaapi_or_exit (vaCreateSurfaces (va_display, VA_RT_FORMAT_YUV420, width, height,
-                                      surfaces, surfaces_count, &attr, 1));
-  do_vaapi_or_exit (vaCreateImage (va_display, &image_format, width, height, &img));
-
-  /* Get an image from the first surface */
-  do_vaapi_or_exit (vaGetImage (va_display, surfaces[0], 0, 0, width, height, img.image_id));
-
-  /* Render the image back to the second surface */
-  do_vaapi_or_exit (vaPutImage (va_display, surfaces[1], img.image_id,
-                                0, 0, width, height,
-                                0, 0, width, height));
-
-  /* Wait for all operations to complete */
-  do_vaapi_or_exit (vaSyncSurface (va_display, surfaces[1]));
+  surfaces = xcalloc (surfaces_count, sizeof (VASurfaceID));
+  surfaces[0] = VA_INVALID_SURFACE;
 
   /* We assume to have at least one of VAProfileH264Main, VAProfileMPEG2Simple
    * or VAProfileNone */
-  if (test_decode_capability (va_display, VAProfileH264Main, width, height,
-                              input_region, output_region, surfaces, surfaces_count))
+  if ((ret != 0 || try_all)
+      && test_decode_capability (va_display, VAProfileH264Main, width, height,
+                                 input_region, output_region, surfaces, surfaces_count))
     ret = 0;
-  else if (test_decode_capability (va_display, VAProfileMPEG2Simple, width, height,
-                                   input_region, output_region, surfaces, surfaces_count))
+
+  if ((ret != 0 || try_all)
+      && test_decode_capability (va_display, VAProfileMPEG2Simple, width, height,
+                                 input_region, output_region, surfaces, surfaces_count))
     ret = 0;
-  else if (test_pp_capability (va_display, width, height, input_region,
-                               output_region, surfaces, surfaces_count))
+
+  if ((ret != 0 || try_all)
+      && test_pp_capability (va_display, width, height, input_region,
+                             output_region, surfaces, surfaces_count))
     ret = 0;
 
 out:
-  if (va_display)
-    {
-      if (img.image_id != VA_INVALID_ID)
-        vaDestroyImage (va_display, img.image_id);
-      if (surfaces)
-        vaDestroySurfaces (va_display, surfaces, surfaces_count);
-
-      vaTerminate (va_display);
-    }
-  if (display)
-    XCloseDisplay (display);
-
-  free (profiles);
-  free (surfaces);
-
   return ret;
 }

@@ -72,7 +72,7 @@ srt_helpers += executable(
 srt_helpers += executable(
   multiarch + '-check-va-api',
   'check-va-api.c',
-  dependencies : [libva, libva_x11, xlib],
+  dependencies : [libva, libva_x11, xlib, libsteamrt_libc_utils_dep],
   include_directories : project_include_dirs,
   install : true,
   install_dir : pkglibexecdir,
