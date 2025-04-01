@@ -1,7 +1,8 @@
 /*
  * Functional test for VA-API
  *
- * Copyright © 2020 Collabora Ltd.
+ * Copyright © 2020-2025 Collabora Ltd.
+ * Copyright © 2025 David Rosca
  *
  * SPDX-License-Identifier: MIT
  *
