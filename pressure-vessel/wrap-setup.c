@@ -218,6 +218,7 @@ pv_wrap_share_sockets (SrtEnvOverlay *container_env,
     {
       static const char * const known_vars[] =
       {
+        "AT_SPI_BUS_ADDRESS",
         "DBUS_SESSION_BUS_ADDRESS",
         "DBUS_SYSTEM_BUS_ADDRESS",
         "DISPLAY",
