@@ -1,9 +1,13 @@
-steam-runtime-tools (0.20250331.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250403.0) UNRELEASED; urgency=medium
 
   [ Ryan Gonzalez ]
   * Build system:
     - Fix UBSan compatibility with GLib toolchain assumptions
       (steamrt/tasks#677)
+  * Tests:
+    - Factor out code for pretty-printing JSON
+    - Factor out code for comparing strings and showing a line-by-line
+      diff if they are different
 
   [ Simon McVittie ]
   * pressure-vessel:
@@ -23,7 +27,7 @@ steam-runtime-tools (0.20250331.0) UNRELEASED; urgency=medium
   * Tests:
     - CI fixes
 
- -- Simon McVittie <smcv@collabora.com>  Tue, 01 Apr 2025 11:24:50 +0100
+ -- Simon McVittie <smcv@collabora.com>  Thu, 03 Apr 2025 18:52:25 +0100
 
 steam-runtime-tools (0.20250225.0) steamrt; urgency=medium
 
