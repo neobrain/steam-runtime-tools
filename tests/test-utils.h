@@ -51,3 +51,20 @@ gchar *_srt_global_setup_sysroots (const char *argv0);
 gboolean _srt_global_teardown_sysroots (void);
 
 gboolean _srt_tests_skip_if_really_in_steam_runtime (void);
+
+void _srt_show_diff (const char *expected,
+                     const char *actual);
+
+/**
+ * Asserts two strings as equal, showing a line-based diff of their contents via
+ * _srt_show_diff() if they don't match.
+ */
+#define _srt_assert_streq_diff(a, b) \
+  G_STMT_START { \
+    const char *__a = (a), *__b = (b); \
+    if (!g_str_equal (__a, __b)) {\
+      _srt_show_diff (__a, __b); \
+      g_assertion_message (G_LOG_DOMAIN, __FILE__, __LINE__, G_STRFUNC,\
+                           "assertion failed (" #a " == " #b ")"); \
+    } \
+  } G_STMT_END
