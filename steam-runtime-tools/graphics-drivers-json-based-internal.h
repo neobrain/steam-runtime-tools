@@ -182,15 +182,19 @@ void load_json_dir (SrtSysroot *sysroot,
                     void (*load_json_cb) (SrtSysroot *, const char *, void *),
                     void *user_data);
 void load_json_dirs (SrtSysroot *sysroot,
-                     GStrv search_paths,
+                     const char * const *search_paths,
                      const char *suffix,
                      GCompareFunc sort,
                      void (*load_json_cb) (SrtSysroot *, const char *, void *),
                      void *user_data);
-void load_manifest_from_json (GType type,
-                              SrtSysroot *sysroot,
-                              const char *filename,
-                              const char *json_member_name,
-                              GList **list);
+GObject *load_manifest_from_json (GType type,
+                                  SrtSysroot *sysroot,
+                                  const char *filename,
+                                  const char *json_member_name);
+void prepend_manifest_from_json (GType type,
+                                 SrtSysroot *sysroot,
+                                 const char *filename,
+                                 const char *json_member_name,
+                                 GList **list);
 
 #define MANIFEST_JSON_MEMBER_NAME_ICD "ICD"

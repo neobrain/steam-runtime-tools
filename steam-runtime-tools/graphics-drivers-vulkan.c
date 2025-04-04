@@ -441,8 +441,8 @@ vulkan_icd_load_json_cb (SrtSysroot *sysroot,
                          const char *filename,
                          void *user_data)
 {
-  load_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filename,
-                           MANIFEST_JSON_MEMBER_NAME_ICD, user_data);
+  prepend_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filename,
+                              MANIFEST_JSON_MEMBER_NAME_ICD, user_data);
 }
 
 /*
@@ -651,8 +651,8 @@ _srt_load_vulkan_icds (SrtSysroot *sysroot,
       g_debug ("Vulkan driver search path overridden to: %s", value);
 
       for (i = 0; filenames[i] != NULL; i++)
-        load_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filenames[i],
-                                 MANIFEST_JSON_MEMBER_NAME_ICD, &ret);
+        prepend_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filenames[i],
+                                    MANIFEST_JSON_MEMBER_NAME_ICD, &ret);
 
       g_strfreev (filenames);
     }
@@ -673,12 +673,12 @@ _srt_load_vulkan_icds (SrtSysroot *sysroot,
           g_debug ("Vulkan additional driver search path: %s", add);
 
           for (i = 0; filenames[i] != NULL; i++)
-            load_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filenames[i],
-                                     MANIFEST_JSON_MEMBER_NAME_ICD, &ret);
+            prepend_manifest_from_json (SRT_TYPE_VULKAN_ICD, sysroot, filenames[i],
+                                        MANIFEST_JSON_MEMBER_NAME_ICD, &ret);
         }
 
       g_debug ("Using normal Vulkan driver search path");
-      load_json_dirs (sysroot, search_paths, NULL, READDIR_ORDER,
+      load_json_dirs (sysroot, _srt_const_strv (search_paths), NULL, READDIR_ORDER,
                       vulkan_icd_load_json_cb, &ret);
     }
 
@@ -1492,8 +1492,8 @@ _srt_load_vulkan_layers_extended (SrtSysroot *sysroot,
     {
       g_auto(GStrv) dirs = g_strsplit (value, G_SEARCHPATH_SEPARATOR_S, -1);
       g_debug ("Vulkan explicit layer search path overridden to: %s", value);
-      load_json_dirs (sysroot, dirs, NULL, _srt_indirect_strcmp0,
-                      vulkan_layer_load_json_cb, &ret);
+      load_json_dirs (sysroot, _srt_const_strv (dirs), NULL,
+                      _srt_indirect_strcmp0, vulkan_layer_load_json_cb, &ret);
     }
   else
     {
@@ -1506,8 +1506,9 @@ _srt_load_vulkan_layers_extended (SrtSysroot *sysroot,
         {
           g_auto(GStrv) dirs = g_strsplit (add, G_SEARCHPATH_SEPARATOR_S, -1);
           g_debug ("Vulkan additional explicit layer search path: %s", add);
-          load_json_dirs (sysroot, dirs, NULL, _srt_indirect_strcmp0,
-                          vulkan_layer_load_json_cb, &ret);
+          load_json_dirs (sysroot, _srt_const_strv (dirs), NULL,
+                          _srt_indirect_strcmp0, vulkan_layer_load_json_cb,
+                          &ret);
         }
 
       search_paths = _srt_graphics_get_vulkan_search_paths (sysroot, envp,
@@ -1515,8 +1516,8 @@ _srt_load_vulkan_layers_extended (SrtSysroot *sysroot,
                                                             suffix);
       g_debug ("Using normal Vulkan layer search path");
       g_debug ("SEARCH PATHS %s", search_paths[0]);
-      load_json_dirs (sysroot, search_paths, NULL, _srt_indirect_strcmp0,
-                      vulkan_layer_load_json_cb, &ret);
+      load_json_dirs (sysroot, _srt_const_strv (search_paths), NULL,
+                      _srt_indirect_strcmp0, vulkan_layer_load_json_cb, &ret);
     }
 
   if (!(check_flags & SRT_CHECK_FLAGS_SKIP_SLOW_CHECKS))

@@ -1939,7 +1939,6 @@ test_icd_openxr_json (Fixture *f,
   g_autoptr(SrtOpenXr1Runtime) rt = NULL;
   g_autoptr(SrtOpenXr1Runtime) rt_basename = NULL;
   g_autoptr(SrtOpenXr1Runtime) rt_relative = NULL;
-  g_autoptr(GList) list = NULL;
   g_autoptr(GError) error = NULL;
   g_autofree char *resolved_library_path = NULL;
   g_autofree char *prop_json_path = NULL;
@@ -1950,15 +1949,12 @@ test_icd_openxr_json (Fixture *f,
   g_test_message ("Entering %s", G_STRFUNC);
 
   sysroot = _srt_sysroot_new (f->sysroot, NULL);
-  load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
-                           sysroot,
-                           sysroot_path_runtime_link,
-                           _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME,
-                           &list);
-
-  rt = list->data;
-  g_assert_nonnull (rt);
-  g_assert_null (list->next);
+  rt = (SrtOpenXr1Runtime *)
+        load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
+                                 sysroot,
+                                 sysroot_path_runtime_link,
+                                 _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME);
+  g_assert_true (SRT_IS_OPENXR_1_RUNTIME (rt));
 
   srt_openxr_1_runtime_check_error (rt, &error);
   g_assert_no_error (error);
@@ -2030,22 +2026,18 @@ test_icd_openxr_json_functions (Fixture *f,
 
   g_autoptr(SrtSysroot) sysroot = NULL;
   g_autoptr(SrtOpenXr1Runtime) rt = NULL;
-  g_autoptr(GList) list = NULL;
   g_autoptr(GError) error = NULL;
   g_autofree char *resolved_library_path = NULL;
 
   g_test_message ("Entering %s", G_STRFUNC);
 
   sysroot = _srt_sysroot_new (f->sysroot, NULL);
-  load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
-                           sysroot,
-                           sysroot_path_runtime,
-                           _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME,
-                           &list);
-
-  rt = list->data;
-  g_assert_nonnull (rt);
-  g_assert_null (list->next);
+  rt = (SrtOpenXr1Runtime *)
+        load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
+                                 sysroot,
+                                 sysroot_path_runtime,
+                                 _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME);
+  g_assert_true (SRT_IS_OPENXR_1_RUNTIME (rt));
 
   srt_openxr_1_runtime_check_error (rt, &error);
   g_assert_no_error (error);
@@ -2093,20 +2085,16 @@ test_icd_openxr_json_errors (Fixture *f,
   for (i = 0; i < G_N_ELEMENTS (tests); i++)
     {
       g_autoptr(SrtOpenXr1Runtime) rt = NULL;
-      g_autoptr(GList) list = NULL;
       g_autoptr(SrtOpenXr1Runtime) rt_replaced = NULL;
       g_autoptr(GError) error = NULL;
       SrtLoadableIssues issues = SRT_LOADABLE_ISSUES_NONE;
 
-      load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
-                               sysroot,
-                               tests[i].sysroot_runtime_path,
-                               _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME,
-                               &list);
-
-      rt = list->data;
-      g_assert_nonnull (rt);
-      g_assert_null (list->next);
+      rt = (SrtOpenXr1Runtime *)
+            load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
+                                     sysroot,
+                                     tests[i].sysroot_runtime_path,
+                                     _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME);
+      g_assert_true (SRT_IS_OPENXR_1_RUNTIME (rt));
 
       g_assert_false (srt_openxr_1_runtime_check_error (rt, &error));
       /* Accept any error code from the expected domain. */
@@ -2118,6 +2106,200 @@ test_icd_openxr_json_errors (Fixture *f,
       /* Replacing the library path in an error object just returns the same object */
       rt_replaced = srt_openxr_1_runtime_new_replace_library_path (rt, "whatever");
       g_assert_true (rt == rt_replaced);
+    }
+}
+
+static void
+test_icd_openxr_search_paths_default (Fixture *f,
+                                      gconstpointer context)
+{
+  static const char * const expected_search_paths[] = {
+    "/home/test/.config/openxr/1",
+    "/etc/xdg/openxr/1",
+    "/etc/openxr/1",
+    NULL
+  };
+
+  g_auto(GStrv) envp = g_get_environ ();
+  g_auto(GStrv) search_paths = NULL;
+
+  g_test_message ("Entering %s", G_STRFUNC);
+
+  envp = g_environ_setenv (envp, "HOME", "/home/test", TRUE);
+
+  envp = g_environ_unsetenv (envp, "XDG_CONFIG_HOME");
+  envp = g_environ_unsetenv (envp, "XDG_CONFIG_DIRS");
+
+  search_paths = _srt_graphics_get_openxr_1_runtime_search_paths (_srt_const_strv (envp));
+  g_assert_cmpstrv (search_paths, expected_search_paths);
+}
+
+static void
+test_icd_openxr_search_paths_override (Fixture *f,
+                                       gconstpointer context)
+{
+  static const char * const expected_search_paths[] = {
+    "/config-home/openxr/1",
+    "/config-1/openxr/1",
+    "/config-2/openxr/1",
+    "/etc/openxr/1",
+    NULL
+  };
+
+  g_auto(GStrv) envp = g_get_environ ();
+  g_auto(GStrv) search_paths = NULL;
+
+  g_test_message ("Entering %s", G_STRFUNC);
+
+  envp = g_environ_setenv (envp, "HOME", "/home/test", TRUE);
+
+  envp = g_environ_setenv (envp, "XDG_CONFIG_HOME", "/config-home", TRUE);
+  envp = g_environ_setenv (envp, "XDG_CONFIG_DIRS", "/config-1:/config-2", TRUE);
+
+  search_paths = _srt_graphics_get_openxr_1_runtime_search_paths (_srt_const_strv (envp));
+  g_assert_cmpstrv (search_paths, expected_search_paths);
+}
+
+typedef struct {
+  struct {
+    const char *abi;
+    const char *path;
+  } active[4];
+
+  const char *inactive[13];
+  const char *active_fallback;
+
+  gboolean override_env_with_fallback;
+} OpenXrLoadingConfig;
+
+static const OpenXrLoadingConfig openxr_loading_config_default = {
+  .active = {
+    {
+      .abi = SRT_ABI_X86_64,
+      .path = "/openxr/config-home/openxr/1/active_runtime.x86_64.json",
+    },
+    {
+      .abi = SRT_ABI_AARCH64,
+      .path = "/openxr/config-home/openxr/1/active_runtime.aarch64.json",
+    },
+    {
+      .abi = SRT_ABI_I386,
+      .path = "/etc/openxr/1/active_runtime.i686.json",
+    },
+    { NULL },
+  },
+  .active_fallback = "/etc/openxr/1/active_runtime.json",
+  .inactive = {
+    "/openxr/config-home/openxr/1/active_runtime.m68k.json",
+    "/openxr/config-home/openxr/1/active_runtimeeee.json",
+    "/openxr/config-home/openxr/1/inactive.json",
+    "/etc/openxr/1/active_runtime.aarch64.json",
+    "/etc/openxr/1/inactive.json",
+    "/usr/local/etc/openxr/1/active_runtime.json",
+    "/usr/local/etc/openxr/1/active_runtime.x32.json",
+    "/usr/share/openxr/1/openxr_monado.json",
+    NULL,
+  },
+};
+
+static const OpenXrLoadingConfig openxr_loading_config_override = {
+  .override_env_with_fallback = TRUE,
+  .active_fallback = "/etc/openxr/1/inactive.json",
+  .inactive = {
+    "/openxr/config-home/openxr/1/active_runtime.aarch64.json",
+    "/openxr/config-home/openxr/1/active_runtime.m68k.json",
+    "/openxr/config-home/openxr/1/active_runtime.x86_64.json",
+    "/openxr/config-home/openxr/1/active_runtimeeee.json",
+    "/openxr/config-home/openxr/1/inactive.json",
+    "/etc/openxr/1/active_runtime.aarch64.json",
+    "/etc/openxr/1/active_runtime.i686.json",
+    "/etc/openxr/1/active_runtime.json",
+    "/etc/openxr/1/inactive.json",
+    "/usr/local/etc/openxr/1/active_runtime.json",
+    "/usr/local/etc/openxr/1/active_runtime.x32.json",
+    "/usr/share/openxr/1/openxr_monado.json",
+    NULL,
+  },
+};
+
+static void
+test_icd_openxr_loading (Fixture *f,
+                         gconstpointer context)
+{
+  g_autoptr(SrtSysroot) sysroot = NULL;
+  g_auto(GStrv) envp = g_get_environ ();
+  SrtOpenXr1Runtime *rt = NULL;
+  const OpenXrLoadingConfig *config = context;
+  gboolean with_inactive = TRUE;
+
+  g_test_message ("Entering %s", G_STRFUNC);
+
+  envp = g_environ_setenv (envp, "XDG_CONFIG_HOME", "/openxr/config-home", TRUE);
+  envp = g_environ_setenv (envp, "XDG_CONFIG_DIRS", "/openxr/doesnotexist", TRUE);
+
+  sysroot = _srt_sysroot_new (f->sysroot, NULL);
+
+  for (;;)
+    {
+      g_autoptr(GHashTable) active = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                            g_free, g_object_unref);
+      g_autoptr(SrtOpenXr1Runtime) active_fallback = NULL;
+      g_autoptr(GList) inactive = NULL;
+      GList *list;
+      gsize i;
+
+      g_test_message ("%s with_inactive=%s",
+                      G_STRFUNC, with_inactive ? "true" : "false");
+
+      if (config->override_env_with_fallback)
+        envp = g_environ_setenv (envp, "XR_RUNTIME_JSON", config->active_fallback, TRUE);
+      else
+        envp = g_environ_unsetenv (envp, "XR_RUNTIME_JSON");
+
+      _srt_load_openxr_1_runtimes (sysroot, _srt_const_strv (envp),
+                                   active, &active_fallback,
+                                   with_inactive ? &inactive : NULL);
+
+      for (i = 0; config->active[i].abi != NULL; i++)
+        {
+          g_test_message ("%s active #%" G_GSIZE_FORMAT "", G_STRFUNC, i);
+          rt = g_hash_table_lookup (active, config->active[i].abi);
+          g_assert_nonnull (rt);
+          g_assert_cmpstr (srt_openxr_1_runtime_get_json_path (rt), ==,
+                           "/openxr/monado.json");
+          g_assert_cmpstr (srt_openxr_1_runtime_get_json_origin (rt), ==,
+                           config->active[i].path);
+        }
+
+      g_assert_cmpint (g_hash_table_size (active), ==, i);
+
+      g_assert_nonnull (active_fallback);
+      g_assert_cmpstr (srt_openxr_1_runtime_get_json_path (active_fallback), ==,
+                       "/openxr/monado.json");
+      g_assert_cmpstr (srt_openxr_1_runtime_get_json_origin (active_fallback), ==,
+                       config->active_fallback);
+
+      if (!with_inactive)
+        break;
+
+      list = inactive;
+      for (i = 0; config->inactive[i] != NULL; i++)
+        {
+          g_test_message ("%s inactive #%" G_GSIZE_FORMAT "", G_STRFUNC, i);
+          g_assert_nonnull (list);
+          rt = list->data;
+          g_assert_nonnull (rt);
+          g_assert_cmpstr (srt_openxr_1_runtime_get_json_path (rt), ==,
+                           "/openxr/monado.json");
+          g_assert_cmpstr (srt_openxr_1_runtime_get_json_origin (rt), ==,
+                           config->inactive[i]);
+          list = list->next;
+        }
+
+      g_assert_null (list);
+      g_list_free_full (g_steal_pointer (&inactive), g_object_unref);
+
+      with_inactive = !with_inactive;
     }
 }
 
@@ -3854,6 +4036,16 @@ main (int argc,
               setup, test_icd_openxr_json_functions, teardown);
   g_test_add ("/graphics/icd/openxr/json/errors", Fixture, NULL,
               setup, test_icd_openxr_json_errors, teardown);
+  g_test_add ("/graphics/icd/openxr/search-paths/default", Fixture, NULL,
+              setup, test_icd_openxr_search_paths_default, teardown);
+  g_test_add ("/graphics/icd/openxr/search-paths/override", Fixture, NULL,
+              setup, test_icd_openxr_search_paths_override, teardown);
+  g_test_add ("/graphics/icd/openxr/loading/default", Fixture,
+              &openxr_loading_config_default,
+              setup, test_icd_openxr_loading, teardown);
+  g_test_add ("/graphics/icd/openxr/loading/override", Fixture,
+              &openxr_loading_config_override,
+              setup, test_icd_openxr_loading, teardown);
 
   g_test_add ("/graphics/layers/vulkan/xdg", Fixture, NULL,
               setup, test_layer_vulkan, teardown);

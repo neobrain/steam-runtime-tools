@@ -820,13 +820,13 @@ load_json_dir (SrtSysroot *sysroot,
  */
 void
 load_json_dirs (SrtSysroot *sysroot,
-                GStrv search_paths,
+                const char * const *search_paths,
                 const char *suffix,
                 GCompareFunc sort,
                 void (*load_json_cb) (SrtSysroot *, const char *, void *),
                 void *user_data)
 {
-  gchar **iter;
+  const char *const *iter;
   g_autoptr(GHashTable) searched_set = NULL;
   g_autoptr(GError) error = NULL;
 
@@ -874,18 +874,16 @@ load_json_dirs (SrtSysroot *sysroot,
  * @filename: The filename of the metadata
  * @json_member_name: Name of the JSON object beneath the root, containing the
  *  main body of the manifest.
- * @list: (element-type GObject) (transfer full) (inout): Prepend the
- *  resulting #SrtEglIcd or #SrtEglExternalPlatform or #SrtVulkanIcd or
- *  #SrtOpenXr1Runtime to this list
  *
  * Load an EGL or Vulkan ICD or OpenXR runtime from a JSON metadata file.
+ *
+ * Returns: (transfer full): The resulting object of type @type
  */
-void
+GObject *
 load_manifest_from_json (GType type,
                          SrtSysroot *sysroot,
                          const char *filename,
-                         const char *json_member_name,
-                         GList **list)
+                         const char *json_member_name)
 {
   g_autoptr(JsonParser) parser = NULL;
   g_autofree gchar *canon = NULL;
@@ -905,12 +903,12 @@ load_manifest_from_json (GType type,
   SrtLoadableIssues issues = SRT_LOADABLE_ISSUES_NONE;
   gsize len = 0;
 
-  g_return_if_fail (type == SRT_TYPE_VULKAN_ICD
-                    || type == SRT_TYPE_EGL_ICD
-                    || type == SRT_TYPE_EGL_EXTERNAL_PLATFORM
-                    || type == SRT_TYPE_OPENXR_1_RUNTIME);
-  g_return_if_fail (SRT_IS_SYSROOT (sysroot));
-  g_return_if_fail (list != NULL);
+  g_return_val_if_fail (type == SRT_TYPE_VULKAN_ICD
+                        || type == SRT_TYPE_EGL_ICD
+                        || type == SRT_TYPE_EGL_EXTERNAL_PLATFORM
+                        || type == SRT_TYPE_OPENXR_1_RUNTIME,
+                        NULL);
+  g_return_val_if_fail (SRT_IS_SYSROOT (sysroot), NULL);
 
   if (!g_path_is_absolute (filename))
     {
@@ -1112,7 +1110,7 @@ out:
           icd = srt_vulkan_icd_new_error (filename, issues, error);
         }
 
-      *list = g_list_prepend (*list, icd);
+      return G_OBJECT (icd);
     }
   else if (type == SRT_TYPE_EGL_ICD)
     {
@@ -1129,7 +1127,7 @@ out:
           icd = srt_egl_icd_new_error (filename, issues, error);
         }
 
-      *list = g_list_prepend (*list, icd);
+      return G_OBJECT (icd);
     }
   else if (type == SRT_TYPE_EGL_EXTERNAL_PLATFORM)
     {
@@ -1146,7 +1144,7 @@ out:
           ep = srt_egl_external_platform_new_error (filename, issues, error);
         }
 
-      *list = g_list_prepend (*list, ep);
+      return G_OBJECT (ep);
     }
   else if (type == SRT_TYPE_OPENXR_1_RUNTIME)
     {
@@ -1165,12 +1163,39 @@ out:
                                                issues, error);
         }
 
-      *list = g_list_prepend (*list, rt);
+      return G_OBJECT (rt);
     }
   else
     {
-      g_return_if_reached ();
+      g_return_val_if_reached (NULL);
     }
+}
+
+/*
+ * prepend_manifest_from_json:
+ * @type: %SRT_TYPE_EGL_ICD or %SRT_TYPE_EGL_EXTERNAL_PLATFORM or %SRT_TYPE_VULKAN_ICD
+ * @sysroot: (not nullable): The root directory, usually `/`
+ * @filename: The filename of the metadata
+ * @json_member_name: Name of the JSON object beneath the root, containing the
+ *  main body of the manifest.
+ * @out_list: (element-type GObject) (transfer full) (inout): Prepend the
+ *  resulting object of type @type to this list
+ *
+ * Load an EGL or Vulkan ICD or OpenXR runtime from a JSON metadata file.
+ * Equivalent to load_manifest_from_json(), but prepends the loaded manifest to
+ * a list rather than returning it directly.
+ */
+void
+prepend_manifest_from_json (GType type,
+                            SrtSysroot *sysroot,
+                            const char *filename,
+                            const char *json_member_name,
+                            GList **out_list)
+{
+  GObject *ret = load_manifest_from_json (type, sysroot, filename,
+                                          json_member_name);
+  g_return_if_fail (ret != NULL);
+  *out_list = g_list_prepend (*out_list, ret);
 }
 
 void

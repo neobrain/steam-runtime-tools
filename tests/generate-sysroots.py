@@ -781,6 +781,28 @@ with open('fake-icds/openxr/monado.json', 'w') as writer:
 
 os.symlink('../monado.json', 'fake-icds/openxr/link/monado.json')
 
+for subdir, filenames in (
+    ('openxr/config-home', [
+        'active_runtime.x86_64.json',
+        'active_runtime.aarch64.json',
+        'inactive.json',
+        'active_runtime.m68k.json',
+        'active_runtimeeee.json']),
+    ('usr/local/etc', [
+        'active_runtime.x32.json',
+        'active_runtime.json']),
+    ('etc', [
+        'active_runtime.aarch64.json',
+        'active_runtime.i686.json',
+        'active_runtime.json',
+        'inactive.json']),
+    ('usr/share', ['openxr_monado.json']),
+):
+    subdir = os.path.join('fake-icds', subdir, 'openxr/1')
+    os.makedirs(subdir, mode=0o755, exist_ok=True)
+    for filename in filenames:
+        os.symlink('/openxr/monado.json', os.path.join(subdir, filename))
+
 with open('fake-icds/openxr/function-overrides.json', 'w') as writer:
     writer.write('''\
 {

@@ -26,6 +26,7 @@
 #include "steam-runtime-tools/graphics-drivers-openxr-1.h"
 
 #include "steam-runtime-tools/glib-backports-internal.h"
+#include "steam-runtime-tools/architecture-internal.h"
 #include "steam-runtime-tools/graphics-internal.h"
 #include "steam-runtime-tools/graphics-drivers-internal.h"
 #include "steam-runtime-tools/graphics-drivers-json-based-internal.h"
@@ -476,4 +477,286 @@ srt_openxr_1_runtime_load_json (const gchar *json_path,
     rt->parent.functions = load_functions_from_json (functions_obj);
 
   return g_steal_pointer (&rt);
+}
+
+/* Adds an XDG directory to the search path; if unset, defaults to being the
+   given subdir of $HOME. */
+static void
+add_xdg_home_dir_to_search_paths (GPtrArray *search_paths,
+                                  const char * const *envp,
+                                  const char *var,
+                                  const char *home,
+                                  const char *default_home_subdir,
+                                  const char *suffix)
+{
+  const char *value = _srt_environ_getenv (envp, var);
+  if (value != NULL)
+    g_ptr_array_add (search_paths, g_build_filename (value, suffix, NULL));
+  else if (home != NULL)
+    g_ptr_array_add (search_paths,
+                     g_build_filename (home, default_home_subdir, suffix, NULL));
+}
+
+/* Splits the given value an array of search paths, appending the suffix to each
+   one. */
+static void
+split_into_search_paths (GPtrArray *search_paths,
+                         const char *value,
+                         const char *suffix)
+{
+  g_auto(GStrv) dirs = NULL;
+  gsize i;
+
+  dirs = g_strsplit (value, G_SEARCHPATH_SEPARATOR_S, -1);
+  for (i = 0; dirs[i] != NULL; i++)
+    g_ptr_array_add (search_paths, g_build_filename (dirs[i], suffix, NULL));
+}
+
+#define XDG_CONFIG_HOME_VAR "XDG_CONFIG_HOME"
+#define XDG_CONFIG_HOME_DEFAULT_SUBDIR ".config"
+#define XDG_CONFIG_DIRS_VAR "XDG_CONFIG_DIRS"
+#define XDG_CONFIG_DIRS_DEFAULT "/etc/xdg"
+
+/* By default, SYSCONFDIR defaults to /usr/local/etc:
+   https://registry.khronos.org/OpenXR/specs/1.1/loader.html#linux-manifest-search-paths
+   but in practice, it's generally configured to be "/etc" like EXTRASYSCONFDIR.
+   So just search /etc, but also search /usr/local/etc for debugging purposes,
+   and just don't mark those runtimes as active.
+   (This is for layers, but these values are also used by the loader for
+   runtimes.) */
+#define SEARCH_DIR_SYSCONFDIR ("/etc/" _SRT_GRAPHICS_OPENXR_1_RUNTIME_SUFFIX)
+#define SEARCH_DIR_SYSCONFDIR_INACTIVE ("/usr/local/etc/" \
+                                        _SRT_GRAPHICS_OPENXR_1_RUNTIME_SUFFIX)
+
+/* Also check "/usr/share", because, although it's not used by the loader
+ * itself, distros often place installed runtinmes there. */
+#define SEARCH_DIR_USR_SHARE_INACTIVE ("/usr/share/" \
+                                       _SRT_GRAPHICS_OPENXR_1_RUNTIME_SUFFIX)
+
+static void
+split_env_path_into_search_paths (GPtrArray *search_paths,
+                                  const char * const *envp,
+                                  const char *var,
+                                  const char *default_value,
+                                  const char *suffix)
+{
+  const char *value;
+
+  value = _srt_environ_getenv (envp, var) ?: default_value;
+  split_into_search_paths (search_paths, value, suffix);
+}
+
+gchar **
+_srt_graphics_get_openxr_1_runtime_search_paths (const char * const *envp)
+{
+  /* This follows:
+     https://registry.khronos.org/OpenXR/specs/1.1/loader.html#linux-active-runtime-location */
+
+  GPtrArray *search_paths = g_ptr_array_new_with_free_func (g_free);
+  const gchar *home;
+
+  home = _srt_environ_getenv (envp, "HOME") ?: g_get_home_dir();
+
+  /* First comes $XDG_CONFIG_HOME, then $XDG_CONFIG_DIRS... */
+  add_xdg_home_dir_to_search_paths (search_paths, envp,
+                                    XDG_CONFIG_HOME_VAR, home,
+                                    XDG_CONFIG_HOME_DEFAULT_SUBDIR,
+                                    _SRT_GRAPHICS_OPENXR_1_RUNTIME_SUFFIX);
+  split_env_path_into_search_paths (search_paths, envp,
+                                    XDG_CONFIG_DIRS_VAR,
+                                    XDG_CONFIG_DIRS_DEFAULT,
+                                    _SRT_GRAPHICS_OPENXR_1_RUNTIME_SUFFIX);
+  /*
+   * After this should come "the system's global configuration directory", but
+   * the actual source code specifically checks SYSCONFDIR:
+   * https://github.com/KhronosGroup/OpenXR-SDK/blob/7f9285bce1ce8b69bb75554bf788666579d0c35e/src/loader/manifest_file.cpp#L336-L350
+   * We assume that the loader was built with SYSCONFDIR = /etc,
+   * which will normally be true for a distro-built loader.
+   */
+  g_ptr_array_add (search_paths, g_strdup (SEARCH_DIR_SYSCONFDIR));
+
+  g_ptr_array_add (search_paths, NULL);
+  return (char **) g_ptr_array_free (search_paths, FALSE);
+}
+
+#define ACTIVE_RUNTIME_PREFIX "active_runtime"
+#define ACTIVE_RUNTIME_SUFFIX ".json"
+#define ACTIVE_RUNTIME_FILENAME_NOARCH (ACTIVE_RUNTIME_PREFIX ACTIVE_RUNTIME_SUFFIX)
+
+static gboolean
+parse_active_runtime_filename (const char *filename,
+                               const char **out_multiarch_tuple)
+{
+  const SrtKnownArchitecture *architectures = _srt_architecture_get_known ();
+  const char *filename_arch_start;
+  gsize filename_arch_len;
+
+  filename = glnx_basename (filename);
+
+  if (!g_str_has_prefix (filename, ACTIVE_RUNTIME_PREFIX)
+      || !g_str_has_suffix (filename, ACTIVE_RUNTIME_SUFFIX))
+    return FALSE;
+
+  /* We already confirmed both sides of the string match, so if the whole
+     thing is prefix + suffix, then we're done. */
+  if (filename[strlen (ACTIVE_RUNTIME_FILENAME_NOARCH)] == '\0')
+    {
+      *out_multiarch_tuple = NULL;
+      return TRUE;
+    }
+
+  if (filename[strlen (ACTIVE_RUNTIME_PREFIX)] != '.')
+    return FALSE;
+
+  /* Arch is everything between the prefix and suffix. */
+  filename_arch_start = filename + strlen (ACTIVE_RUNTIME_PREFIX) + 1;
+  filename_arch_len = strlen (filename_arch_start) - strlen (ACTIVE_RUNTIME_SUFFIX);
+
+  /* Walk through all the known architectures, and find out which one matches
+     this filename's architecture part. */
+  for (; architectures->multiarch_tuple != NULL; architectures++)
+    {
+      if (strncmp (architectures->openxr_1_architecture,
+                   filename_arch_start,
+                   filename_arch_len) == 0
+          && architectures->openxr_1_architecture[filename_arch_len] == '\0')
+        {
+          *out_multiarch_tuple = architectures->multiarch_tuple;
+          return TRUE;
+        }
+    }
+
+  /* No idea what architecture this is, so don't count it. */
+  return FALSE;
+}
+
+static SrtOpenXr1Runtime *
+load_runtime_from_json (SrtSysroot *sysroot,
+                        const char *filename)
+{
+  GObject *object = load_manifest_from_json (SRT_TYPE_OPENXR_1_RUNTIME,
+                                             sysroot,
+                                             filename,
+                                             _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME);
+  return object != NULL ? SRT_OPENXR_1_RUNTIME (object) : NULL;
+}
+
+typedef struct {
+  GHashTable *out_active;
+  SrtOpenXr1Runtime **out_active_fallback;
+  /* To avoid O(n**2) performance, we build this list in reverse order,
+   * then reverse it at the end. */
+  GList **out_inactive;
+  gboolean all_inactive;
+} RuntimeLoadData;
+
+static void
+openxr_1_runtime_load_json_cb (SrtSysroot *sysroot,
+                               const char *filename,
+                               void *user_data)
+{
+  g_autoptr(SrtOpenXr1Runtime) rt = NULL;
+  RuntimeLoadData *data = user_data;
+  const char *multiarch_tuple = NULL;
+  gboolean is_active = FALSE;
+
+  if (!data->all_inactive)
+    is_active = parse_active_runtime_filename (filename, &multiarch_tuple);
+
+  /* If this should be an active runtime, but whatever architecture it targets
+     is already filled, then count it as inactive. */
+  if (is_active && (multiarch_tuple != NULL
+                    ? g_hash_table_contains (data->out_active, multiarch_tuple)
+                    : *data->out_active_fallback != NULL))
+    is_active = FALSE;
+
+  if (!is_active && data->out_inactive == NULL)
+    return;
+
+  rt = load_runtime_from_json (sysroot, filename);
+  if (rt == NULL)
+    return;
+
+  if (is_active)
+    {
+      if (multiarch_tuple != NULL)
+        g_hash_table_insert (data->out_active,
+                             g_strdup (multiarch_tuple),
+                             g_steal_pointer (&rt));
+      else
+        *data->out_active_fallback = g_steal_pointer (&rt);
+    }
+  else
+    {
+      *data->out_inactive = g_list_prepend (*data->out_inactive,
+                                            g_steal_pointer (&rt));
+    }
+}
+
+/*
+ * _srt_load_openxr_1_runtimes:
+ * @sysroot: (not nullable): The root directory, usually `/`
+ * @envp: The execution environment
+ * @out_active: Used to store a mapping of multiarch tuples to
+ *              active #SrtOpenXr1Runtime runtimes.
+ * @out_active_fallback: (out): Used to return the "fallback" active runtime,
+ *                              for when an architecture has no runtime in
+ *                              @out_active.
+ * @out_inactive: (out) (optional): Used to return a list of inactive runtimes.
+ *
+ * Scan the standard OpenXR runtime search paths for manifest files, loading
+ * and saving them into one of @out_active (if the runtime is the active one
+ * for the corresponding architecture), @out_active_fallback (if the runtime
+ * should be used for architectures not in @out_active), or @out_inactive (if
+ * the runtime should not be considered active for any architecture).
+ */
+void
+_srt_load_openxr_1_runtimes (SrtSysroot *sysroot,
+                             const char * const *envp,
+                             GHashTable *out_active,
+                             SrtOpenXr1Runtime **out_active_fallback,
+                             GList **out_inactive)
+{
+  g_auto(GStrv) search_paths = NULL;
+  const char *inactive_search_paths[] = {
+    SEARCH_DIR_SYSCONFDIR_INACTIVE,
+    SEARCH_DIR_USR_SHARE_INACTIVE,
+    NULL,
+  };
+
+  const gchar *value;
+  RuntimeLoadData data = {
+    .out_active = out_active,
+    .out_active_fallback = out_active_fallback,
+    .out_inactive = out_inactive,
+  };
+
+  g_return_if_fail (_srt_check_not_setuid ());
+  g_return_if_fail (SRT_IS_SYSROOT (sysroot));
+  g_return_if_fail (envp != NULL);
+
+  value = _srt_environ_getenv (envp, "XR_RUNTIME_JSON");
+  if (value != NULL)
+    {
+      *out_active_fallback = load_runtime_from_json (sysroot, value);
+      /* If the caller isn't interested in inactive runtimes, then skip the
+         scanning altogether... */
+      if (out_inactive == NULL)
+        return;
+
+      /* ...but otherwise, still scan for runtimes, and just treat them all as
+         inactive. */
+      data.all_inactive = TRUE;
+    }
+
+  search_paths = _srt_graphics_get_openxr_1_runtime_search_paths (envp);
+  load_json_dirs (sysroot, _srt_const_strv (search_paths), NULL,
+                  _srt_indirect_strcmp0, openxr_1_runtime_load_json_cb, &data);
+
+  data.all_inactive = TRUE;
+  load_json_dirs (sysroot, inactive_search_paths, NULL, _srt_indirect_strcmp0,
+                  openxr_1_runtime_load_json_cb, &data);
+
+  if (out_inactive != NULL)
+    *out_inactive = g_list_reverse (*out_inactive);
 }
