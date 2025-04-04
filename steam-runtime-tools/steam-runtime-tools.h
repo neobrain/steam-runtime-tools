@@ -38,6 +38,7 @@
 #include <steam-runtime-tools/graphics-drivers-dri.h>
 #include <steam-runtime-tools/graphics-drivers-egl.h>
 #include <steam-runtime-tools/graphics-drivers-glx.h>
+#include <steam-runtime-tools/graphics-drivers-openxr-1.h>
 #include <steam-runtime-tools/graphics-drivers-vaapi.h>
 #include <steam-runtime-tools/graphics-drivers-vdpau.h>
 #include <steam-runtime-tools/graphics-drivers-vulkan.h>

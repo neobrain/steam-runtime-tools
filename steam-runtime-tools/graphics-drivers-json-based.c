@@ -249,6 +249,8 @@ _srt_base_json_graphics_module_write_to_file (SrtBaseJsonGraphicsModule *self,
     member = "ICD";
   else if (which == SRT_TYPE_VULKAN_LAYER)
     member = "layer";
+  else if (which == SRT_TYPE_OPENXR_1_RUNTIME)
+    member = _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME;
   else
     g_return_val_if_reached (FALSE);
 
@@ -476,6 +478,45 @@ _srt_base_json_graphics_module_write_to_file (SrtBaseJsonGraphicsModule *self,
             }
           json_builder_end_object (builder);
         }
+      else if (which == SRT_TYPE_OPENXR_1_RUNTIME)
+        {
+          /* We parse and store all the information defined in file format
+           * version 1.0.0, but nothing beyond that, so we use this version
+           * in our output instead of quoting whatever was in the input. */
+          json_builder_set_member_name (builder, "file_format_version");
+          json_builder_add_string_value (builder, "1.0.0");
+
+          json_builder_set_member_name (builder, member);
+          json_builder_begin_object (builder);
+            {
+              json_builder_set_member_name (builder, "library_path");
+              json_builder_add_string_value (builder, base->library_path);
+
+              if (self->name != NULL)
+                {
+                  json_builder_set_member_name (builder, "name");
+                  json_builder_add_string_value (builder, self->name);
+                }
+
+              if (self->functions != NULL)
+                {
+                  g_auto(SrtHashTableIter) iter = SRT_HASH_TABLE_ITER_CLEARED;
+
+                  json_builder_set_member_name (builder, "functions");
+                  json_builder_begin_object (builder);
+                  _srt_hash_table_iter_init_sorted (&iter,
+                                                    self->functions,
+                                                    _srt_generic_strcmp0);
+                  while (_srt_hash_table_iter_next (&iter, &key, &value))
+                    {
+                      json_builder_set_member_name (builder, key);
+                      json_builder_add_string_value (builder, value);
+                    }
+                  json_builder_end_object (builder);
+                }
+            }
+          json_builder_end_object (builder);
+        }
     }
   json_builder_end_object (builder);
 
@@ -565,7 +606,8 @@ _srt_loadable_flag_duplicates (GType which,
   g_return_if_fail (which == SRT_TYPE_VULKAN_ICD
                     || which == SRT_TYPE_EGL_ICD
                     || which == SRT_TYPE_EGL_EXTERNAL_PLATFORM
-                    || which == SRT_TYPE_VULKAN_LAYER);
+                    || which == SRT_TYPE_VULKAN_LAYER
+                    || which == SRT_TYPE_OPENXR_1_RUNTIME);
 
   loadable_seen = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
@@ -580,7 +622,8 @@ _srt_loadable_flag_duplicates (GType which,
 
       if (which == SRT_TYPE_VULKAN_ICD
           || which == SRT_TYPE_EGL_ICD
-          || which == SRT_TYPE_EGL_EXTERNAL_PLATFORM)
+          || which == SRT_TYPE_EGL_EXTERNAL_PLATFORM
+          || which == SRT_TYPE_OPENXR_1_RUNTIME)
         {
           if (resolved_path == NULL)
             continue;
@@ -832,9 +875,10 @@ load_json_dirs (SrtSysroot *sysroot,
  * @json_member_name: Name of the JSON object beneath the root, containing the
  *  main body of the manifest.
  * @list: (element-type GObject) (transfer full) (inout): Prepend the
- *  resulting #SrtEglIcd or #SrtEglExternalPlatform or #SrtVulkanIcd to this list
+ *  resulting #SrtEglIcd or #SrtEglExternalPlatform or #SrtVulkanIcd or
+ *  #SrtOpenXr1Runtime to this list
  *
- * Load an EGL or Vulkan ICD from a JSON metadata file.
+ * Load an EGL or Vulkan ICD or OpenXR runtime from a JSON metadata file.
  */
 void
 load_manifest_from_json (GType type,
@@ -845,13 +889,14 @@ load_manifest_from_json (GType type,
 {
   g_autoptr(JsonParser) parser = NULL;
   g_autofree gchar *canon = NULL;
+  g_autofree gchar *resolved_filename = NULL;
   g_autofree gchar *contents = NULL;
   g_autoptr(GError) error = NULL;
   /* These are all borrowed from the parser */
   JsonNode *node;
   JsonObject *object;
   JsonNode *subnode;
-  JsonObject *member_object;
+  JsonObject *member_object = NULL;
   const char *file_format_version;
   const char *api_version = NULL;
   const char *library_path = NULL;
@@ -862,7 +907,8 @@ load_manifest_from_json (GType type,
 
   g_return_if_fail (type == SRT_TYPE_VULKAN_ICD
                     || type == SRT_TYPE_EGL_ICD
-                    || type == SRT_TYPE_EGL_EXTERNAL_PLATFORM);
+                    || type == SRT_TYPE_EGL_EXTERNAL_PLATFORM
+                    || type == SRT_TYPE_OPENXR_1_RUNTIME);
   g_return_if_fail (SRT_IS_SYSROOT (sysroot));
   g_return_if_fail (list != NULL);
 
@@ -876,8 +922,14 @@ load_manifest_from_json (GType type,
            g_type_name (type), sysroot->path, filename);
 
   if (!_srt_sysroot_load (sysroot, filename,
-                          SRT_RESOLVE_FLAGS_NONE,
-                          NULL, &contents, &len, &error))
+                          SRT_RESOLVE_FLAGS_RETURN_ABSOLUTE,
+                          /* Make sure to get a fully resolved path for OpenXR
+                             runtimes, because that's the path used to resolve
+                             relative library paths. */
+                          type == SRT_TYPE_OPENXR_1_RUNTIME
+                            ? &resolved_filename
+                            : NULL,
+                          &contents, &len, &error))
     {
       issues |= SRT_LOADABLE_ISSUES_CANNOT_LOAD;
       goto out;
@@ -960,9 +1012,8 @@ load_manifest_from_json (GType type,
           goto out;
         }
     }
-  else
+  else if (type == SRT_TYPE_EGL_ICD || type == SRT_TYPE_EGL_EXTERNAL_PLATFORM)
     {
-      g_assert (type == SRT_TYPE_EGL_ICD || type == SRT_TYPE_EGL_EXTERNAL_PLATFORM);
       /*
        * For EGL, all 1.0.x versions are officially backwards compatible
        * with 1.0.0.
@@ -978,6 +1029,26 @@ load_manifest_from_json (GType type,
           issues |= SRT_LOADABLE_ISSUES_UNSUPPORTED;
           goto out;
         }
+    }
+  else if (type == SRT_TYPE_OPENXR_1_RUNTIME)
+    {
+      /*
+       * Currently, the OpenXR loader rejects all versions other than 1.0.0:
+       * https://github.com/KhronosGroup/OpenXR-SDK/blob/release-1.1.43/src/loader/manifest_file.cpp#L479-L487
+       * so for now we follow that behavior.
+       */
+      if (!g_str_equal (file_format_version, "1.0.0"))
+        {
+          g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "OpenXR file_format_version in \"%s%s\" is not 1.0.0",
+                       sysroot->path, filename);
+          issues |= SRT_LOADABLE_ISSUES_UNSUPPORTED;
+          goto out;
+        }
+    }
+  else
+    {
+      g_assert_not_reached ();
     }
 
   subnode = json_object_get_member (object, json_member_name);
@@ -1076,6 +1147,25 @@ out:
         }
 
       *list = g_list_prepend (*list, ep);
+    }
+  else if (type == SRT_TYPE_OPENXR_1_RUNTIME)
+    {
+      SrtOpenXr1Runtime *rt;
+
+      if (error == NULL)
+        {
+          rt = srt_openxr_1_runtime_load_json (resolved_filename,
+                                               filename, library_path,
+                                               member_object, issues);
+        }
+      else
+        {
+          rt = srt_openxr_1_runtime_new_error (resolved_filename ?: filename,
+                                               filename,
+                                               issues, error);
+        }
+
+      *list = g_list_prepend (*list, rt);
     }
   else
     {

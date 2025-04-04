@@ -338,6 +338,8 @@ SrtVaApiVersion _srt_va_api_driver_version (int dfd,
 #define _SRT_GRAPHICS_IMPLICIT_VULKAN_LAYER_SUFFIX "vulkan/implicit_layer.d"
 #define _SRT_GRAPHICS_VULKAN_ICD_SUFFIX "vulkan/icd.d"
 
+#define _SRT_GRAPHICS_MANIFEST_MEMBER_OPENXR_1_RUNTIME "runtime"
+
 SrtDriDriver *srt_dri_driver_new (const gchar *library_path,
                                   gboolean is_extra);
 SrtGlxIcd *srt_glx_icd_new (const gchar *library_soname,
@@ -361,6 +363,20 @@ SrtEglExternalPlatform *srt_egl_external_platform_new_error (const gchar *json_p
 SrtEglExternalPlatform *srt_egl_external_platform_new (const gchar *json_path,
                                                        const gchar *library_path,
                                                        SrtLoadableIssues issues);
+SrtOpenXr1Runtime *srt_openxr_1_runtime_new_error (const gchar *json_path,
+                                                   const gchar *json_origin,
+                                                   SrtLoadableIssues issues,
+                                                   const GError *error);
+SrtOpenXr1Runtime *srt_openxr_1_runtime_new (const gchar *json_path,
+                                             const gchar *json_origin,
+                                             const gchar *name,
+                                             const gchar *library_path,
+                                             SrtLoadableIssues issues);
+SrtOpenXr1Runtime *srt_openxr_1_runtime_load_json (const gchar *json_path,
+                                                   const gchar *json_origin,
+                                                   const gchar *library_path,
+                                                   JsonObject *runtime_object,
+                                                   SrtLoadableIssues issues);
 SrtVulkanIcd *srt_vulkan_icd_new_error (const gchar *json_path,
                                         SrtLoadableIssues issues,
                                         const GError *error);
