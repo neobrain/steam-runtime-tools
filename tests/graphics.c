@@ -1899,7 +1899,6 @@ compare_openxr_content (Fixture *f,
   g_autofree char *tmp_json_contents_unformatted = NULL;
   g_autofree char *expected_json_path = NULL;
   g_autofree char *expected_json_contents = NULL;
-  g_autofree char *resolved_library_path = NULL;
   gsize tmp_json_len;
 
   tmp_dir = g_dir_make_tmp ("openxr-json-test-XXXXXX", &error);
@@ -2027,7 +2026,6 @@ test_icd_openxr_json_functions (Fixture *f,
   g_autoptr(SrtSysroot) sysroot = NULL;
   g_autoptr(SrtOpenXr1Runtime) rt = NULL;
   g_autoptr(GError) error = NULL;
-  g_autofree char *resolved_library_path = NULL;
 
   g_test_message ("Entering %s", G_STRFUNC);
 
