@@ -27,7 +27,7 @@ steam-runtime-tools (0.20250403.0) UNRELEASED; urgency=medium
   * Tests:
     - CI fixes
 
- -- Simon McVittie <smcv@collabora.com>  Thu, 03 Apr 2025 18:52:25 +0100
+ -- Simon McVittie <smcv@collabora.com>  Fri, 04 Apr 2025 14:06:21 +0100
 
 steam-runtime-tools (0.20250225.0) steamrt; urgency=medium
 
