@@ -813,7 +813,7 @@ with open('fake-icds/openxr/function-overrides.json', 'w') as writer:
             "xrNegotiateLoaderRuntimeInterface": "my_xrNegotiateLoaderRuntimeInterface"
         }
     }
-}''')
+}''')   # noqa
 
 with open('fake-icds/openxr/missing-fields.json', 'w') as writer:
     writer.write('''\
