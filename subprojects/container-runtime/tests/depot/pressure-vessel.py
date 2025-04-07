@@ -570,6 +570,7 @@ class TestPressureVessel(unittest.TestCase):
                     soname=soname,
                 ):
                     self.assertIn('path', details)
+                    messages = details.get('messages', [])
                     missing_symbols = details.get('missing-symbols', [])
                     issues = details.get('issues', [])
 
@@ -583,6 +584,30 @@ class TestPressureVessel(unittest.TestCase):
                         missing_symbols = list(
                             set(missing_symbols) - set(['gbm_format_get_name'])
                         )
+                    elif soname in (
+                        'libform.so.6',
+                        'libformw.so.6',
+                        'libmenu.so.6',
+                        'libmenuw.so.6',
+                        'libncurses.so.6',
+                        'libncursesw.so.6',
+                        'libpanel.so.6',
+                        'libpanelw.so.6',
+                    ) and 'libtinfo.so.6' in ''.join(messages):
+                        # We have two related known issues for libncurses:
+                        # see steamrt/tasks#341.
+                        # When running SteamRT 3 on a much newer host OS
+                        # such as Debian >= 12, we correctly choose the host
+                        # libtinfo.so.6, but that doesn't have the short-lived
+                        # internal symver NCURSES[6]_TINFO_6.2.current which
+                        # is required by our ncurses family of libraries.
+                        # Conversely, when running SteamRT 4 or newer on
+                        # Debian 11, the host libtinfo.so.6 has that symver,
+                        # which means we err on the side of considering our
+                        # libtinfo to be older, and then the host libtinfo
+                        # is too old for our ncurses family of libraries.
+                        library_issues |= set(issues)
+                        issues = list(set(issues) - set(['cannot-load']))
 
                     self.assertEqual([], missing_symbols)
                     self.assertEqual(
