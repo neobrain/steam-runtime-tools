@@ -801,9 +801,15 @@ for subdir, filenames in (
         shutil.copy('fake-icds/usr/share/openxr/1/monado.json',
                     os.path.join(subdir, filename))
 
+os.symlink('/usr/local/etc/openxr/1/active_runtime.json',
+           'fake-icds/usr/local/etc/openxr/1/aardvark.json')
+
 for link in (
     'link/monado.json',
-    'monado.other.json',
+    # This should always end up overriding monado.json in inactive runtime
+    # listings, since they both share the same canonical path,
+    # and `.alt.json` is ordered before `.json`.
+    'monado.alt.json',
 ):
     os.symlink('/usr/share/openxr/1/monado.json',
                os.path.join('fake-icds/usr/share/openxr/1', link))

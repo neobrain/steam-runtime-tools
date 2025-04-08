@@ -2166,7 +2166,7 @@ typedef struct {
     const char *path;
   } active[4];
 
-  const char *inactive[14];
+  const char *inactive[13];
   const char *active_fallback;
 
   gboolean override_env_with_fallback;
@@ -2195,10 +2195,13 @@ static const OpenXrLoadingConfig openxr_loading_config_default = {
     "/openxr/config-home/openxr/1/inactive.json",
     "/etc/openxr/1/active_runtime.aarch64.json",
     "/etc/openxr/1/inactive.json",
+    /* /usr/share/openxr/1/aardvark.json is not listed here because
+     * it would be redundant with the json-path of active_runtime.json */
     "/usr/local/etc/openxr/1/active_runtime.json",
     "/usr/local/etc/openxr/1/active_runtime.x32.json",
-    "/usr/share/openxr/1/monado.json",
-    "/usr/share/openxr/1/monado.other.json",
+    /* /usr/share/openxr/1/monado.json is not listed here because
+     * it would be redundant with the json-path of monado.alt.json */
+    "/usr/share/openxr/1/monado.alt.json",
     NULL,
   },
 };
@@ -2216,10 +2219,13 @@ static const OpenXrLoadingConfig openxr_loading_config_override = {
     "/etc/openxr/1/active_runtime.i686.json",
     "/etc/openxr/1/active_runtime.json",
     "/etc/openxr/1/inactive.json",
+    /* /usr/share/openxr/1/aardvark.json is not listed here because
+     * it would be redundant with the json-path of active_runtime.json */
     "/usr/local/etc/openxr/1/active_runtime.json",
     "/usr/local/etc/openxr/1/active_runtime.x32.json",
-    "/usr/share/openxr/1/monado.json",
-    "/usr/share/openxr/1/monado.other.json",
+    /* /usr/share/openxr/1/monado.json is not listed here because
+     * it would be redundant with the json-path of monado.alt.json */
+    "/usr/share/openxr/1/monado.alt.json",
     NULL,
   },
 };
@@ -2292,7 +2298,7 @@ test_icd_openxr_loading (Fixture *f,
           rt = list->data;
           g_assert_nonnull (rt);
           /* This one is a symlink. */
-          if (g_str_equal (config->inactive[i], "/usr/share/openxr/1/monado.other.json"))
+          if (g_str_equal (config->inactive[i], "/usr/share/openxr/1/monado.alt.json"))
             g_assert_cmpstr (srt_openxr_1_runtime_get_json_path (rt), ==,
                              "/usr/share/openxr/1/monado.json");
           else

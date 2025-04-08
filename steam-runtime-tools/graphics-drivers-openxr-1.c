@@ -641,6 +641,40 @@ load_runtime_from_json (SrtSysroot *sysroot,
   return object != NULL ? SRT_OPENXR_1_RUNTIME (object) : NULL;
 }
 
+static int
+compare_runtime_filenames (gconstpointer left,
+                           gconstpointer right)
+{
+  const gchar * const *l = left;
+  const gchar * const *r = right;
+
+  g_return_val_if_fail (l != NULL, 0);
+  g_return_val_if_fail (r != NULL, 0);
+
+  /*
+   * We need to always sort active runtimes *before* inactive ones. Consider:
+   *
+   * /etc/xdg/openxr/1/
+   *   aardvark.json
+   *   active_runtime.json -> aardvark.json
+   *
+   * When listing *inactive* runtimes, we omit multiple entries with the same
+   * canonical path. But, in the above case, we would then end up ignoring the
+   * filepath that *could* plausibly be an active runtime (active_runtime.json)
+   * in favor of one that could never actually be active (aardvark.json).
+   */
+
+  gboolean left_active = g_str_has_prefix (*l, ACTIVE_RUNTIME_PREFIX ".")
+                            && g_str_has_suffix (*l, ACTIVE_RUNTIME_SUFFIX);
+  gboolean right_active = g_str_has_prefix (*r, ACTIVE_RUNTIME_PREFIX ".")
+                            && g_str_has_suffix (*r, ACTIVE_RUNTIME_SUFFIX);
+
+  if (left_active != right_active)
+    return right_active - left_active;
+
+  return g_strcmp0 (*l, *r);
+}
+
 typedef struct {
   GHashTable *out_active;
   SrtOpenXr1Runtime **out_active_fallback;
@@ -648,6 +682,8 @@ typedef struct {
    * then reverse it at the end. */
   GList **out_inactive;
   gboolean all_inactive;
+
+  GHashTable *already_seen_json_paths;
 } RuntimeLoadData;
 
 static void
@@ -676,6 +712,17 @@ openxr_1_runtime_load_json_cb (SrtSysroot *sysroot,
   rt = load_runtime_from_json (sysroot, filename);
   if (rt == NULL)
     return;
+
+  /* Sometimes, while collecting *inactive* runtimes, we'll encounter one at
+   * a path that is already the target of another, already-loaded runtime. In
+   * that case, just skip it entirely, to avoid too many duplicates. */
+  if (!is_active
+      && g_hash_table_contains (data->already_seen_json_paths,
+                                srt_openxr_1_runtime_get_json_path (rt)))
+    return;
+
+  g_hash_table_add (data->already_seen_json_paths,
+                    g_strdup (srt_openxr_1_runtime_get_json_path (rt)));
 
   if (is_active)
     {
@@ -717,6 +764,8 @@ _srt_load_openxr_1_runtimes (SrtSysroot *sysroot,
                              SrtOpenXr1Runtime **out_active_fallback,
                              GList **out_inactive)
 {
+  g_autoptr(GHashTable) already_seen_json_paths
+    = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   g_auto(GStrv) search_paths = NULL;
   const char *inactive_search_paths[] = {
     SEARCH_DIR_SYSCONFDIR_INACTIVE,
@@ -729,6 +778,7 @@ _srt_load_openxr_1_runtimes (SrtSysroot *sysroot,
     .out_active = out_active,
     .out_active_fallback = out_active_fallback,
     .out_inactive = out_inactive,
+    .already_seen_json_paths = already_seen_json_paths,
   };
 
   g_return_if_fail (_srt_check_not_setuid ());
@@ -751,11 +801,13 @@ _srt_load_openxr_1_runtimes (SrtSysroot *sysroot,
 
   search_paths = _srt_graphics_get_openxr_1_runtime_search_paths (envp);
   load_json_dirs (sysroot, _srt_const_strv (search_paths), NULL,
-                  _srt_indirect_strcmp0, openxr_1_runtime_load_json_cb, &data);
+                  compare_runtime_filenames, openxr_1_runtime_load_json_cb,
+                  &data);
 
   data.all_inactive = TRUE;
-  load_json_dirs (sysroot, inactive_search_paths, NULL, _srt_indirect_strcmp0,
-                  openxr_1_runtime_load_json_cb, &data);
+  load_json_dirs (sysroot, inactive_search_paths, NULL,
+                  compare_runtime_filenames, openxr_1_runtime_load_json_cb,
+                  &data);
 
   if (out_inactive != NULL)
     *out_inactive = g_list_reverse (*out_inactive);
