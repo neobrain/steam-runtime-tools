@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250407.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250408.0) UNRELEASED; urgency=medium
 
   [ Ryan Gonzalez ]
   * libsteam-runtime-tools:
@@ -25,12 +25,16 @@ steam-runtime-tools (0.20250407.0) UNRELEASED; urgency=medium
   * Documentation:
     - docs/can-i-use.md: Document some version numbers and features
       that we can or can't rely on
+  * Tests:
+    - Don't fail when encountering a known issue with the ncurses family,
+      allowing CI testing to be expanded to newer host distributions
+      (steamrt/tasks#341, steamrt/tasks#703)
 
   [ Ludovico de Nittis ]
   * Tests:
     - CI fixes
 
- -- Simon McVittie <smcv@collabora.com>  Mon, 07 Apr 2025 16:14:41 +0100
+ -- Simon McVittie <smcv@collabora.com>  Tue, 08 Apr 2025 14:10:06 +0100
 
 steam-runtime-tools (0.20250225.0) steamrt; urgency=medium
 
