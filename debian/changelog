@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250408.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250408.0) steamrt; urgency=medium
 
   [ Ryan Gonzalez ]
   * libsteam-runtime-tools:
@@ -34,7 +34,7 @@ steam-runtime-tools (0.20250408.0) UNRELEASED; urgency=medium
   * Tests:
     - CI fixes
 
- -- Simon McVittie <smcv@collabora.com>  Tue, 08 Apr 2025 14:10:06 +0100
+ -- Simon McVittie <smcv@collabora.com>  Tue, 08 Apr 2025 14:14:29 +0100
 
 steam-runtime-tools (0.20250225.0) steamrt; urgency=medium
 
