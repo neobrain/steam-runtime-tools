@@ -46,6 +46,20 @@ If present, the test-UI will not be run.
 <dl>
 <dt>
 
+`LD_AUDIT`
+
+</dt><dd>
+
+Unset, and passed to **pressure-vessel-wrap** via the
+`--env-if-host` option
+(so that it will be reinstated if the game is run with the host `/usr`)
+and also the `--ld-audits` option
+(so that the `LD_AUDIT` modules can be made available read-only
+in the container).
+
+</dd>
+<dt>
+
 `LD_LIBRARY_PATH`
 
 </dt><dd>
@@ -62,11 +76,8 @@ is run with the host `/usr`.
 </dt><dd>
 
 Unset, and passed to **pressure-vessel-wrap** via the
-`--env-if-host` option so that it will be reinstated if the game
-is run with the host `/usr`. Individual items are also passed to
-**pressure-vessel-wrap** via the **--host-ld-preload** option,
-so that `LD_PRELOAD` modules can be made available read-only
-in the container.
+`--env-if-host` and `--ld-preloads` options,
+similar to how `LD_AUDIT` is handled.
 
 </dd>
 <dt>
