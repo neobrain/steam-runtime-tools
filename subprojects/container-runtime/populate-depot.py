@@ -45,9 +45,11 @@ import shlex
 import shutil
 import stat
 import subprocess
+import sys
 import tarfile
 import tempfile
 import time
+import unittest
 import urllib.parse
 import urllib.request
 from contextlib import suppress
@@ -1374,17 +1376,52 @@ class Main:
     def octal_escape(self, s: str) -> str:
         return self._NEEDS_OCTAL_ESCAPE.sub(self.octal_escape_char, s)
 
-    def filename_is_windows_friendly(self, s: str) -> bool:
+    def filename_is_friendly(self, s: str) -> bool:
+        '''
+        Return true if the filename is non-problematic for Windows
+        filesystems, Steampipe, Unix shells and so on.
+        '''
+
+        # Some relevant restrictions:
+        #
+        # * Windows and Steampipe don't allow <>:"\|?*
+        # * Windows doesn't allow surrogate escapes U+DC80 to U+DCFF
+        # * #$&'()[]{};`~ are special to Unix shells in general
+        # * !^ are special to interactive Unix shells
+        # * % is special to Windows shells
+        # * , is special to the Steam bootstrapper
+        # * whitespace is awkward and not necessarily handled consistently
+        # * ASCII control characters are not necessarily handled consistently
+        # * non-ASCII is not necessarily handled consistently
+
         for c in s:
-            # This is the set of characters that are reserved in Windows
-            # filenames, excluding '/' which obviously we're fine with
-            # using as a directory separator.
-            if c in r'<>:"\|?*':
+            if c >= 'A' and c <= 'Z':
+                continue
+            elif c >= 'a' and c <= 'z':
+                continue
+            elif c >= '0' and c <= '9':
+                continue
+            elif c not in '+-./=@_':
                 return False
 
-            if c >= '\uDC80' and c <= '\uDCFF':
-                # surrogate escape, not Unicode
-                return False
+        # Unix command-line tools can get confused by basenames starting
+        # with a dash
+        if s.startswith('-') or '/-' in s:
+            return False
+
+        # Also avoid filenames like __pycache__/*.pyc, which might otherwise
+        # be deleted by "helpful" file cleaning tools
+        if (
+            '/.cache/' in s
+            or '/__pycache__/' in s
+            or '/tmp/' in s
+            or s.endswith((
+                '.pyc',
+                '.pyo',
+                'CACHEDIR.TAG',
+            ))
+        ):
+            return False
 
         return True
 
@@ -1407,7 +1444,7 @@ class Main:
         rename: Dict[str, str] = {}
         unlink_later: Set[str] = set()
         differ_only_by_case: Set[str] = set()
-        not_windows_friendly: Set[str] = set()
+        unfriendly_filenames: Set[str] = set()
         # { [device, inode]: hex sha256 }
         sha256: Dict[Tuple[int, int], str] = {}
         # { [device, inode]: hashed name }
@@ -1436,8 +1473,8 @@ class Main:
                     dirnames.remove(base)
                     continue
 
-                if not self.filename_is_windows_friendly(name):
-                    not_windows_friendly.add(name)
+                if not self.filename_is_friendly(name):
+                    unfriendly_filenames.add(name)
 
                 if name.lower() in lc_names:
                     differ_only_by_case.add(lc_names[name.lower()])
@@ -1495,21 +1532,10 @@ class Main:
                         if minimize and (
                             stat_info.st_nlink > 1
                             or name in differ_only_by_case
-                            or name in not_windows_friendly
-                            or '/.cache/' in name
-                            or '/__pycache__/' in name
-                            or '/tmp/' in name
-                            or name.endswith((
-                                '.pyc',
-                                '.pyo',
-                                'CACHEDIR.TAG',
-                            ))
+                            or name in unfriendly_filenames
                         ):
                             # Represent hard-linked files or problematic
                             # filenames by a semi-content-addressed name.
-                            # In particular this disguises __pycache__/*.pyc,
-                            # which would otherwise be deleted by "helpful"
-                            # file cleaning tools
                             if file_id in hashed_names:
                                 hashed_name = hashed_names[file_id]
                             else:
@@ -1553,11 +1579,11 @@ class Main:
                 for name in sorted(differ_only_by_case):
                     writer.write('# {}\n'.format(self.octal_escape(name)))
 
-            if not_windows_friendly and not minimize:
+            if unfriendly_filenames and not minimize:
                 writer.write('\n')
-                writer.write('# Files whose names are not Windows-friendly:\n')
+                writer.write('# Files with unfriendly names:\n')
 
-                for name in sorted(not_windows_friendly):
+                for name in sorted(unfriendly_filenames):
                     writer.write('# {}\n'.format(self.octal_escape(name)))
 
         if minimize:
@@ -1825,6 +1851,57 @@ class Main:
 
         return entry
 
+
+class SelfTest(unittest.TestCase):
+    def test_filename_is_friendly(self) -> None:
+        m = Main()
+
+        for good in (
+            'bin/bash',
+            'lib/x86_64-linux-gnu/libglib-2.0.so.0',
+        ):
+            self.assertTrue(
+                m.filename_is_friendly(good),
+                f'{good!r} should be treated as friendly'
+            )
+
+        for bad in r'<>:"\|?*':
+            self.assertFalse(
+                m.filename_is_friendly(bad),
+                f'{bad!r} is not Windows-compatible'
+            )
+            self.assertFalse(
+                m.filename_is_friendly(f'my{bad}file'),
+                f'{bad!r} is not Windows-compatible'
+            )
+
+        for bad in r"#$&'()[]{};`~":
+            self.assertFalse(
+                m.filename_is_friendly(bad),
+                f'{bad!r} is not Unix-shell-friendly',
+            )
+
+        for bad, why in (
+            ('bin/[', 'Special to Unix shells'),
+            ('%TEMP%', 'Special to Windows shells'),
+            ('Program Files', 'Has whitespace'),
+            ('carriage\rreturn', 'Has ASCII control character'),
+            ('interrobang\u203D', 'Has non-ASCII'),
+            ('delete\x7F', 'Has ASCII DEL'),
+            ('foo/tmp/bar', 'Could be deleted by cleanup tools'),
+            ('foo/__pycache__/bar', 'Could be deleted by cleanup tools'),
+            ('foo/.cache/bar', 'Could be deleted by cleanup tools'),
+            ('foo/CACHEDIR.TAG', 'Could be deleted by cleanup tools'),
+            ('foo/bar.pyc', 'Could be deleted by cleanup tools'),
+            ('libexec/--inadvisable', 'Special to Unix CLI tools'),
+            ('--inadvisable', 'Special to Unix CLI tools'),
+            ('share/i18n/charmaps/ISO_8859-1,GL.gz',
+             "Steam bootstrapper doesn't like commas"),
+        ):
+            self.assertFalse(
+                m.filename_is_friendly(bad),
+                f'{bad!r} should be unfriendly: {why}'
+            )
 
 def main() -> None:
     logging.basicConfig()
@@ -2097,6 +2174,11 @@ def main() -> None:
             'are optional.'
         ),
     )
+
+    if sys.argv[1:2] == ['--self-test']:
+        del sys.argv[1:2]
+        unittest.main()
+        return
 
     try:
         args = parser.parse_args()
