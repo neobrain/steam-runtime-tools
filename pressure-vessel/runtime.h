@@ -52,6 +52,7 @@
  *  order, even where it shouldn't matter functionally
  * @PV_RUNTIME_FLAGS_IMPORT_CA_CERTS: Try to import CA certificates from
  *  the host system, which is assumed to be Debian-compatible
+ * @PV_RUNTIME_FLAGS_IMPORT_OPENXR_1_RUNTIMES: Include host OpenXR 1 runtimes
  * @PV_RUNTIME_FLAGS_NONE: None of the above
  *
  * Flags affecting how we set up the runtime.
@@ -69,6 +70,7 @@ typedef enum
   PV_RUNTIME_FLAGS_INTERPRETER_ROOT = (1 << 8),
   PV_RUNTIME_FLAGS_DETERMINISTIC = (1 << 9),
   PV_RUNTIME_FLAGS_IMPORT_CA_CERTS = (1 << 10),
+  PV_RUNTIME_FLAGS_IMPORT_OPENXR_1_RUNTIMES = (1 << 11),
   PV_RUNTIME_FLAGS_NONE = 0
 } PvRuntimeFlags;
 
@@ -90,6 +92,7 @@ typedef enum
    | PV_RUNTIME_FLAGS_INTERPRETER_ROOT \
    | PV_RUNTIME_FLAGS_DETERMINISTIC \
    | PV_RUNTIME_FLAGS_IMPORT_CA_CERTS \
+   | PV_RUNTIME_FLAGS_IMPORT_OPENXR_1_RUNTIMES \
    )
 
 typedef enum

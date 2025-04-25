@@ -1091,6 +1091,7 @@ test_options_defaults (Fixture *f,
       g_assert_cmpint (options->devel, ==, FALSE);
       g_assert_cmpint (options->gc_runtimes, ==, TRUE);
       g_assert_cmpint (options->generate_locales, ==, TRUE);
+      g_assert_cmpint (options->import_openxr_1_runtimes, ==, FALSE);
       g_assert_cmpint (options->import_vulkan_layers, ==, TRUE);
       g_assert_cmpint (options->launcher, ==, FALSE);
       g_assert_cmpint (options->only_prepare, ==, FALSE);
@@ -1128,6 +1129,7 @@ test_options_false (Fixture *f,
     "--no-copy-runtime",
     "--no-gc-runtimes",
     "--no-generate-locales",
+    "--no-import-openxr-1-runtimes",
     "--no-import-vulkan-layers",
     "--no-systemd-scope",
     "--runtime=",
@@ -1189,6 +1191,7 @@ test_options_false (Fixture *f,
   g_assert_cmpint (options->devel, ==, FALSE);
   g_assert_cmpint (options->gc_runtimes, ==, FALSE);
   g_assert_cmpint (options->generate_locales, ==, FALSE);
+  g_assert_cmpint (options->import_openxr_1_runtimes, ==, FALSE);
   g_assert_cmpint (options->import_vulkan_layers, ==, FALSE);
   g_assert_cmpint (options->launcher, ==, FALSE);
   g_assert_cmpint (options->only_prepare, ==, FALSE);
@@ -1226,6 +1229,7 @@ test_options_true (Fixture *f,
     "--generate-locales",
     "--graphics-provider=/gfx",
     "--home=/home/steam",
+    "--import-openxr-1-runtimes",
     "--import-vulkan-layers",
     "--launcher",
     "--ld-audit=libaudit.so",
@@ -1314,6 +1318,7 @@ test_options_true (Fixture *f,
   g_assert_cmpint (options->devel, ==, TRUE);
   g_assert_cmpint (options->gc_runtimes, ==, TRUE);
   g_assert_cmpint (options->generate_locales, ==, TRUE);
+  g_assert_cmpint (options->import_openxr_1_runtimes, ==, TRUE);
   g_assert_cmpint (options->import_vulkan_layers, ==, TRUE);
   g_assert_cmpint (options->launcher, ==, TRUE);
   g_assert_cmpint (options->only_prepare, ==, TRUE);

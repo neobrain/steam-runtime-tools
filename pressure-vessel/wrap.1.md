@@ -196,6 +196,16 @@ in a container.
 </dd>
 <dt>
 
+**--import-openxr-1-runtimes**, **--no-import-openxr-1-runtimes**
+
+</dt><dd>
+
+If `--import-openxr-1-runtimes` is specified, the host's OpenXR 1 runtimes will
+be imported. The default is `--no-import-openxr-1-runtimes`.
+
+</dd>
+<dt>
+
 **--import-vulkan-layers**, **--no-import-vulkan-layers**
 
 </dt><dd>
@@ -756,6 +766,16 @@ If set to `1`, equivalent to either
 `--graphics-provider=/run/host` if it looks suitable, or
 `--graphics-provider=/` if not.
 If set to `0`, equivalent to `--graphics-provider=""`.
+
+</dd>
+<dt>
+
+`PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES` (boolean)
+
+</dt><dd>
+
+If set to `1`, equivalent to `--import-openxr-1-runtimes`.
+If set to `0`, equivalent to `--no-import-openxr-1-runtimes`.
 
 </dd>
 <dt>
