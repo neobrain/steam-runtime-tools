@@ -1,3 +1,11 @@
+steam-runtime-tools (0.20250425.0) UNRELEASED; urgency=medium
+
+  * SteamLinuxRuntime family:
+    - Rename away more problematic filenames (steamrt/tasks#719)
+  * Documentation updates
+
+ -- Simon McVittie <smcv@collabora.com>  Fri, 25 Apr 2025 16:42:24 +0100
+
 steam-runtime-tools (0.20250408.0) steamrt; urgency=medium
 
   [ Ryan Gonzalez ]
