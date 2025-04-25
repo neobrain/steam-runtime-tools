@@ -7477,6 +7477,28 @@ icd_stack_free (IcdStack *self)
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (IcdStack, icd_stack_free)
 
+/* Prepend the given @new_entry to the colon-delimited directory list in the
+ * original environment variable @var (in turn defaulting that to @default_)
+ * if not given.
+ *
+ * Reference for the variables and defaults:
+ * https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+ */
+static void
+pv_runtime_prepend_to_xdg_dirs (PvRuntime *self,
+                                SrtEnvOverlay *container_env,
+                                const char *new_entry,
+                                const char *var,
+                                const char *default_)
+{
+  const gchar *current_dirs;
+  g_autofree gchar *prepended_dirs = NULL;
+
+  current_dirs = g_environ_getenv (self->original_environ, var) ?: default_;
+  prepended_dirs = g_strdup_printf ("%s:%s", new_entry, current_dirs);
+  _srt_env_overlay_set (container_env, var, prepended_dirs);
+}
+
 /* Log a warning if any colon-delimited entry in @path is not in
  * ${prefix}/${suffix}. */
 static void
@@ -8049,12 +8071,8 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
        * have. */
       if (vulkan_exp_layer_path->len != 0 || vulkan_imp_layer_path->len != 0)
         {
-          const gchar *xdg_data_dirs;
-          g_autofree gchar *prepended_data_dirs = NULL;
-          g_autofree gchar *override_share = NULL;
-
-          xdg_data_dirs = g_environ_getenv (self->original_environ, "XDG_DATA_DIRS");
-          override_share = g_build_filename (self->overrides_in_container, "share", NULL);
+          g_autofree gchar *override_share =
+            g_build_filename (self->overrides_in_container, "share", NULL);
 
           /* We are relying here on setup_json_manifest() having generated
            * all the layers' JSON manifests in the same directory. */
@@ -8062,16 +8080,9 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
                                          override_share, "vulkan/explicit_layer.d");
           check_path_entries_all_in_dir (vulkan_imp_layer_path->str,
                                          override_share, "vulkan/implicit_layer.d");
-
-          /* Reference:
-           * https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html */
-          if (xdg_data_dirs == NULL)
-            xdg_data_dirs = "/usr/local/share:/usr/share";
-
-          prepended_data_dirs = g_strdup_printf ("%s:%s", override_share, xdg_data_dirs);
-
-          _srt_env_overlay_set (container_env, "XDG_DATA_DIRS",
-                                prepended_data_dirs);
+          pv_runtime_prepend_to_xdg_dirs (self, container_env, override_share,
+                                          "XDG_DATA_DIRS",
+                                          "/usr/local/share:/usr/share");
         }
       _srt_env_overlay_set (container_env, "VK_LAYER_PATH", NULL);
     }
