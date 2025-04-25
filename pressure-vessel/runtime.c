@@ -4860,6 +4860,40 @@ pv_runtime_take_ld_so_from_provider (PvRuntime *self,
                                         TAKE_FROM_PROVIDER_FLAGS_NONE, error);
 }
 
+static char *
+get_manifest_relative_to_overrides (gpointer icd,
+                                    const char *sub_dir,
+                                    const SrtKnownArchitecture *arch,
+                                    int digits,
+                                    gsize seq,
+                                    const char *json_basename,
+                                    GHashTable *json_set)
+{
+  /* For layers, we know that the filename doesn't matter - choice
+   * of layers is based on manifest["layer"]["name"] - but we have
+   * to make sure they're all unique and in the same directory,
+   * because there is no equivalent of VK_DRIVER_FILES or
+   * VK_LAYER_PATH for implicit layers, so the only thing we can
+   * do is to add our directory to XDG_DATA_DIRS. Because we have
+   * to do this for implicit layers anyway, for simplicity we do
+   * the same thing for explicit layers. */
+  if (SRT_IS_VULKAN_LAYER (icd))
+    {
+      if (arch != NULL)
+        return g_strdup_printf ("%s/%.*" G_GSIZE_FORMAT "-%s.json",
+                                sub_dir, digits, seq, arch->multiarch_tuple);
+      else
+        return g_strdup_printf ("%s/%.*" G_GSIZE_FORMAT ".json",
+                                sub_dir, digits, seq);
+    }
+  else
+    {
+      return pv_generate_unique_filepath (sub_dir, digits, seq, json_basename,
+                                          arch ? arch->multiarch_tuple : NULL,
+                                          json_set);
+    }
+}
+
 /*
  * setup_json_manifest:
  * @self: The runtime
@@ -5025,23 +5059,13 @@ setup_json_manifest (PvRuntime *self,
 
           g_assert (details->paths_in_container[i] != NULL);
 
-          /* For layers, we know that the filename doesn't matter - choice
-           * of layers is based on manifest["layer"]["name"] - but we have
-           * to make sure they're all unique and in the same directory,
-           * because there is no equivalent of VK_DRIVER_FILES or
-           * VK_LAYER_PATH for implicit layers, so the only thing we can
-           * do is to add our directory to XDG_DATA_DIRS. Because we have
-           * to do this for implicit layers anyway, for simplicity we do
-           * the same thing for explicit layers. */
-          if (SRT_IS_VULKAN_LAYER (details->icd))
-            relative_to_overrides = g_strdup_printf ("%s/%.*" G_GSIZE_FORMAT "-%s.json",
-                                                     sub_dir, digits, seq,
-                                                     tuple);
-          else
-            relative_to_overrides = pv_generate_unique_filepath (sub_dir, digits, seq,
-                                                                 json_basename,
-                                                                 tuple,
-                                                                 json_set);
+          relative_to_overrides = get_manifest_relative_to_overrides (details->icd,
+                                                                      sub_dir,
+                                                                      arch,
+                                                                      digits,
+                                                                      seq,
+                                                                      json_basename,
+                                                                      json_set);
 
           write_to_file = g_build_filename (self->overrides,
                                             relative_to_overrides, NULL);
@@ -5120,13 +5144,13 @@ setup_json_manifest (PvRuntime *self,
       g_autofree gchar *relative_to_overrides = NULL;
       g_autofree gchar *json_in_container = NULL;
 
-      if (SRT_IS_VULKAN_LAYER (details->icd))
-        relative_to_overrides = g_strdup_printf ("%s/%.*" G_GSIZE_FORMAT ".json",
-                                                 sub_dir, digits, seq);
-      else
-        relative_to_overrides = pv_generate_unique_filepath (sub_dir, digits, seq,
-                                                             json_basename,
-                                                             NULL, json_set);
+      relative_to_overrides = get_manifest_relative_to_overrides (details->icd,
+                                                                  sub_dir,
+                                                                  NULL,
+                                                                  digits,
+                                                                  seq,
+                                                                  json_basename,
+                                                                  json_set);
       json_in_container = g_build_filename (self->overrides_in_container,
                                             relative_to_overrides, NULL);
 
