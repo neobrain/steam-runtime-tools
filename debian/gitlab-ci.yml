@@ -238,6 +238,54 @@ build:devel:
             - _build/scout-layered/SteamLinuxRuntime.tar.xz
         when: always
 
+build:coverage:
+    stage: build
+    needs: []
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:testing-slim
+    before_script:
+        - *common_before_script
+        - |
+            ./ci/prepare-deb.sh \
+            $BUILD_DEPENDENCIES \
+            gcovr \
+            mypy \
+            pigz \
+            pycodestyle \
+            pyflakes3 \
+            python3-vdf \
+            reuse \
+            shellcheck \
+            ${NULL+}
+    script:
+        - |
+            set -eux
+
+            mkdir -p _build
+            meson \
+                -Dlibcurl_compat=true \
+                -Dpressure_vessel=true \
+                -Dman=enabled \
+                -Doptimization=g \
+                -Db_coverage=true \
+                --werror \
+                _build/coverage
+            ninja -C _build/coverage
+            ninja -C _build/coverage install
+            G_MESSAGES_DEBUG=all meson test -C _build/coverage
+            ninja -C _build/coverage -j1 coverage-{html,xml}
+
+    coverage: '/^\s*lines:\s+([\d.]+%)/'
+    artifacts:
+        paths:
+            - _build/coverage/meson-logs/*.txt
+            - _build/coverage/meson-logs/coverage.xml
+            - _build/coverage/meson-logs/coveragereport
+        reports:
+            coverage_report:
+                coverage_format: cobertura
+                path: _build/coverage/meson-logs/coverage.xml
+        when: always
+
 build:aarch64:
     stage: build
     needs: []
