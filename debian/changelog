@@ -4,7 +4,11 @@ steam-runtime-tools (0.20250428.0) UNRELEASED; urgency=medium
   * Tests:
     - CI: Add automated coverage reports
 
- -- Simon McVittie <smcv@collabora.com>  Mon, 28 Apr 2025 16:58:39 +0100
+  [ Simon McVittie ]
+  * Tests:
+    - Fix a rare test failure (steamrt/tasks#724)
+
+ -- Simon McVittie <smcv@collabora.com>  Mon, 28 Apr 2025 17:28:54 +0100
 
 steam-runtime-tools (0.20250425.0) steamrt; urgency=medium
 
