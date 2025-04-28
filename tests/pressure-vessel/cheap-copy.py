@@ -33,6 +33,7 @@ class TestCheapCopy(BaseTest):
         superset,
         subset,
         require_hard_links: bool = True,
+        require_same_mtime: bool = True,
     ):
         for path, dirs, files in os.walk(subset):
             equivalent = os.path.join(superset, os.path.relpath(path, subset))
@@ -70,11 +71,30 @@ class TestCheapCopy(BaseTest):
 
                     self.assertEqual(info.st_mode, info2.st_mode)
                     self.assertEqual(info.st_size, info2.st_size)
-                    self.assertEqual(int(info.st_mtime), int(info2.st_mtime))
 
-    def assert_tree_is_same(self, left, right, require_hard_links=True):
-        self.assert_tree_is_superset(left, right, require_hard_links)
-        self.assert_tree_is_superset(right, left, require_hard_links)
+                    if require_same_mtime:
+                        # Different filesystems don't necessarily have
+                        # the same resolution, so we only assert that the
+                        # integer part is equal
+                        self.assertEqual(
+                            int(info.st_mtime),
+                            int(info2.st_mtime),
+                        )
+
+    def assert_tree_is_same(
+        self,
+        left,
+        right,
+        require_hard_links=True,
+        require_same_mtime=True,
+    ):
+        for pair in (left, right), (right, left):
+            self.assert_tree_is_superset(
+                pair[0],
+                pair[1],
+                require_hard_links=require_hard_links,
+                require_same_mtime=require_same_mtime,
+            )
 
     def test_empty(self) -> None:
         with tempfile.TemporaryDirectory(
@@ -231,7 +251,16 @@ class TestCheapCopy(BaseTest):
                 check=True,
                 stdout=2,       # >&2, i.e. stderr
             )
-            self.assert_tree_is_same(expected, dest, require_hard_links=False)
+            self.assert_tree_is_same(
+                expected,
+                dest,
+                require_hard_links=False,
+                # We are not directly comparing source with dest, so the
+                # mtime seen in expected is not necessarily the same as
+                # the mtime in dest, if the time spent creating the two
+                # trees crossed the boundary between one second and the next.
+                require_same_mtime=False,
+            )
 
     def tearDown(self) -> None:
         super().tearDown()
