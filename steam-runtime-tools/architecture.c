@@ -340,7 +340,7 @@ _srt_architecture_guess_from_elf (int dfd,
   guint16 machine = EM_NONE;
   gsize i;
 
-  g_return_val_if_fail (file_path != NULL, FALSE);
+  g_return_val_if_fail (file_path != NULL, NULL);
 
   if (!_srt_architecture_read_elf (dfd, file_path, &cls, &data_encoding, &machine, error))
     return NULL;
