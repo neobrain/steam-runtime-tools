@@ -111,7 +111,7 @@ print_library_details (const gchar *library_path,
         return;
     }
 
-    fprintf (original_stdout, "%s=%s%c", library_path, identifier, separator);
+  fprintf (original_stdout, "%s=%s%c", library_path, identifier, separator);
 }
 
 static gboolean had_paths_output = FALSE;
