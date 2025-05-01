@@ -1,16 +1,20 @@
 steam-runtime-tools (0.20250501.0) UNRELEASED; urgency=medium
 
   [ Ryan Gonzalez ]
-  * Tests:
-    - CI: Add automated coverage reports
+  * CI:
+    - Add automated coverage reports
 
   [ Simon McVittie ]
+  * CI:
+    - Move Gitlab-CI setup to .gitlab-ci.yml
+    - Upload both x86 and aarch64 artifacts to repo.steampowered.com
+      (steamrt/tasks#708)
   * Tests:
     - Fix a rare test failure (steamrt/tasks#724)
     - Add LD_PRELOAD modules that mimic recent MangoHud, for manual testing
       (steamrt/tasks#595)
 
- -- Simon McVittie <smcv@collabora.com>  Thu, 01 May 2025 10:21:28 +0100
+ -- Simon McVittie <smcv@collabora.com>  Thu, 01 May 2025 14:24:01 +0100
 
 steam-runtime-tools (0.20250425.0) steamrt; urgency=medium
 
