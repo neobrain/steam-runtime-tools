@@ -520,25 +520,7 @@ def main():
         for package, source in sorted(get_source):
             if os.path.exists('/usr/share/doc/{}/copyright'.format(package)):
                 installed_binaries.add(package)
-
-                if source in DIFFERENT_COPYRIGHT_FILES:
-                    install(
-                        '/usr/share/doc/{}/copyright'.format(package),
-                        os.path.join(
-                            installation,
-                            'metadata',
-                            '{}.txt'.format(package),
-                        ),
-                    )
-                else:
-                    install(
-                        '/usr/share/doc/{}/copyright'.format(package),
-                        os.path.join(
-                            installation,
-                            'metadata',
-                            '{}.txt'.format(source),
-                        ),
-                    )
+                source_version = ''
 
                 for expr in set(
                     v_check_output([
@@ -548,14 +530,44 @@ def main():
                         package,
                     ], universal_newlines=True).splitlines()
                 ):
-                    source_to_download.add(
-                        re.sub(r'[+]srt[0-9a-z.]+$', '', expr))
+                    without_build_suffix = re.sub(
+                        r'[+]srt[0-9a-z.]+$',
+                        '',
+                        expr,
+                    )
+                    source_to_download.add(without_build_suffix)
+                    after_equals = without_build_suffix.split('=', 1)[1]
+                    # We can only have one ${source:Version} installed
+                    assert source_version in ('', after_equals)
+                    source_version = after_equals
+
+                if source in DIFFERENT_COPYRIGHT_FILES:
+                    install(
+                        '/usr/share/doc/{}/copyright'.format(package),
+                        os.path.join(
+                            installation,
+                            'metadata',
+                            '{}_{}.txt'.format(package, source_version),
+                        ),
+                    )
+                else:
+                    install(
+                        '/usr/share/doc/{}/copyright'.format(package),
+                        os.path.join(
+                            installation,
+                            'metadata',
+                            '{}_{}.txt'.format(source, source_version),
+                        ),
+                    )
             else:
+                maybe_version = ''
+
                 if source == 'steam-runtime-tools':
                     copyright_file = os.path.join(
                         srcdir, 'debian', 'copyright',
                     )
                     source = source + '=' + args.version
+                    maybe_version = '_' + args.version
                 else:
                     copyright_file = os.path.join(
                         tmpdir,
@@ -569,7 +581,7 @@ def main():
                     os.path.join(
                         installation,
                         'metadata',
-                        '{}.txt'.format(source),
+                        '{}{}.txt'.format(source, maybe_version),
                     ),
                 )
                 source_to_download.add(source)
