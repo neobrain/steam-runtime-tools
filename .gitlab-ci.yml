@@ -1,0 +1,611 @@
+variables:
+    BUILD_DEPENDENCIES: >-
+        build-essential
+        chrpath
+        debhelper
+        devscripts
+        dpkg-dev
+        git
+        glslang-tools
+        gtk-doc-tools
+        libcap-dev
+        libdbus-1-dev
+        libdrm-dev
+        libelf-dev
+        libegl1-mesa-dev
+        libfontconfig-dev
+        libgl1-mesa-dev
+        libgles2-mesa-dev
+        libglib2.0-dev
+        libglib2.0-doc
+        libjson-glib-dev
+        libsdl2-dev
+        libsdl2-ttf-dev
+        libtheora-dev
+        libva-dev
+        libvdpau-dev
+        libvulkan-dev
+        libwaffle-dev
+        libx11-dev
+        libxau-dev
+        libxcb1-dev
+        libxcomposite-dev
+        libxrandr-dev
+        locales
+        meson
+        pandoc
+        python3
+        rsync
+        zlib1g
+
+    IMAGES_DOWNLOAD_URL: ''
+    IMAGES_DOWNLOAD_CREDENTIAL: ''
+
+    DEBIAN_FRONTEND: noninteractive
+
+    SCOUT_DOCKER_REGISTRY: '${CI_REGISTRY}'
+    SCOUT_DOCKER_IMAGE: steamrt/scout/sdk:beta
+    SCOUT_I386_DOCKER_IMAGE: steamrt/scout/sdk/i386:beta
+    SCOUT_APT_SOURCES_FILE: 'ci/scout.sources.list'
+    SOLDIER_DOCKER_REGISTRY: '${CI_REGISTRY}'
+    SOLDIER_DOCKER_IMAGE: steamrt/soldier/sdk:beta
+    SOLDIER_APT_SOURCES_FILE: ''
+    SNIPER_DOCKER_REGISTRY: '${CI_REGISTRY}'
+    SNIPER_DOCKER_IMAGE: steamrt/sniper/sdk:beta
+    SNIPER_APT_SOURCES_FILE: ''
+    # There's no public Docker image for medic right now
+    MEDIC_DOCKER_REGISTRY: ''
+    MEDIC_DOCKER_IMAGE: ''
+    MEDIC_APT_SOURCES_FILE: ''
+    # There's no public Docker image for SteamRT 5 right now
+    STEAMRT5_DOCKER_REGISTRY: ''
+    STEAMRT5_DOCKER_IMAGE: ''
+    STEAMRT5_APT_SOURCES_FILE: ''
+    # Set non-empty to allow
+    CI_ALLOW_MISSING_SOURCES: ''
+
+    # Work around _srt_rm_rf behaving oddly on overlayfs:
+    # we use FTW_MOUNT to make sure we won't accidentally traverse
+    # between filesystems, but on overlayfs files can appear to be on
+    # different devices
+    STEAM_CI_TMPDIR: "${CI_PROJECT_DIR}/_build/tmpdir"
+
+    # These need to be configured in
+    # https://gitlab.steamos.cloud/steamrt/steam-runtime-tools/-/settings/ci_cd
+    # Hostname of the machine that receives pressure-vessel releases
+    PRESSURE_VESSEL_CI_UPLOAD_HOST: ''
+    # Create a File variable with the public key(s) of P_V_CI_UPLOAD_HOST,
+    # in the usual ~/.ssh/known_hosts format:
+    # upload-host.example ssh-rsa AAA...
+    # upload-host.example ecdsa-sha2-nistp256 AAA...
+    # upload-host.example ssh-ed25519 AAA...
+    PRESSURE_VESSEL_CI_UPLOAD_HOST_SSH_PUBLIC_KEYS_FILE: ''
+    # Path on P_V_CI_UPLOAD_HOST: /srv/VHOST/www/pressure-vessel/snapshots
+    PRESSURE_VESSEL_CI_UPLOAD_PATH: ''
+    # Path on P_V_CI_UPLOAD_HOST: /srv/.../dbgsym/pressure-vessel
+    PRESSURE_VESSEL_CI_UPLOAD_DBGSYM_PATH: ''
+    # Similar path on P_V_CI_UPLOAD_HOST for unreleased test-builds
+    PRESSURE_VESSEL_CI_UPLOAD_PLAYGROUND_PATH: ''
+    PRESSURE_VESSEL_CI_UPLOAD_PLAYGROUND_DBGSYM_PATH: ''
+    # User to log in on P_V_CI_UPLOAD_HOST
+    PRESSURE_VESSEL_CI_UPLOAD_USER: ''
+    # Create a File variable with a private key authorized for P_V_CI_UPLOAD_USER
+    PRESSURE_VESSEL_CI_UPLOAD_SSH_PRIVATE_KEY_FILE: ''
+    # Create a File variable in netrc format as per apt_auth.conf(5)
+    STEAMRT_CI_APT_AUTH_CONF: ''
+
+default:
+    before_script: &common_before_script
+        - mkdir -p -m700 "${STEAM_CI_TMPDIR}"
+        - export TMPDIR="${STEAM_CI_TMPDIR}"
+        - chmod -R a+rX,og-w .
+        - umask 022
+
+    tags:
+        - docker
+        - linux
+        - x86_64
+
+workflow:
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+          when: never
+        - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+          when: never
+        - when: always
+
+stages:
+    - prepare
+    - build
+    - relocatable-install
+    - deploy
+    - test
+
+package:source:
+    stage: prepare
+    # Any SDK image is fine here, but preferably one with dpkg-dev
+    # and deb-build-snapshot preinstalled
+    image: '${SNIPER_DOCKER_REGISTRY}/${SNIPER_DOCKER_IMAGE}'
+    before_script:
+        - *common_before_script
+        - ./ci/prepare-deb.sh
+    script:
+        - ./ci/build-dsc.sh
+    artifacts:
+        paths:
+            - debian/tmp/artifacts/source
+        when: always
+
+.build_deb:
+    stage: build
+    needs:
+        - package:source
+    image: ${BUILD_IMAGE}
+    before_script:
+        - *common_before_script
+        - ./ci/prepare-deb.sh
+    script:
+        - ./ci/build-deb.sh $BUILD_DEPENDENCIES
+    artifacts:
+        paths:
+            - _build/meson-logs/*.txt
+            - debian/tmp/artifacts/build
+        when: always
+
+package:scout:amd64:
+    extends: .build_deb
+    variables:
+        BUILD_IMAGE: '${SCOUT_DOCKER_REGISTRY}/${SCOUT_DOCKER_IMAGE}'
+        STEAM_CI_DEB_BUILD: binary  # debuild --build=binary, aka -b
+
+package:scout:i386:
+    extends: .build_deb
+    variables:
+        BUILD_IMAGE: '${SCOUT_DOCKER_REGISTRY}/${SCOUT_I386_DOCKER_IMAGE}'
+        STEAM_CI_DEB_BUILD: any     # debuild --build=any, aka -B
+
+package:bullseye:amd64:
+    extends: .build_deb
+    variables:
+        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+        STEAM_CI_DEB_BUILD: binary
+
+package:bullseye:arm64:
+    extends: .build_deb
+    tags:
+        - docker
+        - linux
+        - aarch64
+    variables:
+        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+        STEAM_CI_DEB_BUILD: any
+
+package:bullseye:i386:
+    extends: .build_deb
+    variables:
+        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+        STEAM_CI_DEB_BUILD: any
+
+package:soldier:amd64:
+    extends: .build_deb
+    variables:
+        BUILD_IMAGE: '${SOLDIER_DOCKER_REGISTRY}/${SOLDIER_DOCKER_IMAGE}'
+        STEAM_CI_DEB_BUILD: binary
+
+package:sniper:amd64:
+    extends: .build_deb
+    variables:
+        BUILD_IMAGE: '${SNIPER_DOCKER_REGISTRY}/${SNIPER_DOCKER_IMAGE}'
+        STEAM_CI_DEB_BUILD: binary
+
+build:devel:
+    stage: build
+    needs: []
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:testing-slim
+    before_script:
+        - *common_before_script
+        - |
+            ./ci/prepare-deb.sh \
+            $BUILD_DEPENDENCIES \
+            mypy \
+            pigz \
+            pycodestyle \
+            pyflakes3 \
+            python3-vdf \
+            reuse \
+            shellcheck \
+            ${NULL+}
+    script:
+        - |
+            set -eux
+
+            mkdir -p _build
+            meson \
+                -Dlibcurl_compat=true \
+                -Dpressure_vessel=true \
+                -Dman=enabled \
+                --werror \
+                _build/devel
+            ninja -C _build/devel
+            ninja -C _build/devel install
+            G_MESSAGES_DEBUG=all meson test -C _build/devel
+
+            build-aux/scout-layered.sh
+
+    artifacts:
+        paths:
+            - _build/devel/meson-logs/*.txt
+            - _build/scout-layered/SteamLinuxRuntime.tar.xz
+        when: always
+
+build:coverage:
+    stage: build
+    needs: []
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:testing-slim
+    before_script:
+        - *common_before_script
+        - |
+            ./ci/prepare-deb.sh \
+            $BUILD_DEPENDENCIES \
+            gcovr \
+            mypy \
+            pigz \
+            pycodestyle \
+            pyflakes3 \
+            python3-vdf \
+            reuse \
+            shellcheck \
+            ${NULL+}
+    script:
+        - |
+            set -eux
+
+            mkdir -p _build
+            meson \
+                -Dlibcurl_compat=true \
+                -Dpressure_vessel=true \
+                -Dman=enabled \
+                -Doptimization=g \
+                -Db_coverage=true \
+                --werror \
+                _build/coverage
+            ninja -C _build/coverage
+            ninja -C _build/coverage install
+            G_MESSAGES_DEBUG=all meson test -C _build/coverage
+            ninja -C _build/coverage -j1 coverage-{html,xml}
+
+    coverage: '/^\s*lines:\s+([\d.]+%)/'
+    artifacts:
+        paths:
+            - _build/coverage/meson-logs/*.txt
+            - _build/coverage/meson-logs/coverage.xml
+            - _build/coverage/meson-logs/coveragereport
+        reports:
+            coverage_report:
+                coverage_format: cobertura
+                path: _build/coverage/meson-logs/coverage.xml
+        when: always
+
+build:aarch64:
+    stage: build
+    needs: []
+    tags:
+        - docker
+        - linux
+        - aarch64
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:testing-slim
+    before_script:
+        - *common_before_script
+        - |
+            ./ci/prepare-deb.sh \
+            $BUILD_DEPENDENCIES \
+            mypy \
+            pigz \
+            pycodestyle \
+            pyflakes3 \
+            python3-vdf \
+            reuse \
+            shellcheck \
+            ${NULL+}
+    script:
+        - |
+            set -eux
+
+            mkdir -p _build
+            meson \
+                -Dlibcurl_compat=true \
+                -Dpressure_vessel=true \
+                -Dman=enabled \
+                --werror \
+                _build/aarch64
+            ninja -C _build/aarch64
+            ninja -C _build/aarch64 install
+            G_MESSAGES_DEBUG=all meson test -C _build/aarch64
+
+    artifacts:
+        paths:
+            - _build/aarch64/meson-logs/*.txt
+        when: always
+
+build:clang:
+    stage: build
+    needs: []
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:testing-slim
+    before_script:
+        - *common_before_script
+        - ./ci/prepare-deb.sh $BUILD_DEPENDENCIES clang clang-tools libclang-rt-dev
+    script:
+        - |
+            set -eux
+
+            # gtk-doc doesn't play nicely with AddressSanitizer, so
+            # disable it here (it's also rather slow, so only use it
+            # for one build, the 'devel' build above)
+            meson \
+                --native-file=build-aux/meson/clang.txt \
+                -Db_lundef=false \
+                -Db_sanitize=address,undefined \
+                -Dgtk_doc=disabled \
+                -Dlibcurl_compat=true \
+                -Dpressure_vessel=true \
+                --werror \
+                _build/clang-asan
+            ninja -C _build/clang-asan
+            ninja -C _build/clang-asan install
+            G_MESSAGES_DEBUG=all meson test -C _build/clang-asan
+
+    artifacts:
+        paths:
+            - _build/clang-asan/meson-logs/*.txt
+        when: always
+
+.relocatable_install:
+    stage: relocatable-install
+    before_script:
+        - ./ci/prepare-deb.sh $BUILD_DEPENDENCIES
+        - ./ci/make-deb-src-available.sh
+    script:
+        - ci/relocatable-install.sh
+
+relocatable-install:i386:
+    extends: .relocatable_install
+    needs:
+        - package:source
+        - package:scout:i386
+    image: "${SCOUT_DOCKER_REGISTRY}/${SCOUT_I386_DOCKER_IMAGE}"
+    artifacts:
+        paths:
+            # We don't need to save the source code, it'll be the same as
+            # for the amd64+i386 relocatable install
+            - _build/i386/pressure-vessel-i386.tar.gz
+        when: on_success
+
+relocatable-install:arm64:
+    extends: .relocatable_install
+    tags:
+        - docker
+        - linux
+        - aarch64
+    needs:
+        - package:source
+        - package:bullseye:arm64
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+    artifacts:
+        paths:
+            - _build/arm64/pressure-vessel-arm64.tar.gz
+            # Some of the source code will differ from the version
+            # built in scout
+            - _build/arm64/pressure-vessel-arm64+src.tar.gz
+        when: on_success
+
+relocatable-install:
+    extends: .relocatable_install
+    needs:
+        - package:source
+        - package:scout:amd64
+        - package:scout:i386
+    image: "${SCOUT_DOCKER_REGISTRY}/${SCOUT_DOCKER_IMAGE}"
+    artifacts:
+        paths:
+            - _build/pressure-vessel-bin.tar.gz
+            - _build/pressure-vessel-bin+src.tar.gz
+        when: on_success
+
+.test_template:
+    needs:
+        - relocatable-install
+    stage: test
+    artifacts:
+        paths:
+            - _build/artifacts
+        when: always
+
+.run_test: &run_test
+    - |
+        set -eux
+
+        ./tests/pressure-vessel/prepare-test-depots.sh
+
+        export AUTOPKGTEST_ARTIFACTS="$(pwd)/_build/artifacts"
+        export PRESSURE_VESSEL_TEST_CONTAINERS="$(pwd)/_build/depot"
+        PYTHONPATH=$(pwd)/tests \
+        python3 tests/pressure-vessel/containers.py
+
+.test_deb:
+    extends: .test_template
+    script:
+        - |
+            set -eux
+
+            dpkg --add-architecture i386
+            apt-get -y update
+            apt-get -y upgrade
+
+            ./ci/prepare-deb.sh \
+                libc6-i386 \
+                libgl1-mesa-dri \
+                libgl1-mesa-dri:i386 \
+                locales \
+                python3 \
+                python3-debian \
+                time \
+                ${NULL+}
+
+        - *run_test
+
+test:debian-10:
+    extends: .test_deb
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:buster-slim
+
+test:debian-11:
+    extends: .test_deb
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+
+test:debian-12:
+    extends: .test_deb
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bookworm-slim
+
+test:debian-13:
+    extends: .test_deb
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:trixie-slim
+
+test:ubuntu-18.04:
+    extends: .test_deb
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/ubuntu:18.04
+
+test:ubuntu-20.04:
+    extends: .test_deb
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/ubuntu:20.04
+
+test:archlinux:
+    extends: .test_template
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/archlinux:latest
+    script:
+        - ./ci/prepare-arch.sh
+        - |
+            tempdir="$(mktemp -d)"
+            git clone --branch debian/buster https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.steamos.cloud/packaging/python-debian.git "$tempdir/python-debian"
+            export PYTHONPATH="$tempdir/python-debian/lib"
+        - *run_test
+
+autopkgtest:scout:amd64:
+    stage: test
+    image: "${SCOUT_DOCKER_REGISTRY}/${SCOUT_DOCKER_IMAGE}"
+    needs:
+        - package:source
+        - package:scout:amd64
+        - package:scout:i386
+    script:
+        - ./ci/prepare-deb.sh
+        - ./ci/autopkgtest.sh
+    artifacts:
+        paths:
+            - debian/tmp/artifacts/autopkgtest
+
+autopkgtest:bullseye:arm64:
+    stage: test
+    tags:
+        - docker
+        - linux
+        - aarch64
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+    needs:
+        - package:source
+        - package:bullseye:arm64
+    script:
+        - ./ci/prepare-deb.sh
+        - ./ci/autopkgtest.sh
+    artifacts:
+        paths:
+            - debian/tmp/artifacts/autopkgtest
+
+deploy:
+    stage: deploy
+    needs:
+        - build:devel                   # for steam-container-runtime.tar.gz
+        - package:source
+        - package:scout:amd64
+        - package:scout:i386
+        - relocatable-install
+    rules:
+        - if: '$PRESSURE_VESSEL_CI_UPLOAD_HOST == ""'
+          when: never
+        - if: '$PRESSURE_VESSEL_CI_UPLOAD_HOST_SSH_PUBLIC_KEYS_FILE == ""'
+          when: never
+        - if: '$CI_COMMIT_TAG && $PRESSURE_VESSEL_CI_UPLOAD_PATH == ""'
+          when: never
+        - if: >-
+            $PRESSURE_VESSEL_CI_UPLOAD_PATH == ""
+            && $PRESSURE_VESSEL_CI_UPLOAD_PLAYGROUND_PATH == ""
+          when: never
+        - if: '$PRESSURE_VESSEL_CI_UPLOAD_USER == ""'
+          when: never
+        - if: '$PRESSURE_VESSEL_CI_UPLOAD_SSH_PRIVATE_KEY_FILE == ""'
+          when: never
+        - if: '$CI_COMMIT_TAG'
+          when: on_success
+        # To debug changes to this CI step, change this to when: on_success
+        # or when: manual, and push to a protected branch
+        - when: never
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+    before_script:
+        - *common_before_script
+        - ./ci/prepare-deb.sh devscripts openssh-client rsync
+    script:
+        - |
+            if ! [ -f "$PRESSURE_VESSEL_CI_UPLOAD_HOST_SSH_PUBLIC_KEYS_FILE" ]; then
+                echo "P_V_CI_UPLOAD_HOST_SSH_PUBLIC_KEYS_FILE must be of type File" >&2
+                exit 1
+            fi
+            if ! [ -f "$PRESSURE_VESSEL_CI_UPLOAD_SSH_PRIVATE_KEY_FILE" ]; then
+                echo "P_V_CI_UPLOAD_SSH_PRIVATE_KEY_FILE must be of type File" >&2
+                exit 1
+            fi
+            chmod 0600 "$PRESSURE_VESSEL_CI_UPLOAD_SSH_PRIVATE_KEY_FILE"
+
+            if [ -n "${CI_COMMIT_TAG-}" ]; then
+                path="$PRESSURE_VESSEL_CI_UPLOAD_PATH"
+                dbgsym_path="$PRESSURE_VESSEL_CI_UPLOAD_DBGSYM_PATH"
+            else
+                path="$PRESSURE_VESSEL_CI_UPLOAD_PLAYGROUND_PATH"
+                dbgsym_path="$PRESSURE_VESSEL_CI_UPLOAD_PLAYGROUND_DBGSYM_PATH"
+            fi
+
+            ./pressure-vessel/upload-artifacts.py \
+            --host="$PRESSURE_VESSEL_CI_UPLOAD_HOST" \
+            --path="$path" \
+            --dbgsym-path="$dbgsym_path" \
+            --login="$PRESSURE_VESSEL_CI_UPLOAD_USER" \
+            --ssh-known-hosts="$PRESSURE_VESSEL_CI_UPLOAD_HOST_SSH_PUBLIC_KEYS_FILE" \
+            --ssh-private-key="$PRESSURE_VESSEL_CI_UPLOAD_SSH_PRIVATE_KEY_FILE" \
+            ${NULL+}
+
+.test-populate-depot:
+    stage: test
+    script:
+        - make -C subprojects/container-runtime check
+    artifacts:
+        paths:
+            - subprojects/container-runtime/depots/*.txt
+            - subprojects/container-runtime/depots/*/VERSIONS.txt
+    before_script:
+        - |
+            set -eux
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get -y update
+            apt-get -y install \
+                ca-certificates \
+                git \
+                make \
+                perl \
+                python3 \
+                python3-debian \
+                python3-vdf \
+                xz-utils \
+                ${NULL+}
+
+test-populate-depot:debian-12:
+    extends: .test-populate-depot
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bookworm-slim
+
+# vim:set sw=4 sts=4 et:
