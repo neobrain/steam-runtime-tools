@@ -1903,6 +1903,7 @@ class SelfTest(unittest.TestCase):
                 f'{bad!r} should be unfriendly: {why}'
             )
 
+
 def main() -> None:
     logging.basicConfig()
     logging.getLogger().setLevel(logging.DEBUG)
