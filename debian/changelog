@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250428.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250501.0) UNRELEASED; urgency=medium
 
   [ Ryan Gonzalez ]
   * Tests:
@@ -7,8 +7,10 @@ steam-runtime-tools (0.20250428.0) UNRELEASED; urgency=medium
   [ Simon McVittie ]
   * Tests:
     - Fix a rare test failure (steamrt/tasks#724)
+    - Add LD_PRELOAD modules that mimic recent MangoHud, for manual testing
+      (steamrt/tasks#595)
 
- -- Simon McVittie <smcv@collabora.com>  Mon, 28 Apr 2025 17:28:54 +0100
+ -- Simon McVittie <smcv@collabora.com>  Thu, 01 May 2025 10:21:28 +0100
 
 steam-runtime-tools (0.20250425.0) steamrt; urgency=medium
 
