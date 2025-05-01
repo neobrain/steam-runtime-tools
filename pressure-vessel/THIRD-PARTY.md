@@ -2,7 +2,7 @@ Third-party modules
 ===================
 
 <!-- This document:
-Copyright © 2018-2021 Collabora Ltd.
+Copyright © 2018-2025 Collabora Ltd.
 SPDX-License-Identifier: MIT
 -->
 
@@ -37,43 +37,42 @@ same place as pressure-vessel, or from
 Binary releases of pressure-vessel include the following third-party
 programs and libraries:
 
-- libffi.so.* from libffi: [MIT][]. See libffi.txt.
+- libffi.so.* from libffi: [MIT][]. See `libffi_*.txt`.
 
 - libgio-2.0.so.0, libglib-2.0.so.0, libgobject-2.0.so.0,
   libgmodule-2.0.so.0 from GLib: [LGPL-2.1-or-later][].
-  See glib2.0.txt.
+  See `glib2.0_*.txt`.
 
 - libcap.so.2 from libcap: dual-licensed under [GPL-2.0-only][] and
-  a [BSD-3-Clause][] variant. See libcap2.txt.
+  a [BSD-3-Clause][] variant. See `libcap2_*.txt`.
 
 - libelf.so.1 from Red Hat elfutils: [GPL-2.0-or-later][] with linking
-  exception. See elfutils.txt.
+  exception. See `elfutils_*.txt`.
 
-- libXau.so.6 from Xorg: [MIT][]. See libxau.txt.
+- libXau.so.6 from Xorg: [MIT][]. See `libxau_*.txt`.
 
-- libz.so.1 from zlib: [Zlib][] license. See zlib.txt.
+- libz.so.1 from zlib: [Zlib][] license. See `zlib_*.txt`.
 
 - libjson-glib-1.0.so.0 from json-glib: [LGPL-2.0-or-later][]. See
-  json-glib.txt.
+  `json-glib_*.txt`.
 
-- libwaffle-1.so.0 from waffle: [BSD-2-Clause][]. See waffle.txt.
+- libwaffle-1.so.0 from waffle: [BSD-2-Clause][]. See `waffle_*.txt`.
 
 Depending on build configuration, some builds also include:
 
 - libblkid.so.1, libmount.so.1 from util-linux: [LGPL-2.1-or-later][].
-  See libblkid1.txt, libmount1.txt.
+  See `libblkid1_*.txt`, `libmount1_*.txt`.
 
 - libpcre.so.3 or libpcre2-8.so.0 from PCRE: [BSD-3-Clause][].
-  See pcre3.txt or pcre2.txt.
+  See `pcre3_*.txt` or `pcre2_*.txt`.
 
 - libselinux.so.1 from SELinux: public-domain with [GPL-2.0-only][] parts.
-  See libselinux.txt.
+  See `libselinux_*.txt`.
 
-- libuuid.so.1 from util-linux: [BSD-3-Clause][]. See util-linux.txt.
+- libuuid.so.1 from util-linux: [BSD-3-Clause][]. See `util-linux_*.txt`.
 
-Complete source code can be obtained from the same place as
-pressure-vessel, or from <https://repo.steampowered.com/steamrt/>
-and <https://repo.steampowered.com/steamrt-images-scout/snapshots/>
+Complete source code can be obtained from
+<https://repo.steampowered.com/pressure-vessel/>.
 
 [Apache-2.0]: https://spdx.org/licenses/Apache-2.0.html
 [BSD-2-Clause]: https://spdx.org/licenses/BSD-2-Clause.html

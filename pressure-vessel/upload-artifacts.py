@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright © 2018-2021 Collabora Ltd.
+# Copyright © 2018-2025 Collabora Ltd.
 #
 # SPDX-License-Identifier: MIT
 #
@@ -26,6 +26,7 @@
 import argparse
 import contextlib
 import hashlib
+import io
 import logging
 import os
 import shlex
@@ -36,6 +37,7 @@ import tarfile
 import tempfile
 import textwrap
 import typing
+from itertools import groupby
 from pathlib import Path
 
 
@@ -251,28 +253,86 @@ class Uploader:
                 if '_all.' not in a.name:
                     os.link(str(a), str(dbgsym / a.name))
 
-        a = Path('_build', 'pressure-vessel-bin.tar.gz')
-        os.link(str(a), upload / a.name)
+        for a in (
+            Path('_build', 'pressure-vessel-bin.tar.gz'),
+            Path('_build', 'arm64', 'pressure-vessel-arm64.tar.gz'),
+        ):
+            os.link(str(a), upload / a.name)
 
-        a = Path('_build', 'pressure-vessel-bin+src.tar.gz')
+        merge_tsv: typing.Dict[str, typing.List[typing.List[str]]] = {
+            'packages.txt': [],
+            'sources.txt': [],
+        }
 
-        # Unpack sources/*.{dsc,tar.*,txt,...} into sources/
-        with tarfile.open(str(a), 'r') as unarchiver:
-            for member in unarchiver:
-                parts = member.name.split('/')
+        for a in (
+            Path('_build', 'pressure-vessel-bin+src.tar.gz'),
+            Path('_build', 'arm64', 'pressure-vessel-arm64+src.tar.gz'),
+        ):
+            logger.debug('Extracting source code from %s...', a)
 
-                if (
-                    member.isfile()
-                    and len(parts) >= 2
-                    and parts[-2] == 'sources'
-                ):
-                    extract = unarchiver.extractfile(member)
-                    assert extract is not None
-                    with extract:
-                        with open(
-                            str(sources / parts[-1]), 'wb'
-                        ) as writer:
-                            shutil.copyfileobj(extract, writer)
+            # Unpack sources/*.{dsc,tar.*,txt,...} into sources/
+            with tarfile.open(str(a), 'r') as unarchiver:
+                for member in unarchiver:
+                    parts = member.name.split('/')
+
+                    if (
+                        member.isfile()
+                        and len(parts) >= 2
+                        and parts[-2] == 'sources'
+                    ):
+                        logger.debug('Extracting %s...', member)
+                        extract = unarchiver.extractfile(member)
+                        assert extract is not None
+
+                        with extract:
+                            # Re-create files that list all packages/sources,
+                            # merging files from both architectures
+                            if parts[-1] in merge_tsv:
+                                for line in io.TextIOWrapper(
+                                    extract,
+                                    encoding='utf-8',
+                                ):
+                                    merge_tsv[parts[-1]].append(
+                                        line.rstrip('\n').split('\t')
+                                    )
+                            else:
+                                filename = str(sources / parts[-1])
+                                logger.debug('Saving to %s...', filename)
+
+                                with open(
+                                    filename + '.new', 'wb'
+                                ) as writer:
+                                    shutil.copyfileobj(extract, writer)
+
+                                try:
+                                    # Using link() in preference to rename()
+                                    # so that it will not overwrite
+                                    os.link(filename + '.new', filename)
+                                except FileExistsError:
+                                    # If the file has the same name in the x86
+                                    # and aarch64 archives, assert that it
+                                    # also has the same content
+                                    subprocess.check_call([
+                                        'diff', '-u',
+                                        filename,
+                                        filename + '.new',
+                                    ])
+
+                                os.remove(filename + '.new')
+
+        # Reconstitute sources.txt and metadata.txt, merging the files
+        # from each architecture
+        for filename, rows in merge_tsv.items():
+            if rows:
+                with open(str(sources / filename), 'w') as text_writer:
+                    # Skip the second and subsequent copies of identical
+                    # rows, to avoid duplicating the header line and
+                    # any package that is the same for both architectures.
+                    # The header line starts with '#' which happens to sort
+                    # at the beginning, which is what we want here.
+                    for row, _ in groupby(sorted(rows)):
+                        text_writer.write('\t'.join(row))
+                        text_writer.write('\n')
 
         os.link(str(sources / 'VERSION.txt'), str(upload / 'VERSION.txt'))
 

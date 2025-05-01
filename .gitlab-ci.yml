@@ -526,7 +526,9 @@ deploy:
         - package:source
         - package:scout:amd64
         - package:scout:i386
+        - package:bullseye:arm64
         - relocatable-install
+        - relocatable-install:arm64
     rules:
         - if: '$PRESSURE_VESSEL_CI_UPLOAD_HOST == ""'
           when: never
