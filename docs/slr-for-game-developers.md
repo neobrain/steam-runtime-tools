@@ -1,7 +1,7 @@
 # Steam Linux Runtime - guide for game developers
 
 <!-- This document:
-Copyright 2021-2022 Collabora Ltd.
+Copyright 2021-2025 Collabora Ltd.
 SPDX-License-Identifier: MIT
 -->
 
@@ -61,6 +61,11 @@ The Steam Linux Runtime can be used to run three categories of games:
   * Native Linux games on scout
   * Windows games, using Proton
 
+All games distributed on Steam use a compatibility tool of some sort,
+for the widest possible cross-distribution compatibility.
+There is no option for running directly on the host system with no
+compatibility tool.
+
 ### <a name="sniper"></a>Native Linux games targeting Steam Runtime 3 'sniper'
 
 pressure-vessel is able to run games in a runtime that is newer than
@@ -68,14 +73,14 @@ scout.
 [Steam Runtime version 3, codenamed sniper][sniper],
 is the first such runtime available to developers of native Linux games
 on Steam.
-It can be used by any game that benefits from a newer library stack
-or SDK environment,
+It is the recommended runtime for new native Linux games,
 and is based on Debian 11 (2021).
 Most of its libraries are taken directly from Debian, and can benefit
 from Debian's long-term security support.
 Selected libraries that are particularly important for games, such as
 SDL and Vulkan-Loader, have been upgraded to newer versions backported
 from newer branches of Debian.
+Games that use this runtime can be tested for Steam Deck compatibility.
 
 Games that target sniper should be compiled in the [sniper SDK][].
 
@@ -114,45 +119,47 @@ instructions that refer to `sniper` should usually work.
 
 ### <a name="scout"></a>Native Linux games targeting Steam Runtime 1 'scout'
 
-In theory all pre-2022 native Linux games on Steam are built to target
+All pre-2022 native Linux games on Steam are meant to be built to target
 Steam Runtime version 1, codenamed scout, which is based on
 Ubuntu 12.04 (2012).
-However, many games require newer libraries than Ubuntu 12.04, and many
-game developers are not building their games in a strictly 'scout'-based
-environment.
-
-As a result, the *Steam Linux Runtime 1.0 (scout)* compatibility tool
-runs games
-in a hybrid environment where the majority of libraries are taken from
-Steam Runtime version 2, codenamed soldier, which is based on
-Debian 10 (2019).
-Older libraries that are necessary for ABI compatibility with scout, such
-as `libssl.so.1.0.0`, are also available.
-A small number of libraries from soldier, such as `libcurl.so.3`, are
-overridden by their scout equivalents to provide ABI compatibility.
-This is referred to internally as [scout-on-soldier][scout-on-soldier].
-
-Games targeting either of these environments should be built in the
-Steam Runtime 1 'scout' Docker container provided by the [scout SDK][].
+For new or actively-maintained games,
+consider using [Steam Runtime 3 `sniper`](#sniper) instead.
+For historical reasons,
+there are two different scout-compatible compatibility tools.
 
 Since [November 2024][Steam client 2024-11-05],
 games targeting scout are
 run under *Steam Linux Runtime 1.0 (scout)* by default.
-This means that Steam will launch a *Steam Linux Runtime 2.0 (soldier)*
-container, then use the `LD_LIBRARY_PATH`-based scout runtime inside that
-container to provide ABI compatibility for the game.
+This tool runs games in a hybrid environment where the majority of
+libraries are taken from a Steam Runtime 2 'soldier' container,
+which is based on Debian 10 (2019).
+Older libraries that are necessary for ABI compatibility with scout, such
+as `libssl.so.1.0.0`, are also available via the
+[`LD_LIBRARY_PATH`-based scout runtime][ldlp-runtime];
+A small number of libraries from soldier, such as `libcurl.so.3`, are
+overridden by their scout equivalents to provide ABI compatibility.
+This provides a predictable environment for older games,
+even when the host operating system changes.
+Games that use this runtime can be tested for Steam Deck compatibility.
+It is referred to internally as [scout-on-soldier][scout-on-soldier].
 
-In older Steam client releases, the default varied between desktop and
-Steam Deck.
-On Steam Deck, many games run under the *Steam Linux Runtime 1.0 (scout)*
-compatibility tool automatically.
-On desktop, the default was to run these games directly on the host system,
-providing compatibility with scout by using the same
-[`LD_LIBRARY_PATH`-based scout runtime][ldlp-runtime]
-that is used to run Steam itself.
-Whichever of these options is the default, the user can select the
-*Steam Linux Runtime 1.0 (scout)* compatibility tool in the game's
-properties to opt-in to using the container runtime.
+The *Legacy Runtime 1.0* is a non-default runtime environment for scout
+games.
+This means that Steam will use libraries from the host operating system
+(which vary widely between Linux distributions,
+between distribution versions and over time),
+with the [`LD_LIBRARY_PATH`-based scout runtime][ldlp-runtime] added for
+backward compatibility.
+This is equivalent to Steam's pre-2024 default behaviour.
+Because this environment is not long-term-stable,
+games that rely on this runtime cannot pass Steam Deck compatibility testing.
+
+The user can select the *Steam Linux Runtime 1.0 (scout)* or
+*Legacy Runtime 1.0* compatibility tool in the game's properties,
+overriding the default set by the game developer.
+
+Games targeting either of these environments should be built in the
+Steam Runtime 1 'scout' Docker container provided by the [scout SDK][].
 
 ### Windows games, using Proton
 
