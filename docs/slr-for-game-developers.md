@@ -260,6 +260,8 @@ For a more scriptable version of this, run one of these commands:
   * Steam Linux Runtime 2.0 (soldier): `steam steam://install/1391110`
   * Steam Linux Runtime 3.0 (sniper): `steam steam://install/1628350`
   * Proton Experimental: `steam steam://install/1493710`
+  * Proton 10.0: `steam steam://install/3658110`
+  * Proton 9.0: `steam steam://install/2805730`
   * Proton 8.0: `steam steam://install/2348590`
   * Proton 7.0: `steam steam://install/1887720`
   * Proton 6.3: `steam steam://install/1580130`
