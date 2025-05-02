@@ -441,6 +441,29 @@ runtime's log file, but Proton's output will not, and neither will the
 game's output.
 See [Proton documentation][] for more details.
 
+## <a name="scope"></a>Putting games in a systemd scope (cgroup)
+
+On systems that use `systemd --user`,
+Steam can group the processes associated with each Steam game into a
+systemd *scope* (a cgroup).
+For example,
+this classification can be seen in the output of the
+[systemd-cgls(1)][systemd-cgls] tool,
+and can be a useful way to identify game processes while debugging.
+
+This is not currently done by default,
+but might become the default in a future Steam release.
+The environment variable `STEAM_LAUNCH_WRAPPER_SCOPE=1` can be set
+to request it.
+The scope cgroup will typically have a name like
+`app-steam-app975370-12345.scope`.
+
+This is not currently effective for non-Steam games (shortcuts).
+If a non-Steam game is run under a container runtime,
+then setting `PRESSURE_VESSEL_SYSTEMD_SCOPE=1` has a similar effect.
+In this case the scope cgroup will typically have a name like
+`app-steam-unknown-12345.scope`.
+
 ## <a name="shell"></a>Running in an interactive shell
 
 By default, the Steam Linux Runtime will just launch the game, but this
@@ -1458,3 +1481,4 @@ but does not include external modules like `pip`.
 [soldier]: https://gitlab.steamos.cloud/steamrt/steamrt/-/blob/steamrt/soldier/README.md
 [steam-runtime-launch-client]: https://gitlab.steamos.cloud/steamrt/steam-runtime-tools/-/blob/main/bin/launch-client.md?ref_type=heads
 [switching a game to a beta branch]: https://help.steampowered.com/en/faqs/view/5A86-0DF4-C59E-8C4A
+[systemd-cgls]: https://www.freedesktop.org/software/systemd/man/latest/systemd-cgls.html
