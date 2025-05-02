@@ -395,9 +395,23 @@ Use `soldier` instead of `sniper` for Proton 7.0 or older.
 
 By default, anything that the game writes to standard output or
 standard error will appear on Steam's standard output or standard error.
-Depending on the operating system, this might mean that it appears in
-the systemd Journal, in a log file, or on an interactive terminal, or
-it might be discarded.
+If Steam was run from a terminal,
+log messages will typically appear on that terminal.
+If Steam was run from a GUI,
+log messages might go to the systemd Journal or some other location
+(distribution- and desktop-environment-specific).
+Anything written to these streams is also copied to a log file,
+`~/.steam/steam/console-linux.txt`
+(this is implemented by the `srt-logger` process).
+
+If the environment variable `SRT_LOGGER_USE_JOURNAL` is set to `1` before
+launching Steam,
+then log messages will be written to the systemd Journal if possible,
+in addition to the log file.
+This can be useful when correlating the timestamps of log messages from
+multiple sources.
+`srt-logger` will try to avoid writing the same message to the Journal
+multiple times via different routes.
 
 Setting the environment variable `STEAM_LINUX_RUNTIME_LOG=1` makes
 the Steam Linux Runtime infrastructure write more verbose output to a
@@ -415,7 +429,7 @@ debugging an issue.
 This variable does not change the logging destination: if
 `STEAM_LINUX_RUNTIME_LOG` is set to `1`, the Steam Linux Runtime will
 write messages to its log file, or if not, it will write messages to
-whatever standard error stream it inherits from Steam.
+the standard error stream that it inherits from Steam.
 
 For Proton games, the environment variable `PROTON_LOG=1` makes Proton
 write more verbose output to a log file, usually `~/steam-<appid>.log`.
