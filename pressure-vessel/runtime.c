@@ -8098,6 +8098,19 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
   return TRUE;
 }
 
+static gboolean
+should_mask_search_path_entry (const char *dir)
+{
+  /* We are mounting our own runtime over /etc and /usr anyway, so ignore
+   * those */
+  if (flatpak_has_path_prefix (dir, "/usr")
+      || flatpak_has_path_prefix (dir, "/etc"))
+    return FALSE;
+
+  /* Only mask if the directory actually exists */
+  return g_file_test (dir, G_FILE_TEST_IS_DIR);
+}
+
 gboolean
 pv_runtime_bind (PvRuntime *self,
                  FlatpakExports *exports,
@@ -8244,14 +8257,7 @@ pv_runtime_bind (PvRuntime *self,
             {
               const char *dir = search_path[j];
 
-              /* We are mounting our own runtime over /etc and /usr anyway,
-               * so ignore those */
-              if (flatpak_has_path_prefix (dir, "/usr")
-                  || flatpak_has_path_prefix (dir, "/etc"))
-                continue;
-
-              /* Otherwise, if the directory exists, mask it */
-              if (g_file_test (dir, G_FILE_TEST_IS_DIR))
+              if (should_mask_search_path_entry (dir))
                 {
                   g_info ("Hiding \"%s\" from the container so that \"%s/share/%s\" will be used instead",
                           dir, self->overrides_in_container, suffix);
