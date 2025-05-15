@@ -1,6 +1,6 @@
 /*
  * Taken from Flatpak
- * Last updated: Flatpak 1.15.10
+ * Last updated: Flatpak 1.16.1
  *
  * Copyright © 2014 Red Hat, Inc
  * SPDX-License-Identifier: LGPL-2.1-or-later
@@ -348,6 +348,11 @@ gboolean flatpak_validate_path_characters (const char *path,
                                            GError    **error);
 
 gboolean running_under_sudo (void);
+
+#if 0
+void flatpak_set_debugging (gboolean debugging);
+gboolean flatpak_is_debugging (void);
+#endif
 
 #define FLATPAK_MESSAGE_ID "c7b39b1e006b464599465e105b361485"
 
