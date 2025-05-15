@@ -30,6 +30,7 @@
 #include <glib/gstdio.h>
 
 #include "steam-runtime-tools/glib-backports-internal.h"
+#include "steam-runtime-tools/architecture-internal.h"
 #include "steam-runtime-tools/utils-internal.h"
 #include "libglnx.h"
 
@@ -2191,8 +2192,16 @@ test_supported_archs (Fixture *f,
   for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES; i++)
     {
       const PvMultiarchDetails *details = &pv_multiarch_details[i];
+      const SrtKnownArchitecture *known;
 
+      /* multiarch_details and multiarch_tuples are in the same order */
       g_assert_cmpstr (pv_multiarch_tuples[i], ==, details->tuple);
+
+      /* pv-runtime assumes that we know the OpenXR architecture name
+       * for every architecture supported by PV */
+      known = _srt_architecture_get_by_tuple (details->tuple);
+      g_assert_nonnull (known);
+      g_assert_nonnull (known->openxr_1_architecture);
     }
 
   /* The array of tuples has one extra element, to make it a GStrv */
