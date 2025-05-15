@@ -3797,7 +3797,6 @@ srt_system_info_load_openxr_1_runtimes (SrtSystemInfo *self)
  * @self: The #SrtSystemInfo object
  * @multiarch_tuple: (type filename): A Debian-style multiarch tuple such as
  *  %SRT_ABI_X86_64, or %NULL to not specify an architecture.
- * @error: Used to raise an error on failure.
  *
  * Return the OpenXR 1 runtime that will be used for the given architecture.
  *
