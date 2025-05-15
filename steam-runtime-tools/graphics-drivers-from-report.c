@@ -225,8 +225,8 @@ out:
  * @json_obj: (not nullable): A JSON Object used to search for Icd or Layer
  *  properties
  * @which: Used to choose which loadable to search, it can be
- *  %SRT_TYPE_EGL_ICD, %SRT_TYPE_VULKAN_ICD, %SRT_TYPE_VULKAN_LAYER or
- *  %SRT_TYPE_EGL_EXTERNAL_PLATFORM
+ *  %SRT_TYPE_EGL_ICD, %SRT_TYPE_VULKAN_ICD, %SRT_TYPE_VULKAN_LAYER,
+ *  %SRT_TYPE_EGL_EXTERNAL_PLATFORM, or %SRT_TYPE_OPENXR_1_RUNTIME
  * @debug_member: The name of the parent containing @json_obj, for debugging
  *  purposes
  *
@@ -238,6 +238,7 @@ get_driver_loadable_from_json_report (JsonObject *json_obj,
                                       const char *debug_member)
 {
   const gchar *json_path = NULL;
+  const gchar *json_origin = NULL;
   const gchar *name = NULL;
   const gchar *type = NULL;
   const gchar *description = NULL;
@@ -282,6 +283,13 @@ get_driver_loadable_from_json_report (JsonObject *json_obj,
       if (component_layers != NULL && component_layers[0] == NULL)
         g_clear_pointer (&component_layers, g_free);
     }
+  else if (which == SRT_TYPE_OPENXR_1_RUNTIME)
+    {
+      name = json_object_get_string_member_with_default (json_obj, "name", NULL);
+      json_origin = json_object_get_string_member_with_default (json_obj,
+                                                                "json_origin",
+                                                                json_path);
+    }
 
   library_path = json_object_get_string_member_with_default (json_obj,
                                                              "library_path",
@@ -325,7 +333,8 @@ get_driver_loadable_from_json_report (JsonObject *json_obj,
   else if ((which == SRT_TYPE_EGL_ICD
             || which == SRT_TYPE_OPENXR_1_RUNTIME
             || which == SRT_TYPE_EGL_EXTERNAL_PLATFORM
-            || which == SRT_TYPE_VULKAN_ICD) &&
+            || which == SRT_TYPE_VULKAN_ICD
+            || which == SRT_TYPE_OPENXR_1_RUNTIME) &&
            library_path != NULL)
     {
       if (which == SRT_TYPE_EGL_ICD)
@@ -341,6 +350,12 @@ get_driver_loadable_from_json_report (JsonObject *json_obj,
                                                library_arch,
                                                portability_driver,
                                                issues);
+      else if (which == SRT_TYPE_OPENXR_1_RUNTIME)
+        return (GObject *) srt_openxr_1_runtime_new (json_path,
+                                                     json_origin,
+                                                     name,
+                                                     library_path,
+                                                     issues);
       else
         g_return_val_if_reached (NULL);
     }
@@ -363,6 +378,9 @@ get_driver_loadable_from_json_report (JsonObject *json_obj,
         return (GObject *) srt_vulkan_icd_new_error (json_path, issues, error);
       else if (which == SRT_TYPE_VULKAN_LAYER)
         return (GObject *) srt_vulkan_layer_new_error (json_path, issues, error);
+      else if (which == SRT_TYPE_OPENXR_1_RUNTIME)
+        return (GObject *) srt_openxr_1_runtime_new_error (json_path, json_origin,
+                                                           issues, error);
       else
         g_return_val_if_reached (NULL);
     }
@@ -373,8 +391,8 @@ get_driver_loadable_from_json_report (JsonObject *json_obj,
  * @json_obj: (not nullable): A JSON Object used to search for Icd or Layer
  *  properties
  * @which: Used to choose which loadable to search, it can be
- *  %SRT_TYPE_EGL_ICD, %SRT_TYPE_VULKAN_ICD, %SRT_TYPE_VULKAN_LAYER or
- *  %SRT_TYPE_EGL_EXTERNAL_PLATFORM
+ *  %SRT_TYPE_EGL_ICD, %SRT_TYPE_VULKAN_ICD, %SRT_TYPE_VULKAN_LAYER,
+ *  %SRT_TYPE_EGL_EXTERNAL_PLATFORM, or %SRT_TYPE_OPENXR_1_RUNTIME
  * @member: The name of the member of @json_obj that contains @sub_member.
  * @sub_member: The name of the member of @member that contains the array of
  *  loadables.
@@ -494,4 +512,88 @@ _srt_get_vulkan_from_json_report (JsonObject *json_obj)
 {
   return get_driver_loadables_from_json_report (json_obj, SRT_TYPE_VULKAN_ICD,
                                                 "vulkan", "icds");
+}
+
+static SrtOpenXr1Runtime *
+get_openxr_1_runtime (JsonObject *json_obj,
+                      const char *member)
+{
+  JsonObject *member_obj;
+
+  if (!json_object_has_member (json_obj, member))
+    return NULL;
+
+  member_obj = json_object_get_object_member (json_obj, member);
+  if (member_obj == NULL)
+    {
+      g_debug ("'%s' is not a JSON object as expected", member);
+      return NULL;
+    }
+
+  return (SrtOpenXr1Runtime *) get_driver_loadable_from_json_report (member_obj,
+                                                                     SRT_TYPE_OPENXR_1_RUNTIME,
+                                                                     member);
+}
+
+/*
+ * _srt_openxr_1_runtime_get_active_from_abi_report:
+ * @json_obj: (not nullable): A JSON Object holding an ABI-specific section of
+ *                            the report, used to search for the
+ *                            "openxr-1-runtime" property.
+ *
+ * Loads an architecture's active OpenXR runtime from the ABI report.
+ */
+SrtOpenXr1Runtime *
+_srt_openxr_1_runtime_get_active_from_abi_report (JsonObject *json_obj)
+{
+  return get_openxr_1_runtime (json_obj, "openxr-1-runtime");
+}
+
+/*
+ * _srt_openxr_1_runtimes_get_from_report:
+ * @json_obj: (not nullable): A JSON Object used to search for the "openxr-1" property
+ * @out_active_fallback: (out): Used to return the "fallback" active runtime.
+ * @out_inactive: (out): Used to return a list of inactive runtimes.
+ *
+ * Loads the OpenXR fallback and inactive runtimes from the report. This does
+ * not load the arch-specific active runtimes, which are instead stored in the
+ * ABI section and should be loaded with
+ * _srt_openxr_1_runtime_get_active_from_abi_report().
+ */
+void
+_srt_openxr_1_runtimes_get_from_report (JsonObject *json_obj,
+                                        SrtOpenXr1Runtime **out_active_fallback,
+                                        GList **out_inactive)
+{
+  static const char member_xr[] = "openxr-1";
+  static const char member_rt[] = "runtimes";
+
+  JsonObject *obj_xr;
+  JsonObject *obj_rt;
+
+  if (!json_object_has_member (json_obj, member_xr))
+    return;
+
+  obj_xr = json_object_get_object_member (json_obj, member_xr);
+  if (obj_xr == NULL)
+    {
+      g_debug ("'%s' is not a JSON object as expected", member_xr);
+      return;
+    }
+
+  if (!json_object_has_member (obj_xr, member_rt))
+    return;
+
+  obj_rt = json_object_get_object_member (obj_xr, member_rt);
+  if (obj_rt == NULL)
+    {
+      g_debug ("'%s' is not a JSON object as expected", member_rt);
+      return;
+    }
+
+  *out_active_fallback = get_openxr_1_runtime (obj_rt, "active-fallback");
+  *out_inactive = get_driver_loadables_from_json_report (obj_xr,
+                                                         SRT_TYPE_OPENXR_1_RUNTIME,
+                                                         "runtimes",
+                                                         "inactive");
 }

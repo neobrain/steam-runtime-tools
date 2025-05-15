@@ -36,6 +36,7 @@
 #include <steam-runtime-tools/cpu-feature.h>
 #include <steam-runtime-tools/display.h>
 #include <steam-runtime-tools/graphics.h>
+#include <steam-runtime-tools/graphics-drivers-openxr-1.h>
 #include <steam-runtime-tools/library.h>
 #include <steam-runtime-tools/locale.h>
 #include <steam-runtime-tools/macros.h>
@@ -168,6 +169,12 @@ _SRT_PUBLIC
 GList *srt_system_info_list_glx_icds (SrtSystemInfo *self,
                                       const char *multiarch_tuple,
                                       SrtDriverFlags flags);
+_SRT_PUBLIC
+SrtOpenXr1Runtime *srt_system_info_dup_openxr_1_runtime (SrtSystemInfo *self,
+                                                         const char *multiarch_tuple);
+_SRT_PUBLIC
+GList *srt_system_info_list_inactive_openxr_1_runtimes (SrtSystemInfo *self,
+                                                        const char *const *active_multiarch_tuples);
 
 _SRT_PUBLIC
 void srt_system_info_set_environ (SrtSystemInfo *self,

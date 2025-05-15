@@ -330,6 +330,10 @@ GList *_srt_dri_driver_get_from_report (JsonObject *json_obj);
 GList *_srt_va_api_driver_get_from_report (JsonObject *json_obj);
 GList *_srt_vdpau_driver_get_from_report (JsonObject *json_obj);
 GList *_srt_glx_icd_get_from_report (JsonObject *json_obj);
+SrtOpenXr1Runtime *_srt_openxr_1_runtime_get_active_from_abi_report (JsonObject *json_obj);
+void _srt_openxr_1_runtimes_get_from_report (JsonObject *json_obj,
+                                             SrtOpenXr1Runtime **out_active_fallback,
+                                             GList **out_inactive);
 
 G_GNUC_INTERNAL
 gchar ** _srt_graphics_get_vulkan_search_paths (SrtSysroot *sysroot,

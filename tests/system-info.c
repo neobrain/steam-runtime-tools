@@ -390,6 +390,27 @@ test_null_sysroot (Fixture *f,
       g_assert_null (drivers);
     }
 
+    {
+      g_autoptr(SrtObjectList) drivers = NULL;
+
+      drivers = srt_system_info_list_inactive_openxr_1_runtimes (info, NULL);
+      g_assert_null (drivers);
+    }
+
+    {
+      g_autoptr(SrtOpenXr1Runtime) rt = NULL;
+
+      rt = srt_system_info_dup_openxr_1_runtime (info, ANY_VALID_MULTIARCH_TUPLE);
+      g_assert_null (rt);
+    }
+
+    {
+      g_autoptr(SrtOpenXr1Runtime) rt = NULL;
+
+      rt = srt_system_info_dup_openxr_1_runtime (info, NULL);
+      g_assert_null (rt);
+    }
+
   g_assert_cmpint (srt_system_info_get_container_type (info), ==,
                    SRT_CONTAINER_TYPE_UNKNOWN);
 
@@ -2825,6 +2846,20 @@ typedef struct
 
 typedef struct
 {
+  const gchar *json_path;
+  const gchar *json_origin;
+  const gchar *library_path;
+  const gchar *library_arch;
+  const gchar *api_version;
+  const gchar *name;
+  SrtLoadableIssues issues;
+  const gchar *error_domain;
+  const gchar *error_message;
+  int error_code;
+} IcdTest;
+
+typedef struct
+{
   gboolean can_run;
   LibdlTest libdl[3];
   SrtLibraryIssues issues;
@@ -2834,6 +2869,7 @@ typedef struct
   DriverTest vdpau_drivers[5];
   DriverTest glx_drivers[5];
   GraphicsTest graphics[10];
+  IcdTest openxr_1_rt;
 } ArchitectureTest;
 
 typedef struct
@@ -2846,18 +2882,6 @@ typedef struct
   const gchar *error_message;
   int error_code;
 } LocaleTest;
-
-typedef struct
-{
-  const gchar *json_path;
-  const gchar *library_path;
-  const gchar *library_arch;
-  const gchar *api_version;
-  SrtLoadableIssues issues;
-  const gchar *error_domain;
-  const gchar *error_message;
-  int error_code;
-} IcdTest;
 
 typedef struct
 {
@@ -2927,6 +2951,8 @@ typedef struct
   IcdTest vulkan_icd[3];
   LayerTest vulkan_explicit_layer[3];
   LayerTest vulkan_implicit_layer[3];
+  IcdTest openxr_1_rt_fallback;
+  IcdTest openxr_1_rt_inactive[3];
   DesktopEntryTest desktop_entry[3];
   DisplayInfoTest display_info;
   XdgPortalTest xdg_portal;
@@ -3114,6 +3140,13 @@ static JsonTest json_test[] =
             .library_path = "/usr/lib/libGLX_mesa.so.0.0.0",
           },
         },
+        .openxr_1_rt =
+        {
+          .json_path = "/usr/share/openxr/1/openxr_monado.json",
+          .json_origin = "/home/me/.config/openxr/1/active_runtime.x86_64.json",
+          .library_path = "/usr/lib/libopenxr_monado.so",
+          .name = "Monado",
+        },
       },
     },
 
@@ -3202,6 +3235,23 @@ static JsonTest json_test[] =
         .implementation_version = "1",
         .library_path = "/usr/$LIB/libMangoHud.so",
       },
+    },
+
+    .openxr_1_rt_fallback =
+    {
+      .json_path = "/usr/share/openxr/1/openxr_monado.json",
+      .json_origin = "/etc/xdg/openxr/1/active_runtime.json",
+      .library_path = "../../../lib/libopenxr_monado.so",
+      .name = "Monado",
+    },
+
+    .openxr_1_rt_inactive =
+    {
+      {
+        .json_path = "/etc/xdg/openxr/1/active_runtime.m68k.json",
+        .json_origin = "/etc/xdg/openxr/1/active_runtime.m68k.json",
+        .library_path = "/usr/lib/libopenxr_monado.so",
+      }
     },
 
     .desktop_entry =
@@ -3351,6 +3401,15 @@ static JsonTest json_test[] =
         .error_code = 1,
         .error_message = "Information about the requested locale is missing",
       },
+    },
+    .openxr_1_rt_fallback =
+    {
+      .json_path = "/home/me/.config/openxr/1/active_runtime.json",
+      .json_origin = "/home/me/.config/openxr/1/active_runtime.json",
+      .error_domain = "g-io-error-quark", /* Default domain */
+      .error_code = G_IO_ERROR_FAILED, /* Default error code */
+      .error_message = "Something went wrong",
+      .issues = SRT_LOADABLE_ISSUES_CANNOT_LOAD,
     },
     .vulkan_icd =
     {
@@ -3686,6 +3745,13 @@ static const ArchitectureTest i386_architecture_full =
       .library_path = "/usr/lib32/libGLX_mesa.so.0.0.0",
     },
   },
+  .openxr_1_rt =
+  {
+    .json_path = "/usr/share/openxr/1/openxr_monado.json",
+    .json_origin = "/home/me/.config/openxr/1/active_runtime.i686.json",
+    .library_path = "/usr/lib/libopenxr_monado.so",
+    .name = "Monado",
+  },
 };
 
 static const ArchitectureTest i386_architecture_partial =
@@ -3898,6 +3964,9 @@ json_parsing (Fixture *f,
       g_autoptr(SrtObjectList) portal_backends = NULL;
       g_autoptr(SrtObjectList) explicit_layers = NULL;
       g_autoptr(SrtObjectList) implicit_layers = NULL;
+      g_autoptr(SrtOpenXr1Runtime) openxr_1_rt_fallback = NULL;
+      g_autoptr(SrtOpenXr1Runtime) openxr_1_rt_missing = NULL;
+      g_autoptr(SrtObjectList) openxr_1_rt_inactive = NULL;
       g_autoptr(SrtContainerInfo) container = NULL;
       g_autoptr(SrtDisplayInfo) display_info = NULL;
       g_autoptr(SrtVirtualizationInfo) virt = NULL;
@@ -3981,6 +4050,11 @@ json_parsing (Fixture *f,
       for (j = 0; j < G_N_ELEMENTS (multiarch_tuples); j++)
         {
           ArchitectureTest this_arch = t->architecture[j];
+          g_autoptr(SrtOpenXr1Runtime) openxr_1_rt = NULL;
+          const IcdTest *openxr_1_rt_expected =
+            this_arch.openxr_1_rt.json_path != NULL ? &this_arch.openxr_1_rt
+              : t->openxr_1_rt_fallback.json_path != NULL ? &t->openxr_1_rt_fallback
+              : NULL;
           GList *dri_list;
           GList *va_api_list;
           GList *vdpau_list;
@@ -4103,6 +4177,24 @@ json_parsing (Fixture *f,
             }
           g_assert_cmpstr (this_arch.glx_drivers[jj].library_path, ==, NULL);
           g_assert_cmpstr (this_arch.glx_drivers[jj].library_soname, ==, NULL);
+
+          openxr_1_rt = srt_system_info_dup_openxr_1_runtime (info, multiarch_tuples[j]);
+          if (openxr_1_rt_expected != NULL)
+            {
+              g_assert_nonnull (openxr_1_rt);
+              g_assert_cmpstr (openxr_1_rt_expected->json_path, ==,
+                               srt_openxr_1_runtime_get_json_path (openxr_1_rt));
+              g_assert_cmpstr (openxr_1_rt_expected->json_origin, ==,
+                               srt_openxr_1_runtime_get_json_origin (openxr_1_rt));
+              g_assert_cmpstr (openxr_1_rt_expected->library_path, ==,
+                               srt_openxr_1_runtime_get_library_path (openxr_1_rt));
+              g_assert_cmpstr (openxr_1_rt_expected->name, ==,
+                               srt_openxr_1_runtime_get_name (openxr_1_rt));
+            }
+          else
+            {
+              g_assert_null (openxr_1_rt);
+            }
 
           g_list_free_full (dri_list, g_object_unref);
           g_list_free_full (va_api_list, g_object_unref);
@@ -4269,6 +4361,53 @@ json_parsing (Fixture *f,
             }
         }
       g_assert_cmpstr (t->vulkan_implicit_layer[j].json_path, ==, NULL);
+
+      openxr_1_rt_fallback = srt_system_info_dup_openxr_1_runtime (info, NULL);
+      if (t->openxr_1_rt_fallback.json_path != NULL)
+        {
+          g_assert_nonnull (openxr_1_rt_fallback);
+          g_assert_cmpstr (t->openxr_1_rt_fallback.json_path, ==,
+                           srt_openxr_1_runtime_get_json_path (openxr_1_rt_fallback));
+          g_assert_cmpstr (t->openxr_1_rt_fallback.json_origin, ==,
+                           srt_openxr_1_runtime_get_json_origin (openxr_1_rt_fallback));
+          g_assert_cmpstr (t->openxr_1_rt_fallback.library_path, ==,
+                           srt_openxr_1_runtime_get_library_path (openxr_1_rt_fallback));
+          g_assert_cmpstr (t->openxr_1_rt_fallback.name, ==,
+                           srt_openxr_1_runtime_get_name (openxr_1_rt_fallback));
+
+          g_assert_nonnull (openxr_1_rt_fallback);
+          g_assert_cmpstr (t->openxr_1_rt_fallback.json_path, ==,
+                           srt_openxr_1_runtime_get_json_path (openxr_1_rt_fallback));
+          g_assert_cmpstr (t->openxr_1_rt_fallback.json_origin, ==,
+                           srt_openxr_1_runtime_get_json_origin (openxr_1_rt_fallback));
+          g_assert_cmpstr (t->openxr_1_rt_fallback.library_path, ==,
+                           srt_openxr_1_runtime_get_library_path (openxr_1_rt_fallback));
+          g_assert_cmpstr (t->openxr_1_rt_fallback.name, ==,
+                           srt_openxr_1_runtime_get_name (openxr_1_rt_fallback));
+        }
+      else
+        {
+          g_assert_null (openxr_1_rt_fallback);
+        }
+
+      openxr_1_rt_inactive = srt_system_info_list_inactive_openxr_1_runtimes (info,
+                                                                              multiarch_tuples);
+      for (j = 0, iter = openxr_1_rt_inactive; iter != NULL; iter = iter->next, j++)
+        {
+          g_assert_cmpstr (t->openxr_1_rt_inactive[j].json_path, ==,
+                           srt_openxr_1_runtime_get_json_path (iter->data));
+          g_assert_cmpstr (t->openxr_1_rt_inactive[j].json_origin, ==,
+                           srt_openxr_1_runtime_get_json_origin (iter->data));
+          g_assert_cmpstr (t->openxr_1_rt_inactive[j].library_path, ==,
+                           srt_openxr_1_runtime_get_library_path (iter->data));
+          g_assert_cmpstr (t->openxr_1_rt_inactive[j].name, ==,
+                           srt_openxr_1_runtime_get_name (iter->data));
+        }
+      g_assert_cmpstr (t->openxr_1_rt_inactive[j].json_path, ==, NULL);
+
+      openxr_1_rt_missing =
+        srt_system_info_dup_openxr_1_runtime (info, "m68k-linux-gnu");
+      g_assert_null (openxr_1_rt_missing);
 
       desktop_entries = srt_system_info_list_desktop_entries (info);
       for (j = 0, iter = desktop_entries; iter != NULL; iter = iter->next, j++)
@@ -4453,6 +4592,84 @@ architecture_notlinks (Fixture *f,
     }
 }
 
+static void
+openxr_runtimes (Fixture *f,
+                 gconstpointer context)
+{
+  static const char *const test_multiarch_tuples[] = {
+    SRT_ABI_I386, SRT_ABI_X86_64, NULL
+  };
+  static const char *const inactive_runtimes[] = {
+    /* an active runtime for an architecture we don't support */
+    "/openxr/config-home/openxr/1/active_runtime.aarch64.json",
+
+    "/openxr/config-home/openxr/1/active_runtime.m68k.json",
+    "/openxr/config-home/openxr/1/active_runtimeeee.json",
+    "/openxr/config-home/openxr/1/inactive.json",
+    "/etc/openxr/1/active_runtime.aarch64.json",
+    "/etc/openxr/1/inactive.json",
+    "/usr/local/etc/openxr/1/active_runtime.json",
+    "/usr/local/etc/openxr/1/active_runtime.x32.json",
+    "/usr/share/openxr/1/monado.alt.json",
+  };
+
+  g_autoptr(SrtSystemInfo) info;
+  g_autoptr(SrtOpenXr1Runtime) rt = NULL;
+  g_autoptr(GList) inactive = NULL;
+  g_auto(GStrv) envp = NULL;
+  g_autofree gchar *sysroot = NULL;
+  GList *iter;
+  gsize i;
+
+  sysroot = g_build_filename (f->sysroots, "fake-icds", NULL);
+
+  envp = g_get_environ ();
+
+  envp = g_environ_setenv (envp, "XDG_CONFIG_HOME", "/openxr/config-home", TRUE);
+  envp = g_environ_setenv (envp, "XDG_CONFIG_DIRS", "/openxr/doesnotexist", TRUE);
+
+  info = srt_system_info_new (NULL);
+  srt_system_info_set_sysroot (info, sysroot);
+  srt_system_info_set_environ (info, envp);
+
+  rt = srt_system_info_dup_openxr_1_runtime (info, SRT_ABI_X86_64);
+  g_assert_nonnull (rt);
+
+  g_assert_cmpstr (srt_openxr_1_runtime_get_json_origin (rt), ==,
+                   "/openxr/config-home/openxr/1/active_runtime.x86_64.json");
+
+  g_clear_object (&rt);
+
+  rt = srt_system_info_dup_openxr_1_runtime (info, "m68k-linux-gnu");
+  g_assert_nonnull (rt);
+
+  g_assert_cmpstr (srt_openxr_1_runtime_get_json_origin (rt), ==,
+                   "/etc/openxr/1/active_runtime.json");
+
+  g_clear_object (&rt);
+
+  rt = srt_system_info_dup_openxr_1_runtime (info, NULL);
+  g_assert_nonnull (rt);
+
+  g_assert_cmpstr (srt_openxr_1_runtime_get_json_origin (rt), ==,
+                   "/etc/openxr/1/active_runtime.json");
+
+  g_clear_object (&rt);
+
+  inactive = srt_system_info_list_inactive_openxr_1_runtimes (info,
+                                                              test_multiarch_tuples);
+  for (i = 0, iter = inactive;
+       i < G_N_ELEMENTS (inactive_runtimes) && iter != NULL;
+       i++, iter = iter->next)
+    {
+      g_assert_nonnull (iter->data);
+      g_assert_cmpstr (srt_openxr_1_runtime_get_json_origin (iter->data), ==,
+                       inactive_runtimes[i]);
+    }
+
+  g_list_free_full (g_steal_pointer (&inactive), g_object_unref);
+}
+
 int
 main (int argc,
       char **argv)
@@ -4557,6 +4774,9 @@ main (int argc,
               setup, architecture_symlinks, teardown);
   g_test_add ("/system-info/architecture/notlinks", Fixture, NULL,
               setup, architecture_notlinks, teardown);
+
+  g_test_add ("/system-info/openxr/runtimes", Fixture, NULL,
+              setup, openxr_runtimes, teardown);
 
   status = g_test_run ();
 

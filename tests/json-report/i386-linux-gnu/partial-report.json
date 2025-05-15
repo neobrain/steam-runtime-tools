@@ -53,7 +53,8 @@
         "x12/missing" : {
           "renderer" : "G3DVL VDPAU Driver Shared Library version 5.0\n"
         }
-      }
+      },
+      "openxr-1-runtime" : {}
     }
   },
   "locales" : {
@@ -61,6 +62,18 @@
       "resulting-name" : "en_US.UTF-8",
       "charset" : "UTF-8",
       "is_utf8" : true
+    }
+  },
+  "openxr-1" : {
+    "runtimes" : {
+      "active-fallback" : {
+        "json_path" : "/home/me/.config/openxr/1/active_runtime.json",
+        "json_origin" : "/home/me/.config/openxr/1/active_runtime.json",
+        "error" : "Something went wrong",
+        "issues" : [
+          "cannot-load"
+        ]
+      }
     }
   },
   "vulkan" : {

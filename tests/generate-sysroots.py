@@ -95,7 +95,6 @@ fake-icds/etc/xdg/vulkan/icd.d
 fake-icds/datadir/vulkan/icd.d
 fake-icds/egl1
 fake-icds/opt
-fake-icds/openxr/link
 fake-icds/datahome/vulkan/icd.d
 fake-icds/usr/lib/i386-mock-abi
 fake-icds/usr/lib/x86_64-mock-abi/vulkan/icd.d
@@ -104,6 +103,7 @@ fake-icds/usr/lib/x86_64-mock-abi/GL/vulkan/icd.d
 fake-icds/usr/local/share/vulkan/icd.d
 fake-icds/usr/share/egl/egl_external_platform.d
 fake-icds/usr/share/glvnd/egl_vendor.d
+fake-icds/usr/share/openxr/1/link
 fake-icds/usr/share/vulkan/icd.d
 fake-icds-flatpak/etc/glvnd/egl_vendor.d
 fake-icds-flatpak/etc/vulkan/icd.d
@@ -769,7 +769,7 @@ with open(
     "file_format_version": "1.0.0"
 }''')
 
-with open('fake-icds/openxr/monado.json', 'w') as writer:
+with open('fake-icds/usr/share/openxr/1/monado.json', 'w') as writer:
     writer.write('''\
 {
     "file_format_version": "1.0.0",
@@ -778,8 +778,6 @@ with open('fake-icds/openxr/monado.json', 'w') as writer:
         "name": "Monado"
     }
 }''')
-
-os.symlink('../monado.json', 'fake-icds/openxr/link/monado.json')
 
 for subdir, filenames in (
     ('openxr/config-home', [
@@ -796,12 +794,26 @@ for subdir, filenames in (
         'active_runtime.i686.json',
         'active_runtime.json',
         'inactive.json']),
-    ('usr/share', ['openxr_monado.json']),
 ):
     subdir = os.path.join('fake-icds', subdir, 'openxr/1')
     os.makedirs(subdir, mode=0o755, exist_ok=True)
     for filename in filenames:
-        os.symlink('/openxr/monado.json', os.path.join(subdir, filename))
+        shutil.copy('fake-icds/usr/share/openxr/1/monado.json',
+                    os.path.join(subdir, filename))
+
+os.symlink('/usr/local/etc/openxr/1/active_runtime.json',
+           'fake-icds/usr/local/etc/openxr/1/aardvark.json')
+
+for link in (
+    'link/monado.json',
+    # This should always end up overriding monado.json in inactive runtime
+    # listings, since they both share the same canonical path,
+    # and `.alt.json` is ordered before `.json`.
+    'monado.alt.json',
+):
+    os.symlink('/usr/share/openxr/1/monado.json',
+               os.path.join('fake-icds/usr/share/openxr/1', link))
+
 
 with open('fake-icds/openxr/function-overrides.json', 'w') as writer:
     writer.write('''\
