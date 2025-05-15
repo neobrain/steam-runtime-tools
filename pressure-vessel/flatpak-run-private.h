@@ -39,7 +39,7 @@
 /* modified for pressure-vessel */
 gboolean flatpak_run_in_transient_unit (const char *owner,
                                         const char *prefix,
-                                        const char *appid,
+                                        const char *app_id,
                                         GError    **error);
 
 #if 0

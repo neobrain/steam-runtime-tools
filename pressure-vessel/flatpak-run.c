@@ -833,14 +833,14 @@ systemd_unit_name_escape (const gchar *in)
 gboolean
 flatpak_run_in_transient_unit (const char *owner,
                                const char *prefix,
-                               const char *appid,
+                               const char *app_id,
                                GError **error)
 {
   g_autoptr(GDBusConnection) conn = NULL;
   g_autofree char *path = NULL;
   g_autofree char *address = NULL;
   g_autofree char *name = NULL;
-  g_autofree char *appid_escaped = NULL;
+  g_autofree char *app_id_escaped = NULL;
   g_autofree char *job = NULL;
   SystemdManager *manager = NULL;
   GVariantBuilder builder;
@@ -851,6 +851,8 @@ flatpak_run_in_transient_unit (const char *owner,
   struct JobData data;
   gboolean res = FALSE;
   g_autoptr(GMainContextPopDefault) main_context = NULL;
+
+  g_return_val_if_fail (app_id != NULL, FALSE);
 
   path = g_strdup_printf ("/run/user/%d/systemd/private", getuid ());
 
@@ -878,9 +880,11 @@ flatpak_run_in_transient_unit (const char *owner,
   if (!manager)
     goto out;
 
-  appid_escaped = systemd_unit_name_escape (appid);
+  app_id_escaped = systemd_unit_name_escape (app_id);
   name = g_strdup_printf ("app-%s-%s%s-%d.scope",
-                          owner, prefix, appid_escaped, getpid ());
+                          owner, prefix,
+                          app_id_escaped,
+                          getpid ());
 
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sv)"));
 
@@ -888,8 +892,7 @@ flatpak_run_in_transient_unit (const char *owner,
   g_variant_builder_add (&builder, "(sv)",
                          "PIDs",
                          g_variant_new_fixed_array (G_VARIANT_TYPE ("u"),
-                                                    &pid, 1, sizeof (guint32))
-                        );
+                                                    &pid, 1, sizeof (guint32)));
 
   properties = g_variant_builder_end (&builder);
 
