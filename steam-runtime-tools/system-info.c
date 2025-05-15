@@ -3846,7 +3846,8 @@ srt_system_info_dup_openxr_1_runtime (SrtSystemInfo *self,
  *
  * Returns: (transfer full) (element-type SrtOpenXr1Runtime): A list of
  *  opaque #SrtOpenXr1Runtime objects. Free with
- *  `g_list_free_full(runtimes, g_object_unref)`. */
+ *  `g_list_free_full(runtimes, g_object_unref)`.
+ */
 GList *
 srt_system_info_list_inactive_openxr_1_runtimes (SrtSystemInfo *self,
                                                  const char *const *active_multiarch_tuples)
