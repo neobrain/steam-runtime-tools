@@ -182,7 +182,9 @@ pv_wrap_share_sockets (SrtEnvOverlay *container_env,
        * instead of reinventing it */
       (void) sockets;
 
-      flatpak_run_add_wayland_args (sharing_bwrap, FALSE);
+      flatpak_run_add_wayland_args (sharing_bwrap,
+                                    TRUE,     /* allowed */
+                                    FALSE);   /* don't inherit WAYLAND_SOCKET */
       pv_wrap_add_gamescope_args (sharing_bwrap, container_env);
 
       /* When in a Flatpak container the "DISPLAY" env is equal to ":99.0",
