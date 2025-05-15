@@ -4860,6 +4860,10 @@ pv_runtime_take_ld_so_from_provider (PvRuntime *self,
                                         TAKE_FROM_PROVIDER_FLAGS_NONE, error);
 }
 
+/*
+ * @json_set: Ignored and may be %NULL for Vulkan layers.
+ *  Required for other file types.
+ */
 static char *
 get_manifest_relative_to_overrides (gpointer icd,
                                     const char *sub_dir,
@@ -4888,6 +4892,7 @@ get_manifest_relative_to_overrides (gpointer icd,
     }
   else
     {
+      g_assert (json_set != NULL);
       return pv_generate_unique_filepath (sub_dir, digits, seq, json_basename,
                                           arch ? arch->multiarch_tuple : NULL,
                                           json_set);
@@ -4905,13 +4910,14 @@ get_manifest_relative_to_overrides (gpointer icd,
  *  whichever is appropriate for @sub_dir
  * @digits: Number of digits to pad length of numeric prefix
  * @seq: Sequence number of @details, used to make unique filenames
- * @json_set: (element-type filename ignored): A map
+ * @json_set: (element-type filename ignored) (nullable): A map
  *  `{ owned string => itself }` representing the set
  *  of JSON manifests already created. Used internally to notice when
- *  to use unique sub directories to avoid naming conflicts
- * @content_seen: A map `{ unowned string => unowned path }` representing
- *  JSON manifests with unique content, used to detect and suppress
- *  exact duplicates.
+ *  to use unique sub directories to avoid naming conflicts. Ignored and may be
+ *  %NULL for Vulkan layers. Required for other file types.
+ * @content_seen: (nullable): A map `{ unowned string => unowned path }`
+ *  representing JSON manifests with unique content, used to detect and suppress
+ *  exact duplicates. If %NULL, duplicates are not suppressed.
  * @search_path: Used to build `$VK_DRIVER_FILES` or a similar search path
  * @error: Used to raise an error on failure
  *
@@ -4947,7 +4953,6 @@ setup_json_manifest (PvRuntime *self,
   g_return_val_if_fail (self->provider != NULL, FALSE);
   g_return_val_if_fail (bwrap != NULL || self->mutable_sysroot != NULL, FALSE);
   g_return_val_if_fail (sub_dir != NULL, FALSE);
-  g_return_val_if_fail (json_set != NULL, FALSE);
 
   module = SRT_BASE_JSON_GRAPHICS_MODULE (details->icd);
   base = &module->parent;
@@ -4989,7 +4994,7 @@ setup_json_manifest (PvRuntime *self,
       return TRUE;
     }
 
-  if (original_json != NULL)
+  if (original_json != NULL && content_seen != NULL)
     {
       /* In a Flatpak environment with i386 multiarch compatibility,
        * we can see two identical copies of files like nvidia_icd.json,
