@@ -1,6 +1,6 @@
 /*
  * Cut-down version of common/flatpak-run-private.h from Flatpak
- * Last updated: Flatpak 1.15.10
+ * Last updated: Flatpak 1.16.1
  *
  * Copyright © 2017-2024 Collabora Ltd.
  * Copyright © 2014-2024 Red Hat, Inc
@@ -39,7 +39,7 @@
 /* modified for pressure-vessel */
 gboolean flatpak_run_in_transient_unit (const char *owner,
                                         const char *prefix,
-                                        const char *appid,
+                                        const char *app_id,
                                         GError    **error);
 
 #if 0

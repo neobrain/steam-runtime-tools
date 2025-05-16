@@ -1,6 +1,6 @@
 /* vi:set et sw=2 sts=2 cin cino=t0,f0,(0,{s,>2s,n-s,^-s,e-s:
  * Taken from Flatpak
- * Last updated: Flatpak 1.15.10
+ * Last updated: Flatpak 1.16.1
  * Copyright © 2014-2019 Red Hat, Inc
  * SPDX-License-Identifier: LGPL-2.1-or-later
  *
@@ -193,16 +193,19 @@ flatpak_run_add_socket_args_environment (FlatpakBwrap         *bwrap,
                                          FlatpakContextShares  shares,
                                          FlatpakContextSockets sockets)
 {
+  gboolean allow_wayland;
+  gboolean inherit_wayland_socket;
   gboolean has_wayland = FALSE;
   gboolean allow_x11;
-  gboolean inherit_wayland_socket;
 
-  if (sockets & FLATPAK_CONTEXT_SOCKET_WAYLAND)
-    {
-      g_info ("Allowing wayland access");
-      inherit_wayland_socket = (sockets & FLATPAK_CONTEXT_SOCKET_INHERIT_WAYLAND_SOCKET) != 0;
-      has_wayland = flatpak_run_add_wayland_args (bwrap, inherit_wayland_socket);
-    }
+  allow_wayland = (sockets & FLATPAK_CONTEXT_SOCKET_WAYLAND) != 0;
+  inherit_wayland_socket = (sockets & FLATPAK_CONTEXT_SOCKET_INHERIT_WAYLAND_SOCKET) != 0;
+  has_wayland = flatpak_run_add_wayland_args (bwrap,
+#if 0
+                                              app_id, instance_id,
+#endif
+                                              allow_wayland,
+                                              inherit_wayland_socket);
 
   if ((sockets & FLATPAK_CONTEXT_SOCKET_FALLBACK_X11) != 0)
     allow_x11 = !has_wayland;

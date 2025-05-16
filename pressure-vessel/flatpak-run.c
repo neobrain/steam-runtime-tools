@@ -1,9 +1,10 @@
 /* vi:set et sw=2 sts=2 cin cino=t0,f0,(0,{s,>2s,n-s,^-s,e-s:
  * Cut-down version of common/flatpak-run.c from Flatpak
- * Last updated: Flatpak 1.15.10
+ * Last updated: Flatpak 1.16.1
  *
  * Copyright © 2017-2024 Collabora Ltd.
  * Copyright © 2014-2024 Red Hat, Inc
+ * Copyright © 2024 GNOME Foundation, Inc.
  *
  * SPDX-License-Identifier: LGPL-2.1-or-later
  *
@@ -22,6 +23,7 @@
  *
  * Authors:
  *       Alexander Larsson <alexl@redhat.com>
+ *       Hubert Figuière <hub@figuiere.net>
  */
 
 #include "config.h"
@@ -172,12 +174,12 @@ flatpak_run_add_extension_args (FlatpakBwrap      *bwrap,
         {
           g_autofree char *parent = g_path_get_dirname (directory);
 
-          if (g_hash_table_lookup (mounted_tmpfs, parent) == NULL)
+          if (!g_hash_table_contains (mounted_tmpfs, parent))
             {
               flatpak_bwrap_add_args (bwrap,
                                       "--tmpfs", parent,
                                       NULL);
-              g_hash_table_insert (mounted_tmpfs, g_steal_pointer (&parent), "mounted");
+              g_hash_table_add (mounted_tmpfs, g_steal_pointer (&parent));
             }
         }
 
@@ -248,13 +250,13 @@ flatpak_run_add_extension_args (FlatpakBwrap      *bwrap,
                 {
                   g_autofree char *symlink_path = g_build_filename (merge_dir, dent->d_name, NULL);
                   /* Only create the first, because extensions are listed in prio order */
-                  if (g_hash_table_lookup (created_symlink, symlink_path) == NULL)
+                  if (!g_hash_table_contains (created_symlink, symlink_path))
                     {
                       g_autofree char *symlink = g_build_filename (directory, ext->merge_dirs[i], dent->d_name, NULL);
                       flatpak_bwrap_add_args (bwrap,
                                               "--symlink", symlink, symlink_path,
                                               NULL);
-                      g_hash_table_insert (created_symlink, g_steal_pointer (&symlink_path), "created");
+                      g_hash_table_add (created_symlink, g_steal_pointer (&symlink_path));
                     }
                 }
             }
@@ -400,12 +402,22 @@ flatpak_run_add_environment_args (FlatpakBwrap    *bwrap,
       flatpak_bwrap_add_args (bwrap,
                               "--dev", "/dev",
                               NULL);
+
+      if (context->devices & FLATPAK_CONTEXT_DEVICE_USB)
+        {
+          g_info ("Allowing USB device access.");
+
+          if (g_file_test ("/dev/bus/usb", G_FILE_TEST_IS_DIR))
+              flatpak_bwrap_add_args (bwrap, "--dev-bind", "/dev/bus/usb", "/dev/bus/usb", NULL);
+        }
+
       if (context->devices & FLATPAK_CONTEXT_DEVICE_DRI)
         {
           g_info ("Allowing dri access");
           int i;
-          char *dri_devices[] = {
+          static const char * const dri_devices[] = {
             "/dev/dri",
+            "/dev/udmabuf",
             /* mali */
             "/dev/mali",
             "/dev/mali0",
@@ -515,16 +527,19 @@ flatpak_run_add_environment_args (FlatpakBwrap    *bwrap,
   flatpak_run_add_socket_args_environment (bwrap, context->shares, context->sockets, app_id, instance_id);
   flatpak_run_add_session_dbus_args (bwrap, proxy_arg_bwrap, context, flags, app_id);
   flatpak_run_add_system_dbus_args (bwrap, proxy_arg_bwrap, context, flags);
-  flatpak_run_add_a11y_dbus_args (bwrap, proxy_arg_bwrap, context, flags);
+  flatpak_run_add_a11y_dbus_args (bwrap, proxy_arg_bwrap, context, flags, app_id);
 
   /* Must run this before spawning the dbus proxy, to ensure it
      ends up in the app cgroup */
-  if (!flatpak_run_in_transient_unit (app_id, &my_error))
+  if (instance_id)
     {
-      /* We still run along even if we don't get a cgroup, as nothing
-         really depends on it. Its just nice to have */
-      g_info ("Failed to run in transient scope: %s", my_error->message);
-      g_clear_error (&my_error);
+      if (!flatpak_run_in_transient_unit (app_id, instance_id, &my_error))
+        {
+          /* We still run along even if we don't get a cgroup, as nothing
+             really depends on it. Its just nice to have */
+          g_info ("Failed to run in transient scope: %s", my_error->message);
+          g_clear_error (&my_error);
+        }
     }
 
   if (!flatpak_run_maybe_start_dbus_proxy (bwrap, proxy_arg_bwrap,
@@ -567,11 +582,15 @@ static const ExportData default_exports[] = {
   /* Ensure our container environment variable takes precedence over the one
    * set by a container manager. */
   {"container", NULL},
+  /* We always make the zoneinfo available at /usr/share/zoneinfo even if it
+   * is somewhere else outside of the sandbox. */
+  {"TZDIR", NULL},
 
   /* Some env vars are common enough and will affect the sandbox badly
      if set on the host. We clear these always. If updating this list,
      also update the list in flatpak-run.xml. */
   {"PYTHONPATH", NULL},
+  {"PYTHONPYCACHEPREFIX", NULL},
   {"PERLLIB", NULL},
   {"PERL5LIB", NULL},
   {"XCURSOR_PATH", NULL},
@@ -833,14 +852,14 @@ systemd_unit_name_escape (const gchar *in)
 gboolean
 flatpak_run_in_transient_unit (const char *owner,
                                const char *prefix,
-                               const char *appid,
+                               const char *app_id,
                                GError **error)
 {
   g_autoptr(GDBusConnection) conn = NULL;
   g_autofree char *path = NULL;
   g_autofree char *address = NULL;
   g_autofree char *name = NULL;
-  g_autofree char *appid_escaped = NULL;
+  g_autofree char *app_id_escaped = NULL;
   g_autofree char *job = NULL;
   SystemdManager *manager = NULL;
   GVariantBuilder builder;
@@ -851,6 +870,8 @@ flatpak_run_in_transient_unit (const char *owner,
   struct JobData data;
   gboolean res = FALSE;
   g_autoptr(GMainContextPopDefault) main_context = NULL;
+
+  g_return_val_if_fail (app_id != NULL, FALSE);
 
   path = g_strdup_printf ("/run/user/%d/systemd/private", getuid ());
 
@@ -878,9 +899,11 @@ flatpak_run_in_transient_unit (const char *owner,
   if (!manager)
     goto out;
 
-  appid_escaped = systemd_unit_name_escape (appid);
+  app_id_escaped = systemd_unit_name_escape (app_id);
   name = g_strdup_printf ("app-%s-%s%s-%d.scope",
-                          owner, prefix, appid_escaped, getpid ());
+                          owner, prefix,
+                          app_id_escaped,
+                          getpid ());
 
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sv)"));
 
@@ -888,8 +911,7 @@ flatpak_run_in_transient_unit (const char *owner,
   g_variant_builder_add (&builder, "(sv)",
                          "PIDs",
                          g_variant_new_fixed_array (G_VARIANT_TYPE ("u"),
-                                                    &pid, 1, sizeof (guint32))
-                        );
+                                                    &pid, 1, sizeof (guint32)));
 
   properties = g_variant_builder_end (&builder);
 
@@ -1940,13 +1962,13 @@ setup_seccomp (FlatpakBwrap   *bwrap,
     /* seccomp can't look into clone3()'s struct clone_args to check whether
      * the flags are OK, so we have no choice but to block clone3().
      * Return ENOSYS so user-space will fall back to clone().
-     * (GHSA-67h7-w3jq-vh4q; see also https://github.com/moby/moby/commit/9f6b562d) */
+     * (CVE-2021-41133; see also https://github.com/moby/moby/commit/9f6b562d) */
     {SCMP_SYS (clone3), ENOSYS},
 
     /* New mount manipulation APIs can also change our VFS. There's no
      * legitimate reason to do these in the sandbox, so block all of them
      * rather than thinking about which ones might be dangerous.
-     * (GHSA-67h7-w3jq-vh4q) */
+     * (CVE-2021-41133) */
     {SCMP_SYS (open_tree), ENOSYS},
     {SCMP_SYS (move_mount), ENOSYS},
     {SCMP_SYS (fsopen), ENOSYS},
@@ -3076,11 +3098,18 @@ flatpak_run_app (FlatpakDecomposed   *app_ref,
     }
 
   if (sandboxed)
-    flatpak_context_make_sandboxed (app_context);
+    {
+      flatpak_context_make_sandboxed (app_context);
+      flatpak_context_dump (app_context, "After making sandboxed");
+    }
 
   if (extra_context)
-    flatpak_context_merge (app_context, extra_context);
+    {
+      flatpak_context_dump (extra_context, "Command-line overrides");
+      flatpak_context_merge (app_context, extra_context);
+    }
 
+  flatpak_context_dump (app_context, "Final context");
   original_runtime_files = flatpak_deploy_get_files (runtime_deploy);
 
   if (custom_usr_path != NULL)

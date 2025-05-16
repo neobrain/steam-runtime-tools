@@ -1,6 +1,6 @@
 /* vi:set et sw=2 sts=2 cin cino=t0,f0,(0,{s,>2s,n-s,^-s,e-s:
  * Taken from Flatpak
- * Last updated: Flatpak 1.15.10
+ * Last updated: Flatpak 1.16.1
  * Copyright © 2014-2019 Red Hat, Inc
  * SPDX-License-Identifier: LGPL-2.1-or-later
  *
@@ -220,7 +220,7 @@ extract_unix_path_from_dbus_address (const char *address)
 
 #if 0
 static char *
-create_proxy_socket (char *template)
+create_proxy_socket (const char *template)
 {
   g_autofree char *user_runtime_dir = flatpak_get_real_xdg_runtime_dir ();
   g_autofree char *proxy_socket_dir = g_build_filename (user_runtime_dir, ".dbus-proxy", NULL);
@@ -306,7 +306,7 @@ flatpak_run_add_session_dbus_args (FlatpakBwrap   *app_bwrap)
 
       if (!unrestricted)
         {
-          flatpak_context_add_bus_filters (context, app_id, TRUE, flags & FLATPAK_RUN_FLAG_SANDBOX, proxy_arg_bwrap);
+          flatpak_context_add_bus_filters (context, app_id, FLATPAK_SESSION_BUS, flags & FLATPAK_RUN_FLAG_SANDBOX, proxy_arg_bwrap);
 
           /* Allow calling any interface+method on all portals, but only receive broadcasts under /org/desktop/portal */
           flatpak_bwrap_add_arg (proxy_arg_bwrap,
@@ -388,7 +388,7 @@ flatpak_run_add_system_dbus_args (FlatpakBwrap   *app_bwrap)
       flatpak_bwrap_add_args (proxy_arg_bwrap, real_dbus_address, proxy_socket, NULL);
 
       if (!unrestricted)
-        flatpak_context_add_bus_filters (context, NULL, FALSE, flags & FLATPAK_RUN_FLAG_SANDBOX, proxy_arg_bwrap);
+        flatpak_context_add_bus_filters (context, NULL, FLATPAK_SYSTEM_BUS, flags & FLATPAK_RUN_FLAG_SANDBOX, proxy_arg_bwrap);
 
       if ((flags & FLATPAK_RUN_FLAG_LOG_SYSTEM_BUS) != 0)
         flatpak_bwrap_add_args (proxy_arg_bwrap, "--log", NULL);
@@ -416,6 +416,7 @@ flatpak_run_add_a11y_dbus_args (FlatpakBwrap *app_bwrap)
   g_autoptr(GDBusMessage) msg = NULL;
 #if 0
   g_autofree char *proxy_socket = NULL;
+  gboolean sandboxed;
 #endif
   const char *value;
 
@@ -531,6 +532,16 @@ flatpak_run_add_a11y_dbus_args (FlatpakBwrap *app_bwrap)
                           "--call=org.a11y.atspi.Registry=org.a11y.atspi.DeviceEventController.NotifyListenersSync@/org/a11y/atspi/registry/deviceeventcontroller",
                           "--call=org.a11y.atspi.Registry=org.a11y.atspi.DeviceEventController.NotifyListenersAsync@/org/a11y/atspi/registry/deviceeventcontroller",
                           NULL);
+
+  sandboxed = flags & FLATPAK_RUN_FLAG_SANDBOX;
+
+  flatpak_context_add_bus_filters (context, app_id, FLATPAK_A11Y_BUS, sandboxed, proxy_arg_bwrap);
+
+  /* Allow the main sandbox instance call org.a11y.atspi.Socket.Embedded() on
+   * well-known names of the subsandboxes' objects on the a11y bus.
+   */
+  if (!sandboxed)
+    flatpak_bwrap_add_arg_printf (proxy_arg_bwrap, "--call=%s.Sandboxed.*=org.a11y.atspi.Socket.Embedded", app_id);
 
   if ((flags & FLATPAK_RUN_FLAG_LOG_A11Y_BUS) != 0)
     flatpak_bwrap_add_args (proxy_arg_bwrap, "--log", NULL);

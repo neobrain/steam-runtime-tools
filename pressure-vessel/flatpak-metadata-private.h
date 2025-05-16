@@ -1,6 +1,6 @@
 /*
  * Taken from Flatpak
- * Last updated: Flatpak 1.15.10
+ * Last updated: Flatpak 1.16.1
  *
  * Copyright 2014 Red Hat, Inc
  * SPDX-License-Identifier: LGPL-2.1-or-later
@@ -70,6 +70,7 @@ G_BEGIN_DECLS
 
 #define FLATPAK_METADATA_GROUP_SESSION_BUS_POLICY "Session Bus Policy"
 #define FLATPAK_METADATA_GROUP_SYSTEM_BUS_POLICY "System Bus Policy"
+#define FLATPAK_METADATA_GROUP_A11Y_BUS_POLICY "Accessibility Bus Policy"
 #define FLATPAK_METADATA_GROUP_PREFIX_POLICY "Policy "
 #define FLATPAK_METADATA_GROUP_ENVIRONMENT "Environment"
 
@@ -106,5 +107,9 @@ G_BEGIN_DECLS
 #define FLATPAK_METADATA_GROUP_DCONF "X-DConf"
 #define FLATPAK_METADATA_KEY_DCONF_PATHS "paths"
 #define FLATPAK_METADATA_KEY_DCONF_MIGRATE_PATH "migrate-path"
+
+#define FLATPAK_METADATA_GROUP_USB_DEVICES "USB Devices"
+#define FLATPAK_METADATA_KEY_USB_ENUMERABLE_DEVICES "enumerable-devices"
+#define FLATPAK_METADATA_KEY_USB_HIDDEN_DEVICES "hidden-devices"
 
 G_END_DECLS
