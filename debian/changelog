@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250515.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250516.0) steamrt; urgency=medium
 
   [ Ryan Gonzalez ]
   * Diagnostic tools:
@@ -12,7 +12,7 @@ steam-runtime-tools (0.20250515.0) UNRELEASED; urgency=medium
     - Update Flatpak-derived code from 1.16.1
   * Documentation updates
 
- -- Simon McVittie <smcv@collabora.com>  Thu, 15 May 2025 16:41:18 +0100
+ -- Simon McVittie <smcv@collabora.com>  Fri, 16 May 2025 18:14:55 +0100
 
 steam-runtime-tools (0.20250501.0) steamrt; urgency=medium
 
