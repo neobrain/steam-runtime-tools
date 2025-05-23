@@ -2506,6 +2506,11 @@ typedef struct
   gchar *resolved_libraries[PV_N_SUPPORTED_ARCHITECTURES];
   /* Keyed by the index of a multiarch tuple in multiarch_tuples. */
   IcdKind kinds[PV_N_SUPPORTED_ARCHITECTURES];
+  /* If the corresponding item in @kinds is ICD_KIND_ABSOLUTE,
+   * a path accessible in the container from which the library will
+   * be loadable: might look like either
+   * /run/host/usr/lib/.../libfoo.so or /overrides/lib/.../libfoo.so
+   * Otherwise %NULL. */
   gchar *paths_in_container[PV_N_SUPPORTED_ARCHITECTURES];
 } IcdDetails;
 
@@ -2900,6 +2905,7 @@ bind_icds (PvRuntime *self,
       g_autofree gchar *numbered_subdir = NULL;
       g_autofree gchar *dependency_pattern = NULL;
       g_autofree gchar *seq_str = NULL;
+      g_autofree gchar *target = NULL;
       glnx_autofd int numbered_subdir_fd = -1;
       const char *dest_relative_to_overrides = NULL;
       const char *base;
@@ -2932,8 +2938,6 @@ bind_icds (PvRuntime *self,
            * if and only if it would have done so for icd_details[other]. */
           if (other != G_MAXSIZE)
             {
-              g_autofree gchar *target = NULL;
-
               g_assert (other < i);
               g_assert (basenames[other] != NULL);
               g_debug ("\"%s\" is the same driver as \"%s\"",
@@ -3019,13 +3023,24 @@ bind_icds (PvRuntime *self,
 
           continue;
         }
-      else if (!S_ISLNK (stat_buf.st_mode))
+      else
         {
+          g_autoptr(GError) local_error = NULL;
+
+          g_assert (target == NULL);
+          target = glnx_readlinkat_malloc (dest_fd, base, NULL, &local_error);
+
           /* This is unexpected! capsule-capture-libs creates symlinks,
-           * not any other sort of file */
-          g_warning ("\"%s/%s/%s\" was created but not as a symlink (%o)",
-                     self->overrides, dest_relative_to_overrides, base,
-                     stat_buf.st_mode);
+           * not any other sort of file, and their target should be
+           * an absolute path. */
+          if (target == NULL)
+            g_warning ("Cannot read target of \"%s/%s/%s\": %s",
+                       self->overrides, dest_relative_to_overrides, base,
+                       local_error->message);
+          else if (target[0] != '/')
+            g_warning ("Target of \"%s/%s/%s\" is relative: \"%s\"",
+                       self->overrides, dest_relative_to_overrides, base,
+                       target);
         }
 
       /* Only add the numbered subdirectories to the search path. Their
@@ -3044,11 +3059,14 @@ bind_icds (PvRuntime *self,
                                             details->resolved_libraries[multiarch_index]);
       g_ptr_array_add (libdir_patterns, g_steal_pointer (&dependency_pattern));
 
-      details->paths_in_container[multiarch_index] = g_build_filename (arch->libdir_in_container,
-                                                                       subdir,
-                                                                       seq_str ? seq_str : "",
-                                                                       base,
-                                                                       NULL);
+      if (G_LIKELY (target != NULL && target[0] == '/'))
+        details->paths_in_container[multiarch_index] = g_steal_pointer (&target);
+      else
+        details->paths_in_container[multiarch_index] = g_build_filename (arch->libdir_in_container,
+                                                                         subdir,
+                                                                         seq_str ? seq_str : "",
+                                                                         base,
+                                                                         NULL);
     }
 
 success:
