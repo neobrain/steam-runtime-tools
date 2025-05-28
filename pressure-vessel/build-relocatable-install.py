@@ -181,6 +181,60 @@ def package_owning_file(real):
     return binary, sources.pop()
 
 
+def filename_is_friendly(s: str) -> bool:
+    '''
+    Return true if the filename is non-problematic for Windows
+    filesystems, Steampipe, Unix shells and so on.
+    '''
+
+    # Some relevant restrictions:
+    #
+    # * Windows and Steampipe don't allow <>:"\|?*
+    # * Windows doesn't allow surrogate escapes U+DC80 to U+DCFF
+    # * #$&'()[]{};` are special to Unix shells in general
+    # * !^ are special to interactive Unix shells
+    # * % is special to Windows shells
+    # * , is special to the Steam bootstrapper
+    # * whitespace is awkward and not necessarily handled consistently
+    # * ASCII control characters are not necessarily handled consistently
+    # * non-ASCII is not necessarily handled consistently
+
+    for c in s:
+        if c >= 'A' and c <= 'Z':
+            continue
+        elif c >= 'a' and c <= 'z':
+            continue
+        elif c >= '0' and c <= '9':
+            continue
+        elif c not in '+-./=@_~':
+            return False
+
+    # ~ is special to Unix shells at the beginning of an argument
+    if s.startswith('~') or '/~' in s:
+        return False
+
+    # Unix command-line tools can get confused by basenames starting
+    # with a dash
+    if s.startswith('-') or '/-' in s:
+        return False
+
+    # Also avoid filenames like __pycache__/*.pyc, which might otherwise
+    # be deleted by "helpful" file cleaning tools
+    if (
+        '/.cache/' in s
+        or '/__pycache__/' in s
+        or '/tmp/' in s
+        or s.endswith((
+            '.pyc',
+            '.pyo',
+            'CACHEDIR.TAG',
+        ))
+    ):
+        return False
+
+    return True
+
+
 def main():
     # type: () -> None
 
@@ -713,6 +767,18 @@ def main():
                         v_check_call([
                             'dcmd', 'cp', '-al', filename, args.cache + '/',
                         ])
+
+        for dir_path, dirs, files in os.walk(
+            installation,
+            topdown=True,
+            followlinks=False,
+        ):
+            for item in dirs + files:
+                if not filename_is_friendly(item):
+                    raise AssertionError(
+                        'Filename %r might not be Steampipe-compatible'
+                        % item,
+                    )
 
         if args.archive:
             if args.archive_versions:
