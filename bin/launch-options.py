@@ -55,8 +55,8 @@ RUNTIMES = [
     'scout',    # Steam Runtime 1 'scout', based on Ubuntu 12.04
     'soldier',  # Steam Runtime 2 'soldier', based on Debian 10
     'sniper',   # Steam Runtime 3 'sniper', based on Debian 11
-    'medic',    # Steam Runtime 4 'medic', provisionally based on Debian 12
-    'steamrt5',     # Steam Runtime 5, provisionally based on Debian 13
+    'steamrt4',     # Steam Runtime 4, provisionally based on Debian 13
+    'steamrt5',     # Steam Runtime 5, provisionally based on Debian 14+
 ]
 
 # All available compatibility targets, including Windows (via Proton)
