@@ -1076,12 +1076,12 @@ class Main:
                 filter_exclusive_priority = '9'
 
                 if runtime.suite.startswith('steamrt'):
-                    # steamrt5, steamrt6, ... get priority 5, 6, ...
+                    # steamrt4, steamrt5, ... get priority 4, 5, ...
                     # If we get to steamrt9 with this limitation still
                     # present, we'll have to bump the priority of SLR 1.0
                     # or teach the Steam Client a different mechanism.
                     major_version = runtime.suite[len('steamrt'):]
-                    assert int(major_version) >= 5, major_version
+                    assert int(major_version) >= 4, major_version
                     assert int(major_version) <= 9, major_version
                     filter_exclusive_priority = major_version
                 elif runtime.suite == 'scout':
