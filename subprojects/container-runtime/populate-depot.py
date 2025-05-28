@@ -760,6 +760,21 @@ class Main:
         if self.steam_app_id and self.steam_depot_id:
             self.write_steampipe_config()
 
+        if not self.include_sdk_sysroot:
+            depot = Path(self.depot)
+
+            for dir_path, dirs, files in os.walk(
+                depot,
+                topdown=True,
+                followlinks=False,
+            ):
+                for item in dirs + files:
+                    if not self.filename_is_friendly(item):
+                        raise AssertionError(
+                            f'Filename {item!r} might not be '
+                            'Steampipe-compatible',
+                        )
+
         if self.depot_archive:
             self.do_depot_archive(self.depot_archive)
 
