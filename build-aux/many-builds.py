@@ -159,6 +159,7 @@ class Environment:
             ),
             'sniper': 'registry.gitlab.steamos.cloud/steamrt/sniper/sdk:beta',
             'medic': '',
+            'steamrt4': '',
             'steamrt5': '',
         }
 

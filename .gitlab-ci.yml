@@ -57,6 +57,10 @@ variables:
     MEDIC_DOCKER_REGISTRY: ''
     MEDIC_DOCKER_IMAGE: ''
     MEDIC_APT_SOURCES_FILE: ''
+    # There's no public Docker image for SteamRT 4 right now
+    STEAMRT4_DOCKER_REGISTRY: ''
+    STEAMRT4_DOCKER_IMAGE: ''
+    STEAMRT4_APT_SOURCES_FILE: ''
     # There's no public Docker image for SteamRT 5 right now
     STEAMRT5_DOCKER_REGISTRY: ''
     STEAMRT5_DOCKER_IMAGE: ''

@@ -49,6 +49,12 @@ case "$(. /usr/lib/os-release; echo "${VERSION_CODENAME-${VERSION}}")" in
         fi
         ;;
 
+    (steamrt4)
+        if [ -n "${STEAMRT4_APT_SOURCES_FILE-}" ]; then
+            cp "${STEAMRT4_APT_SOURCES_FILE}" /etc/apt/sources.list
+        fi
+        ;;
+
     (steamrt5)
         if [ -n "${STEAMRT5_APT_SOURCES_FILE-}" ]; then
             cp "${STEAMRT5_APT_SOURCES_FILE}" /etc/apt/sources.list
