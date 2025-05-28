@@ -541,13 +541,17 @@ def main():
                     assert source_version in ('', after_equals)
                     source_version = after_equals
 
+                # Omit the optional epoch marker if present, like
+                # dpkg-buildpackage does, to avoid ':' in filenames
+                safe_version = re.sub(r'^[0-9]+:', '', source_version)
+
                 if source in DIFFERENT_COPYRIGHT_FILES:
                     install(
                         '/usr/share/doc/{}/copyright'.format(package),
                         os.path.join(
                             installation,
                             'metadata',
-                            '{}_{}.txt'.format(package, source_version),
+                            '{}_{}.txt'.format(package, safe_version),
                         ),
                     )
                 else:
@@ -556,7 +560,7 @@ def main():
                         os.path.join(
                             installation,
                             'metadata',
-                            '{}_{}.txt'.format(source, source_version),
+                            '{}_{}.txt'.format(source, safe_version),
                         ),
                     )
             else:
