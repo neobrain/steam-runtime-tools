@@ -1396,7 +1396,7 @@ class Main:
         #
         # * Windows and Steampipe don't allow <>:"\|?*
         # * Windows doesn't allow surrogate escapes U+DC80 to U+DCFF
-        # * #$&'()[]{};`~ are special to Unix shells in general
+        # * #$&'()[]{};` are special to Unix shells in general
         # * !^ are special to interactive Unix shells
         # * % is special to Windows shells
         # * , is special to the Steam bootstrapper
@@ -1411,8 +1411,12 @@ class Main:
                 continue
             elif c >= '0' and c <= '9':
                 continue
-            elif c not in '+-./=@_':
+            elif c not in '+-./=@_~':
                 return False
+
+        # ~ is special to Unix shells at the beginning of an argument
+        if s.startswith('~') or '/~' in s:
+            return False
 
         # Unix command-line tools can get confused by basenames starting
         # with a dash
