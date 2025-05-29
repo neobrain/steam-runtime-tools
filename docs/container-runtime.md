@@ -179,17 +179,16 @@ Steam Linux Runtime 1.0 (scout) container via *Properties* → *Compatibility*.
 
 ## Possible future Steam Runtime branches
 
-### <a name="medic"></a>Steam Runtime 4, `medic`
+### <a name="steamrt4"></a>Steam Runtime 4
 
-[medic]: #medic
+[steamrt4]: #steamrt4
 
-Steam Runtime 4, `medic`, is a prototype runtime currently based on Debian 12
-(released in 2023).
-Like [`soldier`][soldier],
-it is structurally similar to [`sniper`][sniper],
-but its base distribution is 2 years newer than for `sniper`.
+Steam Runtime 4 is a prototype runtime currently based on Debian 13
+(which is expected to be released in mid 2025).
+It is structurally similar to `sniper`,
+but with a newer base distribution.
 
-`medic` is not yet available as a compatibility tool, and its
+`steamrt4` is not yet available as a compatibility tool, and its
 contents are subject to change depending on testing results and game
 requirements.
 If it becomes available as a new runtime environment,
@@ -199,17 +198,22 @@ the procedure for selecting it is likely to be very similar to sniper.
 
 [steamrt5]: #steamrt5
 
-Steam Runtime 5 is a prototype runtime currently based on Debian 13
-(which is expected to be released in mid 2025).
-Like [`soldier`][soldier] and [`medic`][medic],
-it is structurally similar to `sniper`,
+Steam Runtime 5 is a prototype runtime currently based on Debian testing.
+It is structurally similar to `sniper` and `steamrt4`,
 but with a newer base distribution.
 
-`steamrt5` is not yet available as a compatibility tool, and its
-contents are subject to change depending on testing results and game
-requirements.
-If it becomes available as a new runtime environment,
-the procedure for selecting it is likely to be very similar to sniper.
+## Discontinued Steam Runtime branches
+
+<a name="medic"></a>
+medic was a codename for an earlier attempt at Steam Runtime 4,
+based on Debian 12 (released in mid 2023).
+It was superseded by a Debian-13-based `steamrt4`.
+and we do not plan to release a Debian-12-based runtime.
+
+<a name="spy"></a>
+spy was an earlier attempt at Steam Runtime 2,
+based on Ubuntu 18.04.
+It was superseded by the Debian-10-based `soldier` runtime.
 
 ## <a name="why"></a>Why the container runtimes are necessary
 

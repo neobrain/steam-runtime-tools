@@ -15,8 +15,7 @@ We have:
 * scout: dpkg 1.17.5 (backport), apt 1.0.9.8.6 (backport)
 * soldier: dpkg 1.19.8, apt 1.8.2.3 (from Debian 10)
 * sniper/steamrt3c: dpkg 1.20.13, apt 2.2.4 (from Debian 11)
-* medic: dpkg 1.21.22, apt 2.6.1 (from Debian 12)
-* steamrt5: dpkg 1.22.x, apt 2.9.x (from Debian 13)
+* steamrt4: dpkg 1.22.x, apt 3.0.x (from Debian 13)
 
 therefore we can use:
 
@@ -39,7 +38,7 @@ therefore we can use:
     * NO: scout
     * NO: soldier
     * NO: sniper/steamrt3c
-    * YES: medic and up
+    * YES: steamrt4 and up
 
 ## debhelper features
 
@@ -48,8 +47,7 @@ We have:
 * scout: debhelper 9.20131227 (backport)
 * soldier: debhelper 12.1.1 (from Debian 10)
 * sniper/steamrt3c: debhelper 13.3.4 (from Debian 11)
-* medic: debhelper 13.11.4 (from Debian 12)
-* steamrt5: debhelper 13.24.1 (from Debian 13)
+* steamrt4: debhelper 13.24.2 (from Debian 13)
 
 therefore we can use:
 
@@ -80,7 +78,7 @@ therefore we can use:
     * NO: scout
     * NO: soldier
     * NO: sniper/steamrt3c
-    * YES: medic and up
+    * YES: steamrt4 and up
 
 ## glibc
 
@@ -90,8 +88,7 @@ We have:
   OS's version in legacy runtime
 * soldier: 2.28 (from Debian 10) in the SDK, 2.31 (from Debian 11) at runtime
 * sniper/steamrt3c: 2.31 (from Debian 11)
-* medic: 2.36 (from Debian 12)
-* steamrt5: 2.41 (from Debian 13)
+* steamrt4: 2.41 (from Debian 13)
 
 ## GLib
 
@@ -100,8 +97,7 @@ We have:
 * scout: 2.58.3 (backport from Debian 10)
 * soldier: 2.58.3 (from Debian 10)
 * sniper/steamrt3c: 2.66.8 (from Debian 11)
-* medic: 2.74.6 (from Debian 12)
-* steamrt5: 2.84.x (from Debian 13)
+* steamrt4: 2.84.x (from Debian 13)
 
 plus backports via `libglnx` in selected projects.
 
@@ -112,8 +108,7 @@ We have:
 * scout: 3.18.4 (backport from Debian 11)
 * soldier: 3.18.4 (backport from Debian 11)
 * sniper/steamrt3c: 3.25.1 (backport from Debian 12)
-* medic: 3.25.1 (from Debian 12)
-* steamrt5: 3.31.x (from Debian 13)
+* steamrt4: 3.31.x (from Debian 13)
 
 ## Meson
 
@@ -122,8 +117,7 @@ We have:
 * scout: 0.56.2 (backport from Debian 11)
 * soldier: 1.0.1 (backport from Debian 12)
 * sniper/steamrt3c: 1.0.1 (backport from Debian 12)
-* medic: 1.0.1 (from Debian 12)
-* steamrt5: 1.7.x (from Debian 13)
+* steamrt4: 1.7.x (from Debian 13)
 
 ## Python
 
@@ -132,8 +126,7 @@ We have:
 * scout: 2.7, 3.2 (default), 3.5 (backport)
 * soldier: 2.7, 3.7 (from Debian 10)
 * sniper/steamrt3c: 3.9 (from Debian 11)
-* medic: 3.11 (from Debian 12)
-* steamrt5: 3.13 (from Debian 13)
+* steamrt4: 3.13 (from Debian 13)
 
 therefore we can use:
 
