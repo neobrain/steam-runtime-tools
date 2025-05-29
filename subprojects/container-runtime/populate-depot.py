@@ -904,6 +904,16 @@ class Main:
 
                 break
 
+        if pv_version.version in ('0.20250501.0', '0.20250516.0'):
+            # Workaround: some versions contained non-Steampipe-friendly
+            # filenames
+            metadata = Path(self.depot, 'pressure-vessel', 'metadata')
+            licenses = metadata.glob('*.txt')
+
+            for license_file in licenses:
+                new_name = metadata / license_file.name.replace(':', '_')
+                license_file.rename(new_name)
+
         if pressure_vessel_runtime is not None:
             pv_version.runtime = pressure_vessel_runtime.suite or ''
             pv_version.runtime_version = (
