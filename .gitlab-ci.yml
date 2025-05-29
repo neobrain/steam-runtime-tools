@@ -1,3 +1,6 @@
+# Copyright 2019-2025 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
 variables:
     BUILD_DEPENDENCIES: >-
         build-essential
