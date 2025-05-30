@@ -760,6 +760,21 @@ class Main:
         if self.steam_app_id and self.steam_depot_id:
             self.write_steampipe_config()
 
+        if not self.include_sdk_sysroot:
+            depot = Path(self.depot)
+
+            for dir_path, dirs, files in os.walk(
+                depot,
+                topdown=True,
+                followlinks=False,
+            ):
+                for item in dirs + files:
+                    if not self.filename_is_friendly(item):
+                        raise AssertionError(
+                            f'Filename {item!r} might not be '
+                            'Steampipe-compatible',
+                        )
+
         if self.depot_archive:
             self.do_depot_archive(self.depot_archive)
 
@@ -903,6 +918,16 @@ class Main:
                         pv_version.version = v
 
                 break
+
+        if pv_version.version in ('0.20250501.0', '0.20250516.0'):
+            # Workaround: some versions contained non-Steampipe-friendly
+            # filenames
+            metadata = Path(self.depot, 'pressure-vessel', 'metadata')
+            licenses = metadata.glob('*.txt')
+
+            for license_file in licenses:
+                new_name = metadata / license_file.name.replace(':', '_')
+                license_file.rename(new_name)
 
         if pressure_vessel_runtime is not None:
             pv_version.runtime = pressure_vessel_runtime.suite or ''
@@ -1386,7 +1411,7 @@ class Main:
         #
         # * Windows and Steampipe don't allow <>:"\|?*
         # * Windows doesn't allow surrogate escapes U+DC80 to U+DCFF
-        # * #$&'()[]{};`~ are special to Unix shells in general
+        # * #$&'()[]{};` are special to Unix shells in general
         # * !^ are special to interactive Unix shells
         # * % is special to Windows shells
         # * , is special to the Steam bootstrapper
@@ -1401,8 +1426,12 @@ class Main:
                 continue
             elif c >= '0' and c <= '9':
                 continue
-            elif c not in '+-./=@_':
+            elif c not in '+-./=@_~':
                 return False
+
+        # ~ is special to Unix shells at the beginning of an argument
+        if s.startswith('~') or '/~' in s:
+            return False
 
         # Unix command-line tools can get confused by basenames starting
         # with a dash
