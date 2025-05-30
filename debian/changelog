@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250530.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250530.0) steamrt; urgency=medium
 
   * pressure-vessel:
     - Don't include the epoch in metadata filenames describing licensing
@@ -16,7 +16,7 @@ steam-runtime-tools (0.20250530.0) UNRELEASED; urgency=medium
   * Documentation updates (steamrt/tasks#741)
   * Tests/CI updates for steamrt4 (steamrt/tasks#741)
 
- -- Simon McVittie <smcv@collabora.com>  Fri, 30 May 2025 16:02:58 +0100
+ -- Simon McVittie <smcv@collabora.com>  Fri, 30 May 2025 16:08:50 +0100
 
 steam-runtime-tools (0.20250516.0) steamrt; urgency=medium
 
