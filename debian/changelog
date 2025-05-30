@@ -1,3 +1,23 @@
+steam-runtime-tools (0.20250530.0) UNRELEASED; urgency=medium
+
+  * pressure-vessel:
+    - Don't include the epoch in metadata filenames describing licensing
+      and copyright status, fixing a regression in 0.20250501.0 where our
+      Steampipe depots contained filenames that aren't allowed
+      (steamrt/tasks#746)
+  * SteamLinuxRuntime_*:
+    - Relax restrictions on ~ in filenames (steamrt/tasks#746)
+    - Set `filter_exclusive_priority` for steamrt4.
+      medic has been discontinued and steamrt4 is going to be a
+      Debian-13-based runtime instead, with steamrt5 being repurposed as
+      the development branch based on Debian testing. (steamrt/tasks#741)
+  * s-r-launch-options:
+    - Update labelling of Steam Runtime branches (steamrt/tasks#741)
+  * Documentation updates (steamrt/tasks#741)
+  * Tests/CI updates for steamrt4 (steamrt/tasks#741)
+
+ -- Simon McVittie <smcv@collabora.com>  Fri, 30 May 2025 16:02:58 +0100
+
 steam-runtime-tools (0.20250516.0) steamrt; urgency=medium
 
   [ Ryan Gonzalez ]
