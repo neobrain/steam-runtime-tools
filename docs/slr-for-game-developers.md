@@ -667,6 +667,54 @@ $ .../SteamLinuxRuntime_sniper/pressure-vessel/bin/steam-runtime-launch-client \
     --terminate
 ```
 
+### <a name="coredump"></a>Post-mortem debugging a core dump
+
+If a game crashes intermittently or unpredictably,
+usually the easiest way to debug it is to configure an automatic core-dump
+collection service,
+such as systemd's `systemd-coredumpd`,
+and retrieve the core-dump from there after the game has already crashed.
+However,
+this requires some special steps to make the runtime's library stack
+visible to the debugger.
+
+The easiest way to do this is to
+[run an interactive shell](#shell),
+and use the shell as a source of runtime libraries:
+
+  * Set the game's Launch Options to `PRESSURE_VESSEL_SHELL=instead %command%`,
+    or use `steam-runtime-launch-options` with
+    *Interactive shell* → *Instead of running the command*
+
+  * Launch the game,
+    and get an `xterm` instead
+
+  * In the `xterm`,
+    run command
+    `echo $$`
+    to get the shell's process ID,
+    and make a note of it
+
+  * Leave the `xterm` open:
+    we will use it as a way to access what's inside the container
+
+  * In a separate shell on the host,
+    [set environment variable `DEBUGINFOD_URLS`](#debuginfod),
+    for example
+    `export DEBUGINFOD_URLS="https://debuginfod.steamos.cloud https://debuginfod.archlinux.org"`
+    on an Arch system
+
+  * Still in that same shell,
+    run command
+    `coredumpctl debug --debugger-arguments=--early-init-eval-command='set\ sysroot\ /proc/12345/root'`,
+    replacing 12345 with the process ID that you noted earlier
+
+  * Now you can use `gdb` commands like `thread apply all bt full`
+    as you normally would
+
+  * Back in the `xterm`,
+    you can re-run the game if necessary by running command `"$@"`
+
 ## <a name="layout"></a>Layout of the container runtime
 
 In general, the container runtime is similar to Debian and Ubuntu.
