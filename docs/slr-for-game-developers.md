@@ -1186,7 +1186,7 @@ EOF
 $ gdb -x gdb-config
 ```
 
-## Getting debug symbols
+## <a name="debuginfod"></a>Getting debug symbols
 
 `gdb` can provide better backtraces for crashes and breakpoints if it
 is given access to some sources of detached debug symbols.
@@ -1195,63 +1195,73 @@ container runtime with graphics drivers from the host system, a backtrace
 might involve libraries from both of those locations, therefore detached
 debug symbols for both of those might be required.
 
+Usually the easiest way to obtain detached debug symbols is to configure
+access to an instance of [debuginfod][],
+which you can do by setting environment variable `DEBUGINFOD_URLS`
+to a space-separated list of servers.
+
+For example:
+
+```
+$ export DEBUGINFOD_URLS="https://debuginfod.steamos.cloud https://debuginfod.elfutils.org"
+```
+
 ### For the host system
 
-For Linux distributions that provide a [debuginfod][] server, it is usually
-the easiest way to obtain detached debug symbols on-demand.
-For example, on Debian systems:
+Consult your Linux distribution's documentation to find out whether they
+offer a `debuginfod` server.
+Servers for many major distributions are listed on the
+[debuginfod website][debuginfod].
 
-```
-$ export DEBUGINFOD_URLS="https://debuginfod.debian.net"
-$ gdb -x file-containing-configuration
-```
-
-or on Arch Linux systems:
-
-```
-$ export DEBUGINFOD_URLS="https://debuginfod.archlinux.org"
-$ gdb -x file-containing-configuration
-```
-
-Ubuntu does not yet provide a `debuginfod` server.
-For Ubuntu, you will need to install special `-dbgsym` packages that
-contain the detached debug symbols.
+For Valve's SteamOS,
+use `https://debuginfod.steamos.cloud`.
 
 ### For the container runtime
 
-There is currently no public `debuginfod` instance for the Steam Runtime.
-Many of the libraries in soldier and sniper are taken directly from Debian,
-so their debug symbols can be obtained from Debian's `debuginfod`:
+All public versions of the Steam Runtime have detached debug symbols
+on `https://debuginfod.steamos.cloud`,
+the same server that is used for SteamOS.
+
+### Custom environments
+
+For a modified or custom build of your host operating system or the
+Steam Linux Runtime,
+usually the easiest way is to run your own `debuginfod`.
+
+For example,
+on a Debian or Ubuntu system
+`debuginfod` can be installed with
+`sudo apt install debuginfod`,
+or on an Arch-derived system with
+`sudo pacman -Sy debuginfod`.
+
+Given a directory `dir-with-packages/` containing detached debug symbols,
+such as Debian `*-dbgsym_*.{deb,ddeb}` packages or Arch Linux
+`*-debug*.pkg.tar.zst` packages,
+you can run a `debuginfod` that reads that directory as:
 
 ```
-$ export DEBUGINFOD_URLS="https://debuginfod.debian.net"
-$ gdb -x file-containing-configuration
+$ debuginfod -v -U -Z.pkg.tar.zst dir-with-packages/
 ```
 
-This can be combined with a `debuginfod` for a non-Debian distribution
-such as Fedora by setting `DEBUGINFOD_URLS` to a space-separated list
-of URLs.
-
-For more thorough symbol coverage, first identify the version of the
-Platform that you are using.
-This information can be found in `SteamLinuxRuntime_sniper/VERSIONS.txt`,
-in the row starting with `sniper`.
-Next, visit the corresponding numbered directory in
-<https://repo.steampowered.com/steamrt-images-sniper/snapshots/>
-and download the large archive named
-`com.valvesoftware.SteamRuntime.Sdk-amd64,i386-sniper-debug.tar.gz`.
-Create a directory, for example `/tmp/sniper-dbgsym-0.20211013.0`,
-and unpack the archive into that directory.
-
-Then configure gdb with:
+and connect to it with:
 
 ```
-set debug-file-directory /tmp/sniper-dbgsym-0.20211013.0/files:/usr/lib/debug
+$ export DEBUGINFOD_URLS="http://localhost:8002"
 ```
 
-and it should load the new debug symbols.
+`debuginfod` can also proxy debug symbols from other debuginfod instances.
+For example,
 
-[soldier][] works in the same way, but with `soldier` instead of `sniper`.
+```
+$ export DEBUGINFOD_URLS="https://debuginfod.steamos.cloud https://debuginfod.elfutils.org"
+$ debuginfod -v -U -Z.pkg.tar.zst dir-with-packages/
+```
+
+will result in a `debuginfod` that serves local content from
+`dir-with-packages/`,
+plus anything that is offered by `debuginfod.steamos.cloud`
+or `debuginfod.elfutils.org`.
 
 ## Making a game container-friendly
 
