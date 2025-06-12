@@ -1,3 +1,12 @@
+steam-runtime-tools (0.20250612.0) UNRELEASED; urgency=medium
+
+  * Documentation updates
+    - Recommend debuginfod more strongly
+    - Describe how to do post-mortem debugging on a core dump
+      (Helps: steam-runtime#760)
+
+ -- Simon McVittie <smcv@collabora.com>  Thu, 12 Jun 2025 13:16:03 +0100
+
 steam-runtime-tools (0.20250530.0) steamrt; urgency=medium
 
   * pressure-vessel:
