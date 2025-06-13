@@ -127,7 +127,7 @@ class Environment:
             '--rm',
             '-i',
             '--security-opt', 'label=disable',
-            '--arch', 'x86_64',
+            '--platform', 'linux/amd64',
             '-v', '/etc/passwd:/etc/passwd:ro',
             '-v', '/etc/group:/etc/group:ro',
             '-v', '/etc/resolv.conf:/etc/resolv.conf:ro',
