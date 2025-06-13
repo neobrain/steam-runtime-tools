@@ -2537,6 +2537,8 @@ icd_details_new (gpointer icd)
     name = srt_vdpau_driver_get_library_path (icd);
   else if (SRT_IS_VA_API_DRIVER (icd))
     name = srt_va_api_driver_get_library_path (icd);
+  else if (SRT_IS_OPENXR_1_RUNTIME (icd))
+    name = srt_openxr_1_runtime_get_json_path (icd);
   else
     g_return_val_if_reached (NULL);
 
@@ -4879,6 +4881,63 @@ pv_runtime_take_ld_so_from_provider (PvRuntime *self,
 }
 
 /*
+ * @json_set: Ignored and may be %NULL for OpenXR runtimes and Vulkan layers.
+ *  Required for other file types.
+ */
+static char *
+get_manifest_relative_to_overrides (gpointer icd,
+                                    const char *sub_dir,
+                                    const SrtKnownArchitecture *arch,
+                                    int digits,
+                                    gsize seq,
+                                    const char *json_basename,
+                                    GHashTable *json_set)
+{
+  /* For layers, we know that the filename doesn't matter - choice
+   * of layers is based on manifest["layer"]["name"] - but we have
+   * to make sure they're all unique and in the same directory,
+   * because there is no equivalent of VK_DRIVER_FILES or
+   * VK_LAYER_PATH for implicit layers, so the only thing we can
+   * do is to add our directory to XDG_DATA_DIRS. Because we have
+   * to do this for implicit layers anyway, for simplicity we do
+   * the same thing for explicit layers. */
+  if (SRT_IS_VULKAN_LAYER (icd))
+    {
+      if (arch != NULL)
+        return g_strdup_printf ("%s/%.*" G_GSIZE_FORMAT "-%s.json",
+                                sub_dir, digits, seq, arch->multiarch_tuple);
+      else
+        return g_strdup_printf ("%s/%.*" G_GSIZE_FORMAT ".json",
+                                sub_dir, digits, seq);
+    }
+  /* OpenXR 1 runtimes need to be in a fixed location, but each architecture has
+   * at most one active runtime, so they can't collide with each other. */
+  else if (SRT_IS_OPENXR_1_RUNTIME (icd))
+    {
+      g_assert (arch != NULL);
+      /* Assume that every architecture supported by PV also appears in OpenXR's
+       * table of architecture names. */
+      g_assert (arch->openxr_1_architecture != NULL);
+
+      /* Older versions of the OpenXR loader don't support architecture-specific
+       * filenames, so name the primary architecture as the default instead,
+       * that way at least it can be loaded as expected. */
+      if (g_str_equal (arch->multiarch_tuple, pv_multiarch_tuples[PV_PRIMARY_ARCHITECTURE]))
+        return g_strdup_printf ("%s/active_runtime.json", sub_dir);
+      else
+        return g_strdup_printf ("%s/active_runtime.%s.json",
+                                sub_dir, arch->openxr_1_architecture);
+    }
+  else
+    {
+      g_assert (json_set != NULL);
+      return pv_generate_unique_filepath (sub_dir, digits, seq, json_basename,
+                                          arch ? arch->multiarch_tuple : NULL,
+                                          json_set);
+    }
+}
+
+/*
  * setup_json_manifest:
  * @self: The runtime
  * @bwrap: Append arguments to this bubblewrap invocation to make files
@@ -4889,13 +4948,14 @@ pv_runtime_take_ld_so_from_provider (PvRuntime *self,
  *  whichever is appropriate for @sub_dir
  * @digits: Number of digits to pad length of numeric prefix
  * @seq: Sequence number of @details, used to make unique filenames
- * @json_set: (element-type filename ignored): A map
+ * @json_set: (element-type filename ignored) (nullable): A map
  *  `{ owned string => itself }` representing the set
  *  of JSON manifests already created. Used internally to notice when
- *  to use unique sub directories to avoid naming conflicts
- * @content_seen: A map `{ unowned string => unowned path }` representing
- *  JSON manifests with unique content, used to detect and suppress
- *  exact duplicates.
+ *  to use unique sub directories to avoid naming conflicts. Ignored and may be
+ *  %NULL for OpenXR runtimes and Vulkan layers. Required for other file types.
+ * @content_seen: (nullable): A map `{ unowned string => unowned path }`
+ *  representing JSON manifests with unique content, used to detect and suppress
+ *  exact duplicates. If %NULL, duplicates are not suppressed.
  * @search_path: Used to build `$VK_DRIVER_FILES` or a similar search path
  * @error: Used to raise an error on failure
  *
@@ -4919,8 +4979,10 @@ setup_json_manifest (PvRuntime *self,
   SrtVulkanIcd *icd = NULL;
   SrtEglIcd *egl = NULL;
   SrtEglExternalPlatform *ext_platform = NULL;
+  SrtOpenXr1Runtime *xr_rt = NULL;
   gboolean loaded = FALSE;
   gboolean need_provider_json = FALSE;
+  const SrtKnownArchitecture *provider_json_arch = NULL;
   g_autofree gchar *json_basename = NULL;
   const char *json_in_provider = NULL;
   const char *library_arch = NULL;
@@ -4931,7 +4993,6 @@ setup_json_manifest (PvRuntime *self,
   g_return_val_if_fail (self->provider != NULL, FALSE);
   g_return_val_if_fail (bwrap != NULL || self->mutable_sysroot != NULL, FALSE);
   g_return_val_if_fail (sub_dir != NULL, FALSE);
-  g_return_val_if_fail (json_set != NULL, FALSE);
 
   module = SRT_BASE_JSON_GRAPHICS_MODULE (details->icd);
   base = &module->parent;
@@ -4956,6 +5017,10 @@ setup_json_manifest (PvRuntime *self,
     {
       ext_platform = SRT_EGL_EXTERNAL_PLATFORM (details->icd);
     }
+  else if (SRT_IS_OPENXR_1_RUNTIME (details->icd))
+    {
+      xr_rt = SRT_OPENXR_1_RUNTIME (details->icd);
+    }
   else
     {
       g_return_val_if_reached (FALSE);
@@ -4973,7 +5038,7 @@ setup_json_manifest (PvRuntime *self,
       return TRUE;
     }
 
-  if (original_json != NULL)
+  if (original_json != NULL && content_seen != NULL)
     {
       /* In a Flatpak environment with i386 multiarch compatibility,
        * we can see two identical copies of files like nvidia_icd.json,
@@ -5043,23 +5108,13 @@ setup_json_manifest (PvRuntime *self,
 
           g_assert (details->paths_in_container[i] != NULL);
 
-          /* For layers, we know that the filename doesn't matter - choice
-           * of layers is based on manifest["layer"]["name"] - but we have
-           * to make sure they're all unique and in the same directory,
-           * because there is no equivalent of VK_DRIVER_FILES or
-           * VK_LAYER_PATH for implicit layers, so the only thing we can
-           * do is to add our directory to XDG_DATA_DIRS. Because we have
-           * to do this for implicit layers anyway, for simplicity we do
-           * the same thing for explicit layers. */
-          if (SRT_IS_VULKAN_LAYER (details->icd))
-            relative_to_overrides = g_strdup_printf ("%s/%.*" G_GSIZE_FORMAT "-%s.json",
-                                                     sub_dir, digits, seq,
-                                                     tuple);
-          else
-            relative_to_overrides = pv_generate_unique_filepath (sub_dir, digits, seq,
-                                                                 json_basename,
-                                                                 tuple,
-                                                                 json_set);
+          relative_to_overrides = get_manifest_relative_to_overrides (details->icd,
+                                                                      sub_dir,
+                                                                      arch,
+                                                                      digits,
+                                                                      seq,
+                                                                      json_basename,
+                                                                      json_set);
 
           write_to_file = g_build_filename (self->overrides,
                                             relative_to_overrides, NULL);
@@ -5109,7 +5164,7 @@ setup_json_manifest (PvRuntime *self,
               if (!srt_egl_external_platform_write_to_file (replacement, write_to_file, error))
                 return FALSE;
             }
-          else
+          else if (icd != NULL)
             {
               g_autoptr(SrtVulkanIcd) replacement = NULL;
               replacement = srt_vulkan_icd_new_replace_library_path (icd,
@@ -5121,6 +5176,19 @@ setup_json_manifest (PvRuntime *self,
               if (!srt_vulkan_icd_write_to_file (replacement, write_to_file, error))
                 return FALSE;
             }
+          else if (xr_rt != NULL)
+            {
+              g_autoptr(SrtOpenXr1Runtime) replacement = NULL;
+              replacement = srt_openxr_1_runtime_new_replace_library_path (xr_rt,
+                                                                           details->paths_in_container[i]);
+
+              if (!srt_openxr_1_runtime_write_to_file (replacement, write_to_file, error))
+                return FALSE;
+            }
+          else
+            {
+              g_return_val_if_reached (FALSE);
+            }
 
           pv_search_path_append (search_path, json_in_container);
         }
@@ -5130,6 +5198,14 @@ setup_json_manifest (PvRuntime *self,
           g_debug ("Will use graphics stack provider JSON as-is for %s/%s",
                    sub_dir, json_basename);
           need_provider_json = TRUE;
+
+          if (xr_rt != NULL)
+            {
+              /* We bind in an OpenXR runtime *per architecture*, so only one
+               * architecture at most should be here. */
+              g_warn_if_fail (provider_json_arch == NULL);
+              provider_json_arch = arch;
+            }
         }
     }
 
@@ -5138,13 +5214,13 @@ setup_json_manifest (PvRuntime *self,
       g_autofree gchar *relative_to_overrides = NULL;
       g_autofree gchar *json_in_container = NULL;
 
-      if (SRT_IS_VULKAN_LAYER (details->icd))
-        relative_to_overrides = g_strdup_printf ("%s/%.*" G_GSIZE_FORMAT ".json",
-                                                 sub_dir, digits, seq);
-      else
-        relative_to_overrides = pv_generate_unique_filepath (sub_dir, digits, seq,
-                                                             json_basename,
-                                                             NULL, json_set);
+      relative_to_overrides = get_manifest_relative_to_overrides (details->icd,
+                                                                  sub_dir,
+                                                                  provider_json_arch,
+                                                                  digits,
+                                                                  seq,
+                                                                  json_basename,
+                                                                  json_set);
       json_in_container = g_build_filename (self->overrides_in_container,
                                             relative_to_overrides, NULL);
 
@@ -5318,6 +5394,49 @@ collect_vulkan_layers (PvRuntime *self,
                   (IcdDetails **) layer_details->pdata,
                   layer_details->len,
                   &use_numbered_subdirs, libdir_patterns, NULL, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+/*
+ * @openxr_1_runtime_details: (element-type utf8 IcdDetails):
+ *   { multiarch tuple => IcdDetails containing an SrtOpenXr1Runtime }
+ * @patterns: (element-type filename):
+ */
+static gboolean
+collect_openxr_1_runtime (PvRuntime *self,
+                          RuntimeArchitecture *arch,
+                          GHashTable *openxr_1_runtime_details,
+                          GPtrArray *patterns,
+                          GError **error)
+{
+  G_GNUC_UNUSED g_autoptr(SrtProfilingTimer) timer =
+    _srt_profiling_start ("Collecting OpenXR 1 runtimes");
+  SrtOpenXr1Runtime *rt;
+  IcdDetails *details;
+  /* We don't have to use multiple directories because there is at most one
+   * active runtime per architecture, so filenames cannot collide */
+  gboolean use_numbered_subdirs = FALSE;
+  const gsize multiarch_index = arch->multiarch_index;
+
+  g_debug ("Collecting %s OpenXR 1 runtime from provider...",
+           arch->details->tuple);
+
+  details = g_hash_table_lookup (openxr_1_runtime_details, arch->details->tuple);
+  if (details == NULL)
+    return TRUE;
+
+  rt = SRT_OPENXR_1_RUNTIME (details->icd);
+
+  g_return_val_if_fail (srt_openxr_1_runtime_check_error (rt, NULL), TRUE);
+
+  details->resolved_libraries[multiarch_index] =
+    srt_openxr_1_runtime_resolve_library_path (rt);
+  g_assert (details->resolved_libraries[multiarch_index] != NULL);
+
+  if (!bind_icds (self, arch, "openxr/1", &details, 1, &use_numbered_subdirs,
+                  patterns, NULL, error))
     return FALSE;
 
   return TRUE;
@@ -7372,6 +7491,54 @@ pv_enumerate_vulkan_icds (SrtSystemInfo *system_info,
   return g_steal_pointer (&vulkan_icd_details);
 }
 
+static GHashTable *
+pv_enumerate_openxr_1_runtimes (SrtSystemInfo *system_info,
+                                const gchar *which_system)
+{
+  G_GNUC_UNUSED g_autoptr(SrtProfilingTimer) timer = NULL;
+  g_autoptr(GHashTable) runtimes = g_hash_table_new_full (g_str_hash,
+                                                          g_str_equal,
+                                                          g_free,
+                                                          (GDestroyNotify) icd_details_free);
+  gsize i;
+
+  timer = _srt_profiling_start ("Enumerating OpenXR 1 runtimes on %s system",
+                                which_system);
+  g_debug ("Enumerating OpenXR 1 runtimes on %s system...", which_system);
+
+  for (i = 0; i < PV_N_SUPPORTED_ARCHITECTURES; i++)
+    {
+      g_autoptr(SrtOpenXr1Runtime) rt = NULL;
+      g_autoptr(GError) local_error = NULL;
+      const char *multiarch_tuple = pv_multiarch_tuples[i];
+      const char *path;
+
+      rt = srt_system_info_dup_openxr_1_runtime (system_info, multiarch_tuple);
+      if (rt == NULL)
+        continue;
+
+      path = srt_openxr_1_runtime_get_json_path (rt);
+
+      if (!srt_openxr_1_runtime_check_error (rt, &local_error))
+        {
+          g_warning ("Failed to load OpenXR 1 runtime for %s from %s: %s",
+                     multiarch_tuple, path, local_error->message);
+          g_clear_error (&local_error);
+          continue;
+        }
+
+      g_info ("OpenXR 1 runtime for %s at %s: %s",
+              multiarch_tuple, path,
+              srt_openxr_1_runtime_get_library_path (rt));
+
+      g_hash_table_insert (runtimes,
+                           g_strdup (multiarch_tuple),
+                           icd_details_new (rt));
+    }
+
+  return g_steal_pointer (&runtimes);
+}
+
 /*
  * @vulkan_layer_details: (inout) (element-type IcdDetails):
  */
@@ -7450,6 +7617,7 @@ typedef struct
   GPtrArray *vulkan_icd_details;   /* (element-type IcdDetails) */
   GPtrArray *vulkan_exp_layer_details;   /* (element-type IcdDetails) */
   GPtrArray *vulkan_imp_layer_details;   /* (element-type IcdDetails) */
+  GHashTable *openxr_1_runtime_details;  /* (element-type utf8 IcdDetails) */
 } IcdStack;
 
 static IcdStack *
@@ -7466,10 +7634,33 @@ icd_stack_free (IcdStack *self)
   g_clear_pointer (&self->vulkan_icd_details, g_ptr_array_unref);
   g_clear_pointer (&self->vulkan_exp_layer_details, g_ptr_array_unref);
   g_clear_pointer (&self->vulkan_imp_layer_details, g_ptr_array_unref);
+  g_clear_pointer (&self->openxr_1_runtime_details, g_hash_table_unref);
   g_slice_free (IcdStack, self);
 }
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (IcdStack, icd_stack_free)
+
+/* Prepend the given @new_entry to the colon-delimited directory list in the
+ * original environment variable @var (in turn defaulting that to @default_)
+ * if not given.
+ *
+ * Reference for the variables and defaults:
+ * https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+ */
+static void
+pv_runtime_prepend_to_xdg_dirs (PvRuntime *self,
+                                SrtEnvOverlay *container_env,
+                                const char *new_entry,
+                                const char *var,
+                                const char *default_)
+{
+  const gchar *current_dirs;
+  g_autofree gchar *prepended_dirs = NULL;
+
+  current_dirs = g_environ_getenv (self->original_environ, var) ?: default_;
+  prepended_dirs = g_strdup_printf ("%s:%s", new_entry, current_dirs);
+  _srt_env_overlay_set (container_env, var, prepended_dirs);
+}
 
 /* Log a warning if any colon-delimited entry in @path is not in
  * ${prefix}/${suffix}. */
@@ -7500,6 +7691,8 @@ check_path_entries_all_in_dir (const char *path,
     }
 }
 
+#define OPENXR_1_RUNTIME_OVERRIDES_PREFIX "etc/xdg"
+
 static gboolean
 pv_runtime_use_provider_graphics_stack (PvRuntime *self,
                                         FlatpakBwrap *bwrap,
@@ -7512,9 +7705,10 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
   g_autoptr(GString) egl_ext_platform_path = g_string_new ("");
   g_autoptr(GString) vulkan_path = g_string_new ("");
   /* We are currently using the explicit and implicit Vulkan layer paths
-   * only to check if we binded at least a single layer */
+   * and the OpenXR runtime paths only to check if we binded at least a single layer */
   g_autoptr(GString) vulkan_exp_layer_path = g_string_new ("");
   g_autoptr(GString) vulkan_imp_layer_path = g_string_new ("");
+  g_autoptr(GString) openxr_1_runtime_path = g_string_new ("");
   g_autoptr(GString) va_api_path = g_string_new ("");
   gboolean any_architecture_works = FALSE;
   g_autoptr(SrtSystemInfo) system_info = NULL;
@@ -7581,6 +7775,10 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
                                          &provider_stack->vulkan_exp_layer_details,
                                          &provider_stack->vulkan_imp_layer_details);
     }
+
+  if (self->flags & PV_RUNTIME_FLAGS_IMPORT_OPENXR_1_RUNTIMES)
+    provider_stack->openxr_1_runtime_details = pv_enumerate_openxr_1_runtimes (system_info,
+                                                                               provider);
 
   if (host_system_info != NULL)
     {
@@ -7704,6 +7902,11 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
             arch_system_info = system_info;
           else
             arch_system_info = enumeration_thread_join (&self->arch_threads[i]);
+
+          if ((self->flags & PV_RUNTIME_FLAGS_IMPORT_OPENXR_1_RUNTIMES)
+              && !collect_openxr_1_runtime (self, arch, provider_stack->openxr_1_runtime_details,
+                                            patterns, error))
+            return FALSE;
 
           if (!collect_vdpau_drivers (self, arch_system_info, arch, patterns, error))
             return FALSE;
@@ -7986,6 +8189,28 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
         }
     }
 
+  if ((self->flags & PV_RUNTIME_FLAGS_IMPORT_OPENXR_1_RUNTIMES)
+      && g_hash_table_size (provider_stack->openxr_1_runtime_details) > 0)
+    {
+      gpointer details;
+      GHashTableIter iter;
+
+      g_debug ("Setting up OpenXR 1 runtime JSON...");
+
+      g_hash_table_iter_init (&iter, provider_stack->openxr_1_runtime_details);
+      while (g_hash_table_iter_next (&iter, NULL, &details))
+        {
+          if (!setup_json_manifest (self, bwrap,
+                                    OPENXR_1_RUNTIME_OVERRIDES_PREFIX
+                                      "/" _SRT_GRAPHICS_OPENXR_1_RUNTIME_SUFFIX,
+                                    details,
+                                    0, 0,        /* no sequence number used */
+                                    NULL, NULL,  /* no deduplication required */
+                                    openxr_1_runtime_path, error))
+            return FALSE;
+        }
+    }
+
   if (dri_path->len != 0)
     {
       _srt_env_overlay_set (container_env, "LIBGL_DRIVERS_PATH", dri_path->str);
@@ -8043,12 +8268,8 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
        * have. */
       if (vulkan_exp_layer_path->len != 0 || vulkan_imp_layer_path->len != 0)
         {
-          const gchar *xdg_data_dirs;
-          g_autofree gchar *prepended_data_dirs = NULL;
-          g_autofree gchar *override_share = NULL;
-
-          xdg_data_dirs = g_environ_getenv (self->original_environ, "XDG_DATA_DIRS");
-          override_share = g_build_filename (self->overrides_in_container, "share", NULL);
+          g_autofree gchar *override_share =
+            g_build_filename (self->overrides_in_container, "share", NULL);
 
           /* We are relying here on setup_json_manifest() having generated
            * all the layers' JSON manifests in the same directory. */
@@ -8056,18 +8277,32 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
                                          override_share, "vulkan/explicit_layer.d");
           check_path_entries_all_in_dir (vulkan_imp_layer_path->str,
                                          override_share, "vulkan/implicit_layer.d");
-
-          /* Reference:
-           * https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html */
-          if (xdg_data_dirs == NULL)
-            xdg_data_dirs = "/usr/local/share:/usr/share";
-
-          prepended_data_dirs = g_strdup_printf ("%s:%s", override_share, xdg_data_dirs);
-
-          _srt_env_overlay_set (container_env, "XDG_DATA_DIRS",
-                                prepended_data_dirs);
+          pv_runtime_prepend_to_xdg_dirs (self, container_env, override_share,
+                                          "XDG_DATA_DIRS",
+                                          "/usr/local/share:/usr/share");
         }
       _srt_env_overlay_set (container_env, "VK_LAYER_PATH", NULL);
+    }
+
+  if (self->flags & PV_RUNTIME_FLAGS_IMPORT_OPENXR_1_RUNTIMES)
+    {
+      if (openxr_1_runtime_path->len != 0)
+        {
+          g_autofree gchar *override_config =
+           g_build_filename (self->overrides_in_container,
+                             OPENXR_1_RUNTIME_OVERRIDES_PREFIX, NULL);
+
+          /* We are relying here on setup_json_manifest() having generated
+           * all the JSON manifests in the same directory. */
+          check_path_entries_all_in_dir (openxr_1_runtime_path->str,
+                                         override_config,
+                                         _SRT_GRAPHICS_OPENXR_1_RUNTIME_SUFFIX);
+          pv_runtime_prepend_to_xdg_dirs (self, container_env, override_config,
+                                          "XDG_CONFIG_DIRS", "/etc/xdg");
+        }
+
+      /* Make sure the host's XR_RUNTIME_PATH doesn't leak into the container. */
+      _srt_env_overlay_set (container_env, "XR_RUNTIME_PATH", NULL);
     }
 
   /* We binded the VDPAU drivers in "%{libdir}/vdpau".
@@ -8079,6 +8314,19 @@ pv_runtime_use_provider_graphics_stack (PvRuntime *self,
   _srt_env_overlay_set (container_env, "VDPAU_DRIVER_PATH", NULL);
 
   return TRUE;
+}
+
+static gboolean
+should_mask_search_path_entry (const char *dir)
+{
+  /* We are mounting our own runtime over /etc and /usr anyway, so ignore
+   * those */
+  if (flatpak_has_path_prefix (dir, "/usr")
+      || flatpak_has_path_prefix (dir, "/etc"))
+    return FALSE;
+
+  /* Only mask if the directory actually exists */
+  return g_file_test (dir, G_FILE_TEST_IS_DIR);
 }
 
 gboolean
@@ -8227,19 +8475,38 @@ pv_runtime_bind (PvRuntime *self,
             {
               const char *dir = search_path[j];
 
-              /* We are mounting our own runtime over /etc and /usr anyway,
-               * so ignore those */
-              if (flatpak_has_path_prefix (dir, "/usr")
-                  || flatpak_has_path_prefix (dir, "/etc"))
-                continue;
-
-              /* Otherwise, if the directory exists, mask it */
-              if (g_file_test (dir, G_FILE_TEST_IS_DIR))
+              if (should_mask_search_path_entry (dir))
                 {
                   g_info ("Hiding \"%s\" from the container so that \"%s/share/%s\" will be used instead",
                           dir, self->overrides_in_container, suffix);
                   pv_exports_mask_or_log (exports, dir);
                 }
+            }
+        }
+    }
+
+  if ((self->flags & PV_RUNTIME_FLAGS_IMPORT_OPENXR_1_RUNTIMES)
+      && exports != NULL)
+    {
+      /* Just like with Vulkan layers, we need to mask out original the OpenXR
+       * runtime search paths so that the manifests within don't get picked up
+       * by the container. */
+      g_auto(GStrv) search_path =
+        _srt_graphics_get_openxr_1_runtime_search_paths (_srt_const_strv (self->original_environ));
+      gint i;
+
+      for (i = 0; search_path != NULL && search_path[i] != NULL; i++)
+        {
+          const char *dir = search_path[i];
+
+          if (should_mask_search_path_entry (dir))
+            {
+              g_info ("Hiding \"%s\" from the container so that \"%s/"
+                        OPENXR_1_RUNTIME_OVERRIDES_PREFIX
+                        "/" _SRT_GRAPHICS_OPENXR_1_RUNTIME_SUFFIX
+                        "\" will be used instead",
+                      dir, self->overrides_in_container);
+              pv_exports_mask_or_log (exports, dir);
             }
         }
     }

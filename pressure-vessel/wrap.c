@@ -622,6 +622,9 @@ main (int argc,
       if (self->options.import_ca_certs)
         flags |= PV_RUNTIME_FLAGS_IMPORT_CA_CERTS;
 
+      if (self->options.import_openxr_1_runtimes)
+        flags |= PV_RUNTIME_FLAGS_IMPORT_OPENXR_1_RUNTIMES;
+
       if (self->options.import_vulkan_layers)
         flags |= PV_RUNTIME_FLAGS_IMPORT_VULKAN_LAYERS;
 
@@ -1025,7 +1028,8 @@ main (int argc,
     {
       g_autoptr(FlatpakBwrap) sharing_bwrap = NULL;
 
-      sharing_bwrap = pv_wrap_share_sockets (container_env,
+      sharing_bwrap = pv_wrap_share_sockets (self,
+                                             container_env,
                                              _srt_const_strv (self->original_environ),
                                              (self->runtime != NULL),
                                              self->is_flatpak_env);

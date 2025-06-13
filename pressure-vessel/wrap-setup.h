@@ -34,13 +34,15 @@
 #include "wrap-context.h"
 #include "wrap-discord.h"
 #include "wrap-home.h"
+#include "wrap-openxr.h"
 #include "wrap-pipewire.h"
 
 gchar *pv_wrap_check_bwrap (gboolean only_prepare,
                             SrtBwrapFlags *flags_out,
                             GError **error);
 
-FlatpakBwrap *pv_wrap_share_sockets (SrtEnvOverlay *container_env,
+FlatpakBwrap *pv_wrap_share_sockets (PvWrapContext *self,
+                                     SrtEnvOverlay *container_env,
                                      const char * const *original_environ,
                                      gboolean using_a_runtime,
                                      gboolean is_flatpak_env);

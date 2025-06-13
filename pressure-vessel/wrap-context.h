@@ -76,6 +76,7 @@ typedef struct
   gboolean gc_runtimes;
   gboolean generate_locales;
   gboolean import_ca_certs;
+  gboolean import_openxr_1_runtimes;
   gboolean import_vulkan_layers;
   gboolean launcher;
   gboolean only_prepare;
