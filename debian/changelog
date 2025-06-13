@@ -1,11 +1,36 @@
-steam-runtime-tools (0.20250612.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250613.0) UNRELEASED; urgency=medium
 
+  [ Simon McVittie ]
+  * pressure-vessel:
+    - Write original path to Vulkan layers, etc. into JSON manifests.
+      This allows the module to load other libraries via ${ORIGIN} or load
+      data files relative to its own location from dladdr1(), and helps
+      gdb to load detached debug symbols via .gnu_debuglink references.
+      (steamrt/tasks#736)
   * Documentation updates
     - Recommend debuginfod more strongly
     - Describe how to do post-mortem debugging on a core dump
       (Helps: steam-runtime#760)
 
- -- Simon McVittie <smcv@collabora.com>  Thu, 12 Jun 2025 13:16:03 +0100
+  [ Ryan Gonzalez ]
+  * pressure-vessel:
+    - Optionally import OpenXR 1 runtimes from the graphics stack provider
+      into the container, similar to the way Vulkan drivers are handled.
+      This is considered experimental, and could cause regressions by
+      pulling in runtimes with non-trivial shared library dependencies,
+      so for now it is only done if requested by setting environment
+      variable PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES to 1.
+      (steamrt/tasks#607)
+    - Refactoring
+
+  [ Patrick Nicolas, Ryan Gonzalez ]
+  * pressure-vessel:
+    - Make sockets used by Monado and WiVRn available in the container.
+      This is currently gated by the same environment variable as
+      OpenXR 1 runtimes, PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1.
+      (steamrt/tasks#607)
+
+ -- Simon McVittie <smcv@collabora.com>  Fri, 13 Jun 2025 13:55:59 +0100
 
 steam-runtime-tools (0.20250530.0) steamrt; urgency=medium
 
