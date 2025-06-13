@@ -11,6 +11,7 @@ steam-runtime-tools (0.20250613.0) UNRELEASED; urgency=medium
     - Recommend debuginfod more strongly
     - Describe how to do post-mortem debugging on a core dump
       (Helps: steam-runtime#760)
+  * CI updates (steamrt/tasks#750)
 
   [ Ryan Gonzalez ]
   * pressure-vessel:
@@ -30,7 +31,7 @@ steam-runtime-tools (0.20250613.0) UNRELEASED; urgency=medium
       OpenXR 1 runtimes, PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1.
       (steamrt/tasks#607)
 
- -- Simon McVittie <smcv@collabora.com>  Fri, 13 Jun 2025 13:55:59 +0100
+ -- Simon McVittie <smcv@collabora.com>  Fri, 13 Jun 2025 16:45:23 +0100
 
 steam-runtime-tools (0.20250530.0) steamrt; urgency=medium
 
