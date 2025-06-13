@@ -100,6 +100,9 @@ variables:
     PRESSURE_VESSEL_CI_UPLOAD_SSH_PRIVATE_KEY_FILE: ''
     # Create a File variable in netrc format as per apt_auth.conf(5)
     STEAMRT_CI_APT_AUTH_CONF: ''
+    # Create a File variable with the result of
+    # gpg --export -a KEYID [KEYID...]
+    STEAMRT_CI_APT_PGP_TRUSTED_FILE: ''
 
 default:
     before_script: &common_before_script
