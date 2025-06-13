@@ -7,6 +7,9 @@ steam-runtime-tools (0.20250613.0) UNRELEASED; urgency=medium
       data files relative to its own location from dladdr1(), and helps
       gdb to load detached debug symbols via .gnu_debuglink references.
       (steamrt/tasks#736)
+  * build-aux:
+    - Use docker/podman run --platform in preference to --arch,
+      for better interoperability (steamrt/tasks#757)
   * Documentation updates
     - Recommend debuginfod more strongly
     - Describe how to do post-mortem debugging on a core dump
@@ -31,7 +34,7 @@ steam-runtime-tools (0.20250613.0) UNRELEASED; urgency=medium
       OpenXR 1 runtimes, PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1.
       (steamrt/tasks#607)
 
- -- Simon McVittie <smcv@collabora.com>  Fri, 13 Jun 2025 16:45:23 +0100
+ -- Simon McVittie <smcv@collabora.com>  Fri, 13 Jun 2025 17:27:49 +0100
 
 steam-runtime-tools (0.20250530.0) steamrt; urgency=medium
 
