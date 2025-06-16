@@ -64,19 +64,29 @@ packages via the [deb-build-snapshot][] tool, with a command-line like
 this:
 
 ```
+# on build-vm, once
+toolbox create -i registry.gitlab.steamos.cloud/steamrt/scout/sdk:beta scout
+
+# on build-vm, once per boot
+toolbox enter scout
+
+# on a machine that can ssh into build-vm
 LC_ALL=C.UTF-8 \
 deb-build-snapshot \
 --upstream \
 --source \
 --download ~/tmp/build-area \
---deb-schroot steamrt_scout_amd64 \
+--deb-toolbx scout
 --install-all \
 build-vm
 ```
 
 where `build-vm` is a virtual machine with steam-runtime-tools'
-dependencies and a `steamrt_scout_amd64` chroot, that can be accessed
-via `ssh build-vm`. If the dependencies and chroot are available on your
+dependencies,
+Podman,
+and Toolbx,
+that can be accessed
+via `ssh build-vm`. If the dependencies and container are available on your
 development system, use `localhost`, which will make `deb-build-snapshot`
 do the build locally instead of using ssh.
 
