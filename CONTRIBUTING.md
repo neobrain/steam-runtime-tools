@@ -283,6 +283,8 @@ engines include:
 * Commit everything.
 
 * Add an annotated git tag v*VERSION*.
+    Normally we copy the top changelog entry as the tag message
+    (see any earlier tag as an example).
 
 * Push the annotated tag.
     The CI will automatically build a new version and upload it to
@@ -315,5 +317,25 @@ engines include:
     If any of them fail,
     fix the failure and prepare a new release
     (with the next micro version number).
+
+* While you're waiting for OBS to do the builds,
+    go to
+    <https://gitlab.steamos.cloud/steamrt/steam-runtime-tools/-/releases/new>
+    and fill in:
+    * *Tag name*: (the version)
+    * *Release title*: (leave blank to use the tag name as-is)
+    * *Release notes*: check "Include message from the annotated tag",
+        then remove the "Tag message" header,
+        then uncheck "Include message from the annotated tag" again.
+        Edit the release notes further if required,
+        for example putting `` `backticks` `` around anything that
+        needs to be interpreted as literal text,
+        or converting bug references like `steam-runtime#123` into
+        links like
+        `[steam-runtime#123](https://github.com/ValveSoftware/steam-runtime/issues/123)`.
+    * *Release assets*:
+        * *URL*: `https://repo.steampowered.com/pressure-vessel/snapshots/$VERSION/`
+        * *Link title*: `Official binary build + source code`
+        * *Type*: **Package**
 
 [deb-build-snapshot]: https://gitlab.collabora.com/smcv/deb-build-snapshot
