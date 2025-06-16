@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250616.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250616.0) steamrt; urgency=medium
 
   [ Simon McVittie ]
   * pressure-vessel:
@@ -36,7 +36,7 @@ steam-runtime-tools (0.20250616.0) UNRELEASED; urgency=medium
       OpenXR 1 runtimes, PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1.
       (steamrt/tasks#607)
 
- -- Ludovico de Nittis <ludovico.denittis@collabora.com>  Mon, 16 Jun 2025 16:34:15 +0200
+ -- Ludovico de Nittis <ludovico.denittis@collabora.com>  Mon, 16 Jun 2025 16:35:44 +0200
 
 steam-runtime-tools (0.20250530.0) steamrt; urgency=medium
 
