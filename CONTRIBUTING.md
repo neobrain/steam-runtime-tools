@@ -284,15 +284,36 @@ engines include:
 
 * Add an annotated git tag v*VERSION*.
 
-* Do a final release build, for example with:
+* Push the annotated tag.
+    The CI will automatically build a new version and upload it to
+    <https://repo.steampowered.com/pressure-vessel/snapshots/latest/>.
+    You can find source code in
+    <https://repo.steampowered.com/pressure-vessel/snapshots/latest/sources/>
+    (`steam-runtime-tools_$VERSION.dsc`
+    and `steam-runtime-tools_$VERSION.tar.xz`); download those.
+
+* Optionally, you can do a local build with
 
     ```
     deb-build-snapshot -d ~/tmp/build-area --source-only --release localhost
     ```
 
-* Upload the resulting `.changes` file to your OBS branch to be built.
-    If it succeeds, submit it to the main OBS project to be included in
-    the next scout release. If it fails, fix it and prepare a new release
+    (add `--deb-toolbx` or `--deb-schroot` or build on a remote machine
+    as necessary,
+    see `deb-build-snapshot` help for details)
+
+    and use `debdiff` to compare the resulting `.dsc` file with the one
+    that was built by the CI.
+    There should be no functional differences.
+
+* Upload the `.dsc` file that was built by the CI to your OBS branch
+    for each Steam Runtime suite
+    (scout, soldier, sniper, steamrt3c and so on).
+    If they all succeed,
+    submit them to the main OBS project for each suite to be included in
+    the next round of releases.
+    If any of them fail,
+    fix the failure and prepare a new release
     (with the next micro version number).
 
 [deb-build-snapshot]: https://gitlab.collabora.com/smcv/deb-build-snapshot
