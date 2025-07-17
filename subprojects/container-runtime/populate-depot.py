@@ -1100,7 +1100,11 @@ class Main:
                 # to make it the default for legacy games.
                 filter_exclusive_priority = '9'
 
-                if runtime.suite.startswith('steamrt'):
+                if 'amd64' not in runtime.architecture and 'i386' not in runtime.architecture:
+                    # FIXME this is a temporary workaround to let the Steam client do the
+                    #  expected grouping/filtering only for known amd64/i386 runtimes
+                    filter_exclusive_priority = '0'
+                elif runtime.suite.startswith('steamrt'):
                     # steamrt4, steamrt5, ... get priority 4, 5, ...
                     # If we get to steamrt9 with this limitation still
                     # present, we'll have to bump the priority of SLR 1.0
