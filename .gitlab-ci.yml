@@ -466,6 +466,8 @@ relocatable-install:
 test:debian-10:
     extends: .test_deb
     image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:buster-slim
+    before_script:
+        - sed -i 's|://deb.debian.org|://archive.debian.org|g' /etc/apt/sources.list
 
 test:debian-11:
     extends: .test_deb
