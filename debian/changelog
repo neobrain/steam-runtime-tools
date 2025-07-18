@@ -1,3 +1,18 @@
+steam-runtime-tools (0.20250718.0) UNRELEASED; urgency=medium
+
+  [ Simon McVittie ]
+  * Documentation updates
+
+  [ Ludovico de Nittis ]
+  * SteamLinuxRuntime_*:
+    - Set `filter_exclusive_priority` to 0 for unknown architectures.
+      Temporary workaround to allow the Steam client to do its grouping and
+      filtering only when it is actually needed. (steamrt/tasks#766)
+  * CI:
+    - Use archive.debian.org for Debian 10. (steamrt/tasks#767)
+
+ -- Ludovico de Nittis <ludovico.denittis@collabora.com>  Fri, 18 Jul 2025 14:34:32 +0200
+
 steam-runtime-tools (0.20250616.0) steamrt; urgency=medium
 
   [ Simon McVittie ]
