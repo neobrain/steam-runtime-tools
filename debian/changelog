@@ -1,4 +1,4 @@
-steam-runtime-tools (0.20250718.0) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250718.0) steamrt; urgency=medium
 
   [ Simon McVittie ]
   * Documentation updates
@@ -11,7 +11,7 @@ steam-runtime-tools (0.20250718.0) UNRELEASED; urgency=medium
   * CI:
     - Use archive.debian.org for Debian 10. (steamrt/tasks#767)
 
- -- Ludovico de Nittis <ludovico.denittis@collabora.com>  Fri, 18 Jul 2025 14:34:32 +0200
+ -- Ludovico de Nittis <ludovico.denittis@collabora.com>  Fri, 18 Jul 2025 14:50:31 +0200
 
 steam-runtime-tools (0.20250616.0) steamrt; urgency=medium
 
