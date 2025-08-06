@@ -489,13 +489,9 @@ test:ubuntu-20.04:
 
 test:archlinux:
     extends: .test_template
-    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/archlinux:latest
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/archlinux:multilib-devel
     script:
         - ./ci/prepare-arch.sh
-        - |
-            tempdir="$(mktemp -d)"
-            git clone --branch debian/buster https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.steamos.cloud/packaging/python-debian.git "$tempdir/python-debian"
-            export PYTHONPATH="$tempdir/python-debian/lib"
         - *run_test
 
 autopkgtest:scout:amd64:
