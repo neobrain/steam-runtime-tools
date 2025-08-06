@@ -15,6 +15,7 @@ lib32-mesa \
 libxrandr \
 python \
 python-chardet \
+python-debian \
 python-six \
 python-tappy \
 sudo \
