@@ -177,7 +177,7 @@ package:scout:i386:
 package:bullseye:amd64:
     extends: .build_deb
     variables:
-        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian/eol:bullseye-slim
         STEAM_CI_DEB_BUILD: binary
 
 package:bullseye:arm64:
@@ -187,13 +187,13 @@ package:bullseye:arm64:
         - linux
         - aarch64
     variables:
-        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian/eol:bullseye-slim
         STEAM_CI_DEB_BUILD: any
 
 package:bullseye:i386:
     extends: .build_deb
     variables:
-        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+        BUILD_IMAGE: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian/eol:bullseye-slim
         STEAM_CI_DEB_BUILD: any
 
 package:soldier:amd64:
@@ -399,7 +399,7 @@ relocatable-install:arm64:
     needs:
         - package:source
         - package:bullseye:arm64
-    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian/eol:bullseye-slim
     artifacts:
         paths:
             - _build/arm64/pressure-vessel-arm64.tar.gz
@@ -465,13 +465,11 @@ relocatable-install:
 
 test:debian-10:
     extends: .test_deb
-    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:buster-slim
-    before_script:
-        - sed -i 's|://deb.debian.org|://archive.debian.org|g' /etc/apt/sources.list
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian/eol:buster-slim
 
 test:debian-11:
     extends: .test_deb
-    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian/eol:bullseye-slim
 
 test:debian-12:
     extends: .test_deb
@@ -520,7 +518,7 @@ autopkgtest:bullseye:arm64:
         - docker
         - linux
         - aarch64
-    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian/eol:bullseye-slim
     needs:
         - package:source
         - package:bullseye:arm64
@@ -561,7 +559,7 @@ deploy:
         # To debug changes to this CI step, change this to when: on_success
         # or when: manual, and push to a protected branch
         - when: never
-    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian:bullseye-slim
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/debian/eol:bullseye-slim
     before_script:
         - *common_before_script
         - ./ci/prepare-deb.sh devscripts openssh-client rsync
