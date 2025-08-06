@@ -491,7 +491,7 @@ test:ubuntu-20.04:
 
 test:archlinux:
     extends: .test_template
-    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/archlinux:latest
+    image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/archlinux:multilib-devel
     script:
         - ./ci/prepare-arch.sh
         - *run_test
