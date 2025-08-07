@@ -218,7 +218,7 @@ launched.
 To use this tool, ensure that Python 3, GTK 3, GObject-Introspection
 and PyGI are installed
 (for example `sudo apt install python3-gi gir1.2-gtk-3.0` on Debian,
-or `sudo pacman -Syu pygobject gtk3` on Arch Linux),
+or `sudo pacman -Syu python-gobject gtk3` on Arch Linux),
 then set a Steam game's [launch options][set launch options] to:
 
 ```
