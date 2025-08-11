@@ -1100,9 +1100,17 @@ class Main:
                 # to make it the default for legacy games.
                 filter_exclusive_priority = '9'
 
-                if 'amd64' not in runtime.architecture and 'i386' not in runtime.architecture:
-                    # FIXME this is a temporary workaround to let the Steam client do the
-                    #  expected grouping/filtering only for known amd64/i386 runtimes
+                is_x86 = all(
+                    a in ('amd64', 'i386')
+                    for a in runtime.architecture.split(',')
+                )
+
+                if runtime.suite == 'sniper' and not is_x86:
+                    # On x86 the oldest runtime is scout or
+                    # scout-on-soldier (configured elsewhere), but those
+                    # legacy runtimes never existed on non-x86, so the default
+                    # becomes the oldest runtime that could support non-x86,
+                    # namely sniper.
                     filter_exclusive_priority = '0'
                 elif runtime.suite.startswith('steamrt'):
                     # steamrt4, steamrt5, ... get priority 4, 5, ...
