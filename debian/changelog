@@ -1,10 +1,12 @@
-steam-runtime-tools (0.20250718.1) UNRELEASED; urgency=medium
+steam-runtime-tools (0.20250812.0) UNRELEASED; urgency=medium
 
-  [ Simon McVittie ]
+  * SteamLinuxRuntime_*:
+    - On non-x86, only set filter_exclusive_priority to 0 for sniper
+      (steamrt/tasks#766)
   * Documentation updates
   * CI updates (steamrt/tasks#767)
 
- -- Simon McVittie <smcv@collabora.com>  Thu, 07 Aug 2025 13:23:46 +0100
+ -- Simon McVittie <smcv@collabora.com>  Tue, 12 Aug 2025 20:00:34 +0100
 
 steam-runtime-tools (0.20250718.0) steamrt; urgency=medium
 
