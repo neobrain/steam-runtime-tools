@@ -526,13 +526,17 @@ class Gui:
         self._ldlp_runtime_changed_id = 0
         self._proton_changed_id = 0
 
-        self.window = Gtk.Window()
+        self.window = Gtk.Dialog()
         self.window.set_default_size(720, 480)
         self.window.connect('delete-event', Gtk.main_quit)
         self.window.set_title('Launch options')
 
-        self.vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL, 6)
-        self.window.add(self.vbox)
+        self.window.add_button("Cancel", Gtk.ButtonsType.CANCEL)
+        ok_button = self.window.add_button("Run", Gtk.ButtonsType.OK)
+        ok_button.grab_focus()
+        self.window.connect('response', (lambda _, resp: self.run_cb() if resp == Gtk.ButtonsType.OK else None))
+
+        self.vbox = self.window.get_content_area()
 
         row = 0
 
@@ -868,24 +872,6 @@ class Gui:
         else:
             scrolled_window.props.height_request = 120
         self.grid.attach(scrolled_window, 1, row, 2, 1)
-
-        row += 1
-
-        buttons_grid = Gtk.Grid(
-            column_spacing=6,
-            column_homogeneous=True,
-            halign=Gtk.Align.END,
-        )
-
-        cancel_button = Gtk.Button.new_with_label('Cancel')
-        cancel_button.connect('clicked', Gtk.main_quit)
-        buttons_grid.attach(cancel_button, 0, 0, 1, 1)
-
-        run_button = Gtk.Button.new_with_label('Run')
-        run_button.connect('clicked', self.run_cb)
-        buttons_grid.attach(run_button, 1, 0, 1, 1)
-
-        self.vbox.pack_end(buttons_grid, False, False, 0)
 
         self._container_runtime_changed_id = (
             self.container_runtime_combo.connect(
