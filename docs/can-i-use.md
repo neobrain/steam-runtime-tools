@@ -21,7 +21,9 @@ In software that runs on the host system (`steam-launcher`),
 we can expect to find:
 
 * Ubuntu 16.04: dpkg 1.18.4, apt 1.2.35
+    (no longer supported by Steam [after 2025-08-15][glibc-minspec])
 * Ubuntu 18.04: dpkg 1.19.0.5, apt 1.6.17
+    (no longer supported by Steam [after 2025-08-15][glibc-minspec])
 * Ubuntu 20.04: dpkg 1.19.7, apt 2.0.11
 * Ubuntu 22.04: dpkg 1.21.1, apt 2.4.14
 * Debian 12: dpkg 1.21.22, apt 2.6.1
